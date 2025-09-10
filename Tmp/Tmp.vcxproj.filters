@@ -13,21 +13,71 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Resource Files\CppCommponents">
+      <UniqueIdentifier>{4f58d23c-5c63-4eae-a43e-4e08a25f2b45}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Scene.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="CppCommponents\File.cpp">
+      <Filter>Resource Files\CppCommponents</Filter>
+    </ClCompile>
+    <ClCompile Include="CppCommponents\Folder.cpp">
+      <Filter>Resource Files\CppCommponents</Filter>
+    </ClCompile>
+    <ClCompile Include="CppCommponents\ImageRGBA.cpp">
+      <Filter>Resource Files\CppCommponents</Filter>
+    </ClCompile>
+    <ClCompile Include="CppCommponents\NameGenerators.cpp">
+      <Filter>Resource Files\CppCommponents</Filter>
+    </ClCompile>
+    <ClCompile Include="CppCommponents\Rectangle2d.cpp">
+      <Filter>Resource Files\CppCommponents</Filter>
+    </ClCompile>
+    <ClCompile Include="CppCommponents\Search_BreadthFirst_2d.cpp">
+      <Filter>Resource Files\CppCommponents</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Scene.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="CppCommponents\File.h">
+      <Filter>Resource Files\CppCommponents</Filter>
+    </ClInclude>
+    <ClInclude Include="CppCommponents\Folder.h">
+      <Filter>Resource Files\CppCommponents</Filter>
+    </ClInclude>
+    <ClInclude Include="CppCommponents\ImageRGBA.h">
+      <Filter>Resource Files\CppCommponents</Filter>
+    </ClInclude>
+    <ClInclude Include="CppCommponents\json.h">
+      <Filter>Resource Files\CppCommponents</Filter>
+    </ClInclude>
+    <ClInclude Include="CppCommponents\NameGenerators.h">
+      <Filter>Resource Files\CppCommponents</Filter>
+    </ClInclude>
+    <ClInclude Include="CppCommponents\Random.h">
+      <Filter>Resource Files\CppCommponents</Filter>
+    </ClInclude>
+    <ClInclude Include="CppCommponents\Rectangle2d.h">
+      <Filter>Resource Files\CppCommponents</Filter>
+    </ClInclude>
+    <ClInclude Include="CppCommponents\Search_BreadthFirst_2d.h">
+      <Filter>Resource Files\CppCommponents</Filter>
+    </ClInclude>
+    <ClInclude Include="CppCommponents\TempleteUtils.h">
+      <Filter>Resource Files\CppCommponents</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="example.toml" />
+    <None Include="CppCommponents\README.md">
+      <Filter>Resource Files\CppCommponents</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="commands.txt" />
   </ItemGroup>
 </Project>

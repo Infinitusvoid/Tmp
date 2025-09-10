@@ -1,0 +1,125 @@
+
+
+render.fps 60
+render.number_of_frames 1000
+render.time.start 0.0
+
+camera.start.x 0.02
+camera.start.y 0.0
+camera.start.z 0.0
+camera.start.pitch 0.0
+camera.start.yew 0.0
+camera.start.fov 45.0
+
+camera.end.x 0.0
+camera.end.y 0.0
+camera.end.z 0.0
+camera.end.pitch 0.0
+camrea.end.yew 0.0
+camera.end.fov 45.0
+
+capture true
+capture.png true
+capture.bmp false
+
+le.halfLife 0.2
+le.bloomThreshold 1.1
+le.bloomSoftKnee 0.7		
+le.bloomStrength 2.0
+le.bloomIterations 6
+le.exposure 0.3
+le.gamma 2.2
+le.brightness 0.0
+le.contrast 1.0
+le.saturation 1.0
+
+le.msaaSamples 10
+
+
+// shaders
+
+create_shader
+shader.vertex.filepath ""
+shader.fragment.filepath ""
+
+new_instance
+u0 0.0 1.0
+u1 0.0 1.0
+u2 0.0 1.0
+u3 0.0 1.0
+u4 0.0 1.0
+u5 0.0 1.0
+u6 0.0 1.0
+u7 0.0 1.0
+u8 0.0 1.0
+u9 0.0 1.0
+u10 0.0 1.0
+transform.x 0.0 0.0
+transform.y 0.0 0.0
+transform.z 0.0 0.0
+transform.euler_x 0.0 0.0
+transform.euler_y 0.0 0.0
+transform.euler_z 0.0 0.0
+transform.scale_x 0.0 0.0
+transform.scale_y 0.0 0.0
+transform.scale_z 0.0 0.0
+group_size_x 1000
+group_size_y 1000
+group_size_z 1
+number_of_drawcalls 4
+
+new_instance
+u0 0.0 1.0
+u1 0.0 1.0
+u2 0.0 1.0
+u3 0.0 1.0
+u4 0.0 1.0
+u5 0.0 1.0
+u6 0.0 1.0
+u7 0.0 1.0
+u8 0.0 1.0
+u9 0.0 1.0
+u10 0.0 1.0
+transform.x 0.0 0.0
+transform.y 0.0 0.0
+transform.z 0.0 0.0
+transform.euler_x 0.0 0.0
+transform.euler_y 0.0 0.0
+transform.euler_z 0.0 0.0
+transform.scale_x 0.0 0.0
+transform.scale_y 0.0 0.0
+transform.scale_z 0.0 0.0
+group_size_x 1000
+group_size_y 1000
+group_size_z 1
+number_of_drawcalls 4
+
+
+create_shader
+shader.vertex.filepath ""
+shader.fragment.filepath ""
+new_instance
+u0 0.0 1.0
+u1 0.0 1.0
+u2 0.0 1.0
+u3 0.0 1.0
+u4 0.0 1.0
+u5 0.0 1.0
+u6 0.0 1.0
+u7 0.0 1.0
+u8 0.0 1.0
+u9 0.0 1.0
+u10 0.0 1.0
+transform.x 0.0101 0.0
+transform.y 0.0 0.0
+transform.z 0.0 0.0
+transform.euler_x 0.0 0.0
+transform.euler_y 0.0 0.0
+transform.euler_z 0.0 0.0
+transform.scale_x 0.0 0.0
+transform.scale_y 0.0 0.0
+transform.scale_z 0.0 0.0
+group_size_x 1000
+group_size_y 1000
+group_size_z 1
+number_of_drawcalls 4
