@@ -7,6 +7,9 @@ namespace Float1024_
 		ADD,
 		SUBTRACT,
 		MULTIPLY,
+		SIN,
+		COS,
+		INVERT,
 		BASE
 	};
 
@@ -14,9 +17,7 @@ namespace Float1024_
 	{
 		CompositionFuncton function;
 
-		int index_0 = -1;
-		int index_1 = -1;
-		int index_2 = -1;
+		std::vector<int> fs;
 	};
 
 	
@@ -26,21 +27,30 @@ namespace Float1024_
 	public:
 		Engine()
 		{
-			compositions.push_back(Composition(CompositionFuncton::BASE, -1, -1, -1));
+			compositions.push_back(Composition(CompositionFuncton::BASE, {}));
+		}
+
+		void sin(int index)
+		{
+			if (exist(index))
+			{
+				compositions.push_back(Composition(CompositionFuncton::SIN, { index }));
+			}
+			else
+			{
+				std::abort();
+			}
+		}
+
+		bool exist(int index)
+		{
+			return ( index < compositions.size() );
 		}
 
 		~Engine()
 		{
 			compositions.clear();
 		}
-
-		int clone(int index)
-		{
-			Composition el = compositions.at(index);
-			compositions.push_back(el);
-		}
-
-		
 
 	private:
 
@@ -51,7 +61,7 @@ namespace Float1024_
 	{
 		Engine engine;
 
-		
+		engine.sin(0);
 
 	}
 
