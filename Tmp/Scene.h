@@ -806,9 +806,140 @@ namespace Scene_ {
         }
     }
 
-    void save(Scene& save, std::string filepath)
+    void save(Scene& scene, std::string filepath)
     {
-        // TODO : need implementation
+        std::ofstream out(filepath);
+        if (!out) {
+            std::cerr << "[Scene::save] ERROR: cannot open file: " << filepath << "\n";
+            return;
+        }
+
+        auto b = [](bool v) { return v ? "true" : "false"; };
+
+        out << std::fixed << std::setprecision(6);
+
+        // Header / meta
+        out << "# =========================\n";
+        out << "# Scene config (auto-saved)\n";
+        out << "# =========================\n\n";
+        out << "# resolution: " << scene.get_width() << " x " << scene.get_height() << "\n\n";
+
+        // ---- Render ----
+        out << "# ---- Render ----\n";
+        out << "render.fps " << scene.get_render_fps() << "\n";
+        out << "render.number_of_frames " << scene.get_number_of_frames() << "\n";
+        out << "render.time.start " << scene.get_render_time_start() << "\n\n";
+
+        // ---- Capture ----
+        out << "# ---- Capture ----\n";
+        out << "capture " << b(scene.get_capture()) << "\n";
+        out << "capture.png " << b(scene.get_capture_png()) << "\n";
+        out << "capture.bmp " << b(scene.get_capture_bmp()) << "\n\n";
+
+        // ---- Camera: start ----
+        out << "# ---- Camera: start ----\n";
+        out << "camera.start.x " << scene.get_camera_start_x() << "\n";
+        out << "camera.start.y " << scene.get_camera_start_y() << "\n";
+        out << "camera.start.z " << scene.get_camera_start_z() << "\n";
+        out << "camera.start.pitch " << scene.get_camera_start_pitch() << "\n";
+        out << "camera.start.yaw " << scene.get_camera_start_yaw() << "\n";
+        out << "camera.start.fov " << scene.get_camera_start_fov() << "\n\n";
+
+        // ---- Camera: end ----
+        out << "# ---- Camera: end ----\n";
+        out << "camera.end.x " << scene.get_camera_end_x() << "\n";
+        out << "camera.end.y " << scene.get_camera_end_y() << "\n";
+        out << "camera.end.z " << scene.get_camera_end_z() << "\n";
+        out << "camera.end.pitch " << scene.get_camera_end_pitch() << "\n";
+        out << "camera.end.yaw " << scene.get_camera_end_yaw() << "\n";
+        out << "camera.end.fov " << scene.get_camera_end_fov() << "\n\n";
+
+        // ---- LE / Post ----
+        out << "# ---- LE / Post ----\n";
+        out << "le.halfLife " << scene.get_le_halfLife() << "\n";
+        out << "le.bloomThreshold " << scene.get_le_bloomThreshold() << "\n";
+        out << "le.bloomSoftKnee " << scene.get_le_bloomSoftKnee() << "\n";
+        out << "le.bloomStrength " << scene.get_le_bloomStrength() << "\n";
+        out << "le.bloomIterations " << scene.get_le_bloomIterations() << "\n";
+        out << "le.exposure " << scene.get_le_exposure() << "\n";
+        out << "le.gamma " << scene.get_le_gamma() << "\n";
+        out << "le.brightness " << scene.get_le_brightness() << "\n";
+        out << "le.contrast " << scene.get_le_contrast() << "\n";
+        out << "le.saturation " << scene.get_le_saturation() << "\n";
+        out << "le.msaaSamples " << scene.get_le_msaaSamples() << "\n\n";
+
+        // =========================
+        // Shaders & Instances
+        // =========================
+        out << "# =========================\n";
+        out << "# Shaders\n";
+        out << "# =========================\n";
+        const size_t sc = scene.shader_count();
+        for (size_t s = 0; s < sc; ++s) {
+            const std::string vtx = scene.get_shader_vertex_path(s);
+            const std::string frag = scene.get_shader_fragment_path(s);
+            out << "shader.add " << std::quoted(vtx) << " " << std::quoted(frag) << "\n";
+
+            const size_t ic = scene.instance_count(s);
+            for (size_t i = 0; i < ic; ++i) {
+                out << "shader.instance.add " << s << "\n";
+
+                // Group sizes
+                int gx = 0, gy = 0, gz = 0;
+                if (scene.get_instance_group_size(s, i, gx, gy, gz)) {
+                    out << "shader.instance.group " << s << " " << i << " "
+                        << gx << " " << gy << " " << gz << "\n";
+                }
+
+                // Drawcalls
+                int n = 0;
+                if (scene.get_instance_drawcalls(s, i, n)) {
+                    out << "shader.instance.drawcalls " << s << " " << i << " " << n << "\n";
+                }
+
+                // Transforms: start
+                float x, y, z, ex, ey, ez, sx, sy, sz;
+                if (scene.get_instance_position_start(s, i, x, y, z))
+                    out << "shader.instance.start.pos " << s << " " << i << " "
+                    << x << " " << y << " " << z << "\n";
+                if (scene.get_instance_euler_start(s, i, ex, ey, ez))
+                    out << "shader.instance.start.euler " << s << " " << i << " "
+                    << ex << " " << ey << " " << ez << "\n";
+                if (scene.get_instance_scale_start(s, i, sx, sy, sz))
+                    out << "shader.instance.start.scale " << s << " " << i << " "
+                    << sx << " " << sy << " " << sz << "\n";
+
+                // Transforms: end
+                if (scene.get_instance_position_end(s, i, x, y, z))
+                    out << "shader.instance.end.pos " << s << " " << i << " "
+                    << x << " " << y << " " << z << "\n";
+                if (scene.get_instance_euler_end(s, i, ex, ey, ez))
+                    out << "shader.instance.end.euler " << s << " " << i << " "
+                    << ex << " " << ey << " " << ez << "\n";
+                if (scene.get_instance_scale_end(s, i, sx, sy, sz))
+                    out << "shader.instance.end.scale " << s << " " << i << " "
+                    << sx << " " << sy << " " << sz << "\n";
+
+                // Uniforms: start
+                for (int u = 0; u <= 9; ++u) {
+                    float uv = 0.0f;
+                    if (scene.get_instance_uniform_start(s, i, u, uv))
+                        out << "shader.instance.start.u " << s << " " << i << " " << u << " " << uv << "\n";
+                }
+                // Uniforms: end
+                for (int u = 0; u <= 9; ++u) {
+                    float uv = 0.0f;
+                    if (scene.get_instance_uniform_end(s, i, u, uv))
+                        out << "shader.instance.end.u " << s << " " << i << " " << u << " " << uv << "\n";
+                }
+
+                out << "\n";
+            }
+
+            if (s + 1 < sc) out << "\n"; // spacer between shaders
+        }
+
+        out.flush();
     }
 
 }

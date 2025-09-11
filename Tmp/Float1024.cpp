@@ -4,13 +4,15 @@ namespace Float1024_
 {
 	enum class CompositionFuncton
 	{
-		ADD,
-		SUBTRACT,
-		MULTIPLY,
+		BASE,
+
 		SIN,
 		COS,
 		INVERT,
-		BASE
+
+		ADD,
+		SUBTRACT,
+		MULTIPLY,
 	};
 
 	struct Composition
@@ -41,6 +43,23 @@ namespace Float1024_
 				std::abort();
 			}
 		}
+
+		void add(int index_0, int index_1)
+		{
+			if (!exist(index_0))
+			{
+				std::abort();
+			}
+
+			if (!exist(index_1))
+			{
+				std::abort();
+			}
+
+			compositions.push_back(Composition(CompositionFuncton::ADD, { index_0, index_1 }));
+		}
+
+		
 
 		bool exist(int index)
 		{

@@ -475,7 +475,7 @@ int main()
     std::cout << "--- scene printing ---\n";
     scene.print();
 
-    
+    Scene_::save(scene, "exported_commands.txt");
 
 
     return 0;

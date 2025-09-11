@@ -1,0 +1,173 @@
+# =========================
+# Scene config (auto-saved)
+# =========================
+
+# resolution: 3840 x 2160
+
+# ---- Render ----
+render.fps 1000
+render.number_of_frames 100
+render.time.start 0.000000
+
+# ---- Capture ----
+capture false
+capture.png true
+capture.bmp false
+
+# ---- Camera: start ----
+camera.start.x 990.010010
+camera.start.y 990.020020
+camera.start.z 990.030029
+camera.start.pitch 990.010010
+camera.start.yaw 990.020020
+camera.start.fov 9945.030273
+
+# ---- Camera: end ----
+camera.end.x 0.100000
+camera.end.y 0.200000
+camera.end.z 0.300000
+camera.end.pitch 0.100000
+camera.end.yaw 0.200000
+camera.end.fov 45.299999
+
+# ---- LE / Post ----
+le.halfLife 0.200000
+le.bloomThreshold 1.100000
+le.bloomSoftKnee 0.700000
+le.bloomStrength 2.000000
+le.bloomIterations 6
+le.exposure 0.300000
+le.gamma 2.200000
+le.brightness 0.000000
+le.contrast 1.000000
+le.saturation 1.000000
+le.msaaSamples 4
+
+# =========================
+# Shaders
+# =========================
+shader.add "vertex_file_path" "fragment_file_path"
+shader.instance.add 0
+shader.instance.group 0 0 1000 1000 1
+shader.instance.drawcalls 0 0 4
+shader.instance.start.pos 0 0 0.000000 0.000000 0.000000
+shader.instance.start.euler 0 0 0.000000 0.000000 0.000000
+shader.instance.start.scale 0 0 1.000000 1.000000 1.000000
+shader.instance.end.pos 0 0 5.000000 0.000000 0.000000
+shader.instance.end.euler 0 0 0.000000 1.570796 0.000000
+shader.instance.end.scale 0 0 1.000000 1.000000 1.000000
+shader.instance.start.u 0 0 0 0.000000
+shader.instance.start.u 0 0 1 0.100000
+shader.instance.start.u 0 0 2 0.200000
+shader.instance.start.u 0 0 3 0.300000
+shader.instance.start.u 0 0 4 0.400000
+shader.instance.start.u 0 0 5 0.500000
+shader.instance.start.u 0 0 6 0.600000
+shader.instance.start.u 0 0 7 0.700000
+shader.instance.start.u 0 0 8 0.800000
+shader.instance.start.u 0 0 9 0.900000
+shader.instance.end.u 0 0 0 1.000000
+shader.instance.end.u 0 0 1 0.900000
+shader.instance.end.u 0 0 2 0.800000
+shader.instance.end.u 0 0 3 0.700000
+shader.instance.end.u 0 0 4 0.600000
+shader.instance.end.u 0 0 5 0.500000
+shader.instance.end.u 0 0 6 0.400000
+shader.instance.end.u 0 0 7 0.300000
+shader.instance.end.u 0 0 8 0.200000
+shader.instance.end.u 0 0 9 0.100000
+
+shader.instance.add 0
+shader.instance.group 0 1 512 512 4
+shader.instance.drawcalls 0 1 8
+shader.instance.start.pos 0 1 -2.000000 0.500000 1.000000
+shader.instance.start.euler 0 1 0.100000 0.200000 0.300000
+shader.instance.start.scale 0 1 0.500000 0.500000 0.500000
+shader.instance.end.pos 0 1 2.000000 1.000000 -1.000000
+shader.instance.end.euler 0 1 0.300000 0.200000 0.100000
+shader.instance.end.scale 0 1 1.500000 1.500000 1.500000
+shader.instance.start.u 0 1 0 0.250000
+shader.instance.start.u 0 1 1 0.750000
+shader.instance.start.u 0 1 2 0.000000
+shader.instance.start.u 0 1 3 0.000000
+shader.instance.start.u 0 1 4 0.000000
+shader.instance.start.u 0 1 5 0.000000
+shader.instance.start.u 0 1 6 0.000000
+shader.instance.start.u 0 1 7 0.000000
+shader.instance.start.u 0 1 8 0.000000
+shader.instance.start.u 0 1 9 0.000000
+shader.instance.end.u 0 1 0 0.900000
+shader.instance.end.u 0 1 1 0.100000
+shader.instance.end.u 0 1 2 0.000000
+shader.instance.end.u 0 1 3 0.000000
+shader.instance.end.u 0 1 4 0.000000
+shader.instance.end.u 0 1 5 0.000000
+shader.instance.end.u 0 1 6 0.000000
+shader.instance.end.u 0 1 7 0.000000
+shader.instance.end.u 0 1 8 0.000000
+shader.instance.end.u 0 1 9 0.000000
+
+shader.instance.add 0
+shader.instance.group 0 2 1000 1000 1
+shader.instance.drawcalls 0 2 4
+shader.instance.start.pos 0 2 0.000000 0.000000 0.000000
+shader.instance.start.euler 0 2 0.000000 0.000000 0.000000
+shader.instance.start.scale 0 2 1.000000 1.000000 1.000000
+shader.instance.end.pos 0 2 0.000000 0.000000 0.000000
+shader.instance.end.euler 0 2 0.000000 0.000000 0.000000
+shader.instance.end.scale 0 2 1.000000 1.000000 1.000000
+shader.instance.start.u 0 2 0 0.000000
+shader.instance.start.u 0 2 1 0.000000
+shader.instance.start.u 0 2 2 0.000000
+shader.instance.start.u 0 2 3 0.000000
+shader.instance.start.u 0 2 4 0.000000
+shader.instance.start.u 0 2 5 0.000000
+shader.instance.start.u 0 2 6 0.000000
+shader.instance.start.u 0 2 7 0.000000
+shader.instance.start.u 0 2 8 0.000000
+shader.instance.start.u 0 2 9 0.000000
+shader.instance.end.u 0 2 0 0.000000
+shader.instance.end.u 0 2 1 0.000000
+shader.instance.end.u 0 2 2 0.000000
+shader.instance.end.u 0 2 3 0.000000
+shader.instance.end.u 0 2 4 0.000000
+shader.instance.end.u 0 2 5 0.000000
+shader.instance.end.u 0 2 6 0.000000
+shader.instance.end.u 0 2 7 0.000000
+shader.instance.end.u 0 2 8 0.000000
+shader.instance.end.u 0 2 9 0.000000
+
+
+shader.add "shaders/experiment_vs.glsl" "shaders/experiment_fs.glsl"
+shader.instance.add 1
+shader.instance.group 1 0 256 256 1
+shader.instance.drawcalls 1 0 2
+shader.instance.start.pos 1 0 0.000000 0.000000 5.000000
+shader.instance.start.euler 1 0 0.000000 0.000000 0.000000
+shader.instance.start.scale 1 0 2.000000 2.000000 2.000000
+shader.instance.end.pos 1 0 0.000000 0.000000 5.000000
+shader.instance.end.euler 1 0 0.000000 6.283185 0.000000
+shader.instance.end.scale 1 0 2.000000 2.000000 2.000000
+shader.instance.start.u 1 0 0 0.000000
+shader.instance.start.u 1 0 1 0.111111
+shader.instance.start.u 1 0 2 0.222222
+shader.instance.start.u 1 0 3 0.333333
+shader.instance.start.u 1 0 4 0.444444
+shader.instance.start.u 1 0 5 0.555555
+shader.instance.start.u 1 0 6 0.666666
+shader.instance.start.u 1 0 7 0.777777
+shader.instance.start.u 1 0 8 0.888888
+shader.instance.start.u 1 0 9 1.000000
+shader.instance.end.u 1 0 0 1.000000
+shader.instance.end.u 1 0 1 0.888888
+shader.instance.end.u 1 0 2 0.777777
+shader.instance.end.u 1 0 3 0.666666
+shader.instance.end.u 1 0 4 0.555555
+shader.instance.end.u 1 0 5 0.444444
+shader.instance.end.u 1 0 6 0.333333
+shader.instance.end.u 1 0 7 0.222222
+shader.instance.end.u 1 0 8 0.111111
+shader.instance.end.u 1 0 9 0.000000
+
+
+shader.add "shaders/le_fullscreen_vs.glsl" "shaders/le_present_fs.glsl"
