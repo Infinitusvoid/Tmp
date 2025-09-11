@@ -80,9 +80,6 @@
     <ClInclude Include="CppCommponents\TempleteUtils.h">
       <Filter>Resource Files\CppCommponents</Filter>
     </ClInclude>
-    <ClInclude Include="DefaultShaderSourceCode.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="CppCommponents\README.md">

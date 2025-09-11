@@ -2,16 +2,12 @@
 
 #include <string>
 #include <vector>
-#include <cstddef>
-#include <iosfwd>
 #include <optional>
-#include <iostream>
+#include <cstddef>
 
 
 namespace Scene_
 {
-
-
 	struct Scene
 	{
 	private:
@@ -257,7 +253,7 @@ namespace Scene_
 		// --- Image/output size: explicit setters/getters ---
 		void set_width(int w);
 		void set_height(int h);
-		void print(std::ostream& os = std::cout) const;
+		void print() const;
 
 
 
@@ -287,26 +283,21 @@ namespace Scene_
 
 		std::vector<Shader> shaders;
 	};
-
 }
 
-
-
-
-namespace Scene_ {
+namespace Scene_
+{
 
 	[[nodiscard]] std::optional<Scene> load(const std::string& filepath);
 	void save(const Scene& scene, const std::string& filepath);
 }
-
 
 namespace Scene_
 {
 	void unit_test_with_round_trip();
 }
 
-
 namespace Scene_
 {
-	Scene_::Scene load(int argc, char* argv[]);
+	Scene load(int argc, char* argv[]);
 }
