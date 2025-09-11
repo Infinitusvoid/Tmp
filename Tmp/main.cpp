@@ -329,26 +329,120 @@ void process_one_line(std::string line)
         }
     }
 
-    // std::cout << line << "\n";
+    
 }
 
 
 
+#include <iostream>
+#include <string>
 
+#include <sstream>
+#include <cctype>
+
+// tiny helpers
+static std::string ltrim(std::string s) {
+    while (!s.empty() && std::isspace((unsigned char)s.front())) s.erase(s.begin());
+    return s;
+}
+static std::string rtrim(std::string s) {
+    while (!s.empty() && std::isspace((unsigned char)s.back())) s.pop_back();
+    return s;
+}
+
+
+static std::string trim(std::string s) { return rtrim(ltrim(std::move(s))); }
 
 int main()
 {
     std::cout << "Tmp\n";
 
-    std::string filepath = "commands.txt";
+    // std::string filepath = "commands.txt";
 
 
     
 
-    File::read_file_line_by_line_with_FpCallback(filepath, process_one_line);
+    // File::read_file_line_by_line_with_FpCallback(filepath, process_one_line);
 
-    std::cout << "NICE camera.start.x : " << g_scene.camera_start.camera_x << "\n";
+    // std::cout << "NICE camera.start.x : " << g_scene.camera_start.camera_x << "\n";
     
+    std::string userInput;
+
+    // Print a welcome message and instructions just once, before the loop starts.
+    std::cout << "Welcome to the Echo Looper!" << std::endl;
+    std::cout << "Type anything and press Enter. I will echo it back." << std::endl;
+    std::cout << "Type 'end' to quit the program." << std::endl;
+    std::cout << "----------------------------------" << std::endl;
+
+    // This is the main program loop.
+    // while(true) creates a loop that will run forever unless we
+    // explicitly tell it to stop from inside.
+    while (true) {
+        
+        {
+            std::cout << "> " << std::flush;
+            if (!std::getline(std::cin, userInput)) break;
+
+            userInput = trim(userInput);
+            if (userInput.empty() || userInput[0] == '#') continue;
+
+            if (userInput == "end" || userInput == "exit" || userInput == "quit") {
+                break;
+            }
+        }
+
+        std::string cmd;
+        std::string args;
+        {
+            // ---- minimal command parsing: first token = cmd, rest = args ----
+            std::istringstream iss(userInput);
+            iss >> cmd;
+            std::getline(iss, args);
+            if (!args.empty() && args[0] == ' ') args.erase(0, 1);
+        }
+
+        // 3. PRINT: If the loop hasn't ended, print the response.
+        // std::cout << "You entered: " << userInput << std::endl;
+
+
+        if (cmd == "help")
+        {
+            std::cout
+                << "Commands:\n"
+                << "  help            - this help\n"
+                << "  ping            - prints 'pong'\n"
+                << "  echo <text>     - prints <text>\n"
+                << "  add <a> <b>     - prints a+b (integers)\n"
+                << "  end|exit|quit   - leave\n";
+        }
+        else if (cmd == "ping")
+        {
+            std::cout << "pong\n";
+        }
+        else if (cmd == "echo")
+        {
+            std::cout << args << "\n";
+        }
+        else if (cmd == "echo") {
+            std::cout << args << "\n";
+        }
+        else if (cmd == "add") {
+            long long a, b;
+            std::istringstream nums(args);
+            if (nums >> a >> b) std::cout << (a + b) << "\n";
+            else std::cout << "usage: add <a> <b>\n";
+        }
+        else {
+            // fallback: behave exactly like your original echo
+            std::cout << "You entered: " << userInput << "\n";
+        }
+
+    }
+
+    // This code is outside the loop. It will only run after the `break`
+    // statement is executed.
+    std::cout << "Goodbye!" << std::endl;
+
 
     return 0;
 }
