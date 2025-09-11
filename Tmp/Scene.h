@@ -580,12 +580,47 @@ namespace Scene_ {
 	}
 
 	static inline void strip_comments(std::string& s) {
-		auto ph = s.find('#');
-		auto ps = s.find("//");
-		size_t cut = std::string::npos;
-		if (ph != std::string::npos) cut = ph;
-		if (ps != std::string::npos) cut = (cut == std::string::npos) ? ps : std::min(cut, ps);
-		if (cut != std::string::npos) s.erase(cut);
+		bool in_double = false;   // inside "..."
+		bool in_single = false;   // inside '...'
+		bool escaped = false;   // previous char was a backslash
+
+		for (size_t i = 0; i < s.size(); ++i) {
+			const unsigned char uc = static_cast<unsigned char>(s[i]);
+			const char c = static_cast<char>(uc);
+
+			if (escaped) {               // treat current char as literal
+				escaped = false;
+				continue;
+			}
+
+			if (c == '\\') {             // start an escape (only affects next char)
+				escaped = true;
+				continue;
+			}
+
+			// toggle quote states (only when not escaped and not in the other quote type)
+			if (!in_single && c == '"') { in_double = !in_double; continue; }
+			if (!in_double && c == '\'') { in_single = !in_single; continue; }
+
+			// only consider comments when outside quotes
+			if (!in_double && !in_single) {
+				// Treat '#' as a comment starter only at BOL or after whitespace.
+				if (c == '#') {
+					if (i == 0 || std::isspace(static_cast<unsigned char>(s[i - 1]))) {
+						s.erase(i);
+						break;
+					}
+				}
+
+				// Treat '//' as a comment starter only at BOL or after whitespace.
+				if (c == '/' && i + 1 < s.size() && s[i + 1] == '/') {
+					if (i == 0 || std::isspace(static_cast<unsigned char>(s[i - 1]))) {
+						s.erase(i);
+						break;
+					}
+				}
+			}
+		}
 	}
 
 	static inline bool parse_bool(const std::string& in, bool& out) {
@@ -598,7 +633,7 @@ namespace Scene_ {
 	static inline bool parse_int(const std::string& in, int& out) { std::istringstream iss(in); iss >> out; return (bool)iss && iss.eof(); }
 	static inline bool parse_float(const std::string& in, float& out) { std::istringstream iss(in); iss >> out; return (bool)iss && iss.eof(); }
 
-	inline std::optional<Scene> load(std::string filepath)
+	inline std::optional<Scene> load(const std::string& filepath)
 	{
 		Scene scene;
 		scene.clear_shaders();
@@ -744,7 +779,7 @@ namespace Scene_ {
 				std::istringstream ss(rest);
 				size_t s; if (!(ss >> s)) { warn("usage: shader.instance.add <shader_idx>"); continue; }
 				size_t idx = scene.add_instance(s);
-				if (idx == static_cast<size_t>(Scene::kInvalidIndex)) warn("invalid shader index");
+				if (idx == Scene::kInvalidIndex) warn("invalid shader index");
 			}
 			else if (key == "shader.instance.group") {
 				std::istringstream ss(rest);
@@ -836,10 +871,10 @@ namespace Scene_ {
 			}
 		}
 
-		return std::move(scene);
+		return scene;
 	}
 
-	inline void save(const Scene& scene, std::string filepath)
+	inline void save(const Scene& scene, const std::string& filepath)
 	{
 		std::ofstream out(filepath);
 		if (!out) {
