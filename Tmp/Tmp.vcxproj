@@ -140,6 +140,7 @@
     <ClCompile Include="Float1024.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MaybeUsfullInFuture.cpp" />
+    <ClCompile Include="Scene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CppCommponents\File.h" />

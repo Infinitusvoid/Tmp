@@ -2,9 +2,6 @@
 
 
 
-
-
-
 int main()
 {
     std::cout << "Tmp\n";
@@ -14,6 +11,8 @@ int main()
     return 0;
 
     // std::string filepath = "commands.txt";
+
+    
 
     Scene_::Scene scene;
 
