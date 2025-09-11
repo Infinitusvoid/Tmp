@@ -24,5 +24,27 @@ capture false
 capture.png true
 capture.bmp false
 
+// LE
+le.halfLife 0.2
+le.bloomThreshold 1.1
+le.bloomSoftKnee 0.7
+le.bloomStrength 2.0
+le.bloomIterations 6
+le.exposure 0.3
+le.gamma 2.2
+le.brightness 0.0
+le.contrast 1.0
+le.saturation 1.0
 
+le.msaaSamples 4
 
+// shaders
+// shader.add "shaders/experiment_vs.glsl" "shaders/experiment_fs.glsl"
+shader.vertex 0 "shaders/override_vs.glsl"
+shader.fragment 0 shaders/override_fs.glsl
+
+// =========================
+// Instances — Shader 0
+// =========================
+
+shader.instance.add 0
