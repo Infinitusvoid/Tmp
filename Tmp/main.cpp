@@ -5,6 +5,8 @@
 
 #include "DefaultShaderSourceCode.h"
 
+
+
 void scene_init()
 {
     // writing default shaders into tmp
@@ -95,13 +97,57 @@ void scene_init()
 }
 
 
-int main()
+
+void load_commmands_no_argument()
+{
+    std::string filepath = "commands.txt";
+    std::optional<Scene_::Scene> scene = Scene_::load(filepath);
+
+    if (scene.has_value())
+    {
+        Scene_::Scene safe_scene = scene.value();
+
+        std::cout << "commands.txt loaded\n";
+
+        safe_scene.print();
+
+    }
+    else
+    {
+        // write default commands 
+
+        load_commmands_no_argument();
+    }
+    
+    return;
+}
+
+
+int main(int argc, char* argv[])
 {
     std::cout << "Tmp\n";
 
     Scene_::unit_test_with_round_trip();
 
     scene_init();
+
+    if (argc < 2)
+    {
+        std::cout << "no arguments";
+        // load commands.txt
+        load_commmands_no_argument();
+
+        
+    }
+    else
+    {
+        std::string firstArg = argv[1];
+        std::cout << "First argument as std::string: " << firstArg << std::endl;
+
+
+    }
+    
+    
 
     return 0;
 

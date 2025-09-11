@@ -1,30 +1,36 @@
 
-
+// render / display settings
+render.width 3840
+render.height 2160
 render.fps 60
-render.number_of_frames 1000
+render.number_of_frames 100
 render.time.start 0.0
 
-camera.start.x 0.02
+// capture
+capture false
+capture.png true
+capture.bmp false
+
+// camera start
+camera.start.x 0.0
 camera.start.y 0.0
 camera.start.z 0.0
 camera.start.pitch 0.0
-camera.start.yew 0.0
+camera.start.yaw 0.0
 camera.start.fov 45.0
 
+// camera end
 camera.end.x 0.0
 camera.end.y 0.0
 camera.end.z 0.0
 camera.end.pitch 0.0
-camrea.end.yew 0.0
+camera.end.yaw 0.0
 camera.end.fov 45.0
 
-capture true
-capture.png true
-capture.bmp false
-
+// LE
 le.halfLife 0.2
 le.bloomThreshold 1.1
-le.bloomSoftKnee 0.7		
+le.bloomSoftKnee 0.7
 le.bloomStrength 2.0
 le.bloomIterations 6
 le.exposure 0.3
@@ -33,93 +39,141 @@ le.brightness 0.0
 le.contrast 1.0
 le.saturation 1.0
 
-le.msaaSamples 10
+le.msaaSamples 4
 
 
-// shaders
 
-create_shader
-shader.vertex.filepath ""
-shader.fragment.filepath ""
+// Shader 0
+shader.add "shader_fragment.glsl" "shader_vertex.glsl"
 
-new_instance
-u0 0.0 1.0
-u1 0.0 1.0
-u2 0.0 1.0
-u3 0.0 1.0
-u4 0.0 1.0
-u5 0.0 1.0
-u6 0.0 1.0
-u7 0.0 1.0
-u8 0.0 1.0
-u9 0.0 1.0
-u10 0.0 1.0
-transform.x 0.0 0.0
-transform.y 0.0 0.0
-transform.z 0.0 0.0
-transform.euler_x 0.0 0.0
-transform.euler_y 0.0 0.0
-transform.euler_z 0.0 0.0
-transform.scale_x 0.0 0.0
-transform.scale_y 0.0 0.0
-transform.scale_z 0.0 0.0
-group_size_x 1000
-group_size_y 1000
-group_size_z 1
-number_of_drawcalls 4
+# (Optional) override a path later
+# shader.vertex 0 shaders/experiment_vs.glsl
+# shader.fragment 0 shaders/experiment_fs.glsl
 
-new_instance
-u0 0.0 1.0
-u1 0.0 1.0
-u2 0.0 1.0
-u3 0.0 1.0
-u4 0.0 1.0
-u5 0.0 1.0
-u6 0.0 1.0
-u7 0.0 1.0
-u8 0.0 1.0
-u9 0.0 1.0
-u10 0.0 1.0
-transform.x 0.0 0.0
-transform.y 0.0 0.0
-transform.z 0.0 0.0
-transform.euler_x 0.0 0.0
-transform.euler_y 0.0 0.0
-transform.euler_z 0.0 0.0
-transform.scale_x 0.0 0.0
-transform.scale_y 0.0 0.0
-transform.scale_z 0.0 0.0
-group_size_x 1000
-group_size_y 1000
-group_size_z 1
-number_of_drawcalls 4
+# =========================
+# Instances — Shader 0
+# =========================
+
+# Instance 0 on Shader 0
+shader.instance.add 0              # -> instance index 0
+shader.instance.group 0 0 1000 1000 1
+
+// shader 0
+// instance 0
+// drawcalls 4
+shader.instance.drawcalls 0 0 4
+
+# start transform
+shader.instance.start.pos   0 0  0.000000  0.000000  0.000000
+shader.instance.start.euler 0 0  0.000000  0.000000  0.000000
+shader.instance.start.scale 0 0  1.000000  1.000000  1.000000
+
+# end transform
+shader.instance.end.pos     0 0  5.000000  0.000000  0.000000
+shader.instance.end.euler   0 0  0.000000  1.570796  0.000000    # 90 deg about Y
+shader.instance.end.scale   0 0  1.000000  1.000000  1.000000
+
+# start uniforms (u0..u9)
+shader.instance.start.u 0 0 0 0.000000
+shader.instance.start.u 0 0 1 0.100000
+shader.instance.start.u 0 0 2 0.200000
+shader.instance.start.u 0 0 3 0.300000
+shader.instance.start.u 0 0 4 0.400000
+shader.instance.start.u 0 0 5 0.500000
+shader.instance.start.u 0 0 6 0.600000
+shader.instance.start.u 0 0 7 0.700000
+shader.instance.start.u 0 0 8 0.800000
+shader.instance.start.u 0 0 9 0.900000
+
+# end uniforms (u0..u9)
+shader.instance.end.u   0 0 0 1.000000
+shader.instance.end.u   0 0 1 0.900000
+shader.instance.end.u   0 0 2 0.800000
+shader.instance.end.u   0 0 3 0.700000
+shader.instance.end.u   0 0 4 0.600000
+shader.instance.end.u   0 0 5 0.500000
+shader.instance.end.u   0 0 6 0.400000
+shader.instance.end.u   0 0 7 0.300000
+shader.instance.end.u   0 0 8 0.200000
+shader.instance.end.u   0 0 9 0.100000
 
 
-create_shader
-shader.vertex.filepath ""
-shader.fragment.filepath ""
-new_instance
-u0 0.0 1.0
-u1 0.0 1.0
-u2 0.0 1.0
-u3 0.0 1.0
-u4 0.0 1.0
-u5 0.0 1.0
-u6 0.0 1.0
-u7 0.0 1.0
-u8 0.0 1.0
-u9 0.0 1.0
-u10 0.0 1.0
-transform.x 0.0101 0.0
-transform.y 0.0 0.0
-transform.z 0.0 0.0
-transform.euler_x 0.0 0.0
-transform.euler_y 0.0 0.0
-transform.euler_z 0.0 0.0
-transform.scale_x 0.0 0.0
-transform.scale_y 0.0 0.0
-transform.scale_z 0.0 0.0
-group_size_x 1000
-group_size_y 1000
-group_size_z 1
-number_of_drawcalls 4
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# -------------------------
+# Instance 1 on Shader 0
+// shader.instance.add 0              # -> instance index 1
+// shader.instance.group 0 1 512 512 4
+// shader.instance.drawcalls 0 1 8
+
+# start transform
+// shader.instance.start.pos   0 1  -2.000000  0.500000  1.000000
+// shader.instance.start.euler 0 1   0.100000  0.200000  0.300000
+// shader.instance.start.scale 0 1   0.500000  0.500000  0.500000
+
+# end transform
+// shader.instance.end.pos     0 1   2.000000  1.000000 -1.000000
+// shader.instance.end.euler   0 1   0.300000  0.200000  0.100000
+// shader.instance.end.scale   0 1   1.500000  1.500000  1.500000
+
+# a few uniforms
+// shader.instance.start.u 0 1 0 0.250000
+// shader.instance.start.u 0 1 1 0.750000
+// shader.instance.end.u   0 1 0 0.900000
+// shader.instance.end.u   0 1 1 0.100000
+
+# =========================
+# Instances — Shader 1
+# =========================
+
+# Instance 0 on Shader 1
+// shader.instance.add 1              # -> instance index 0
+// shader.instance.group 1 0 256 256 1
+// shader.instance.drawcalls 1 0 2
+
+# start transform
+// shader.instance.start.pos   1 0   0.000000  0.000000  5.000000
+// shader.instance.start.euler 1 0   0.000000  0.000000  0.000000
+// shader.instance.start.scale 1 0   2.000000  2.000000  2.000000
+
+# end transform
+shader.instance.end.pos     1 0   0.000000  0.000000  5.000000
+shader.instance.end.euler   1 0   0.000000  6.283185  0.000000    # 360 deg about Y
+shader.instance.end.scale   1 0   2.000000  2.000000  2.000000
+
+# full uniform sweep start/end
+shader.instance.start.u 1 0 0 0.000000
+shader.instance.start.u 1 0 1 0.111111
+shader.instance.start.u 1 0 2 0.222222
+shader.instance.start.u 1 0 3 0.333333
+shader.instance.start.u 1 0 4 0.444444
+shader.instance.start.u 1 0 5 0.555555
+shader.instance.start.u 1 0 6 0.666666
+shader.instance.start.u 1 0 7 0.777777
+shader.instance.start.u 1 0 8 0.888888
+shader.instance.start.u 1 0 9 1.000000
+
+shader.instance.end.u   1 0 0 1.000000
+shader.instance.end.u   1 0 1 0.888888
+shader.instance.end.u   1 0 2 0.777777
+shader.instance.end.u   1 0 3 0.666666
+shader.instance.end.u   1 0 4 0.555555
+shader.instance.end.u   1 0 5 0.444444
+shader.instance.end.u   1 0 6 0.333333
+shader.instance.end.u   1 0 7 0.222222
+shader.instance.end.u   1 0 8 0.111111
+shader.instance.end.u   1 0 9 0.000000
