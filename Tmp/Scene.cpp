@@ -4,39 +4,39 @@ namespace Scene_
 {
 	// ----------------- Render / output size -----------------
 
-	inline int Scene::get_width() const { return width; }
-	inline int Scene::get_height() const { return height; }
+	int Scene::get_width() const { return width; }
+	int Scene::get_height() const { return height; }
 
 	// ----------------- Render timing -----------------
 
-	inline void Scene::set_render_fps(int number) { render_fps = number; }
-	inline int Scene::get_render_fps() const { return render_fps; }
-	inline void Scene::set_number_of_frames(int number) { number_of_frames = number; }
-	inline int Scene::get_number_of_frames() const { return number_of_frames; }
-	inline void Scene::set_render_time_start(float v) { capture_settings.start_time = v; }
-	inline float Scene::get_render_time_start() const { return capture_settings.start_time; }
+	void Scene::set_render_fps(int number) { render_fps = number; }
+	int Scene::get_render_fps() const { return render_fps; }
+	void Scene::set_number_of_frames(int number) { number_of_frames = number; }
+	int Scene::get_number_of_frames() const { return number_of_frames; }
+	void Scene::set_render_time_start(float v) { capture_settings.start_time = v; }
+	float Scene::get_render_time_start() const { return capture_settings.start_time; }
 
 	// ----------------- Capture toggles -----------------
 
-	inline void Scene::set_capture(bool v) { capture_settings.capture_frames = v; }
-	inline bool Scene::get_capture() const { return capture_settings.capture_frames; }
-	inline void Scene::set_capture_png(bool v) { capture_settings.capture_png = v; }
-	inline bool Scene::get_capture_png() const { return capture_settings.capture_png; }
-	inline void Scene::set_capture_bmp(bool v) { capture_settings.capture_bmp = v; }
-	inline bool Scene::get_capture_bmp() const { return capture_settings.capture_bmp; }
+	void Scene::set_capture(bool v) { capture_settings.capture_frames = v; }
+	bool Scene::get_capture() const { return capture_settings.capture_frames; }
+	void Scene::set_capture_png(bool v) { capture_settings.capture_png = v; }
+	bool Scene::get_capture_png() const { return capture_settings.capture_png; }
+	void Scene::set_capture_bmp(bool v) { capture_settings.capture_bmp = v; }
+	bool Scene::get_capture_bmp() const { return capture_settings.capture_bmp; }
 
 	// ----------------- LE (post) settings -----------------
 
-	inline void Scene::set_le_halfLife(float v) { le_settings.halfLife = v; }
-	inline float Scene::get_le_halfLife() const { return le_settings.halfLife; }
-	inline void Scene::set_le_bloomThreshold(float v) { le_settings.bloomThreshold = v; }
-	inline float Scene::get_le_bloomThreshold() const { return le_settings.bloomThreshold; }
-	inline void Scene::set_le_bloomSoftKnee(float v) { le_settings.bloomSoftKnee = v; }
-	inline float Scene::get_le_bloomSoftKnee() const { return le_settings.bloomSoftKnee; }
-	inline void Scene::set_le_bloomStrength(float v) { le_settings.bloomStrength = v; }
-	inline float Scene::get_le_bloomStrength() const { return le_settings.bloomStrength; }
-	inline void Scene::set_le_bloomIterations(int v) { le_settings.bloomIterations = v; }
-	inline int Scene::get_le_bloomIterations() const { return le_settings.bloomIterations; }
+	void Scene::set_le_halfLife(float v) { le_settings.halfLife = v; }
+	float Scene::get_le_halfLife() const { return le_settings.halfLife; }
+	void Scene::set_le_bloomThreshold(float v) { le_settings.bloomThreshold = v; }
+	float Scene::get_le_bloomThreshold() const { return le_settings.bloomThreshold; }
+	void Scene::set_le_bloomSoftKnee(float v) { le_settings.bloomSoftKnee = v; }
+	float Scene::get_le_bloomSoftKnee() const { return le_settings.bloomSoftKnee; }
+	void Scene::set_le_bloomStrength(float v) { le_settings.bloomStrength = v; }
+	float Scene::get_le_bloomStrength() const { return le_settings.bloomStrength; }
+	void Scene::set_le_bloomIterations(int v) { le_settings.bloomIterations = v; }
+	int Scene::get_le_bloomIterations() const { return le_settings.bloomIterations; }
 
 	void  Scene::set_le_exposure(float v) { le_settings.exposure = v; }
 	float Scene::get_le_exposure() const { return le_settings.exposure; }
@@ -114,27 +114,30 @@ namespace Scene_
 		return add_shader(vertex_path.c_str(), fragment_path.c_str());
 	}
 
-	bool Scene::remove_shader(size_t shader_idx) {
+	[[nodiscard]] bool Scene::remove_shader(size_t shader_idx) {
 		if (!valid_shader_index(shader_idx)) return false;
 		shaders.erase(shaders.begin() + static_cast<std::ptrdiff_t>(shader_idx));
 		return true;
 	}
 	void Scene::clear_shaders() { shaders.clear(); }
 
-	bool Scene::set_shader_vertex_path(size_t shader_idx, const char* path) {
+	[[nodiscard]] bool Scene::set_shader_vertex_path(size_t shader_idx, const char* path) {
 		if (!valid_shader_index(shader_idx)) return false;
 		shaders[shader_idx].vertex = path ? path : "";
 		return true;
 	}
-	bool Scene::set_shader_fragment_path(size_t shader_idx, const char* path) {
+
+	[[nodiscard]] bool Scene::set_shader_fragment_path(size_t shader_idx, const char* path) {
 		if (!valid_shader_index(shader_idx)) return false;
 		shaders[shader_idx].fragment = path ? path : "";
 		return true;
 	}
+
 	std::string Scene::get_shader_vertex_path(size_t shader_idx) const {
 		if (!valid_shader_index(shader_idx)) return {};
 		return shaders[shader_idx].vertex;
 	}
+
 	std::string Scene::get_shader_fragment_path(size_t shader_idx) const {
 		if (!valid_shader_index(shader_idx)) return {};
 		return shaders[shader_idx].fragment;
@@ -146,8 +149,6 @@ namespace Scene_
 		return shaders[shader_idx].instances.size();
 	}
 
-
-
 	// ONLY built-ins: create default instance and return its index
 	size_t Scene::add_instance(size_t shader_idx) {
 		if (!valid_shader_index(shader_idx)) return static_cast<size_t>(kInvalidIndex);
@@ -155,7 +156,7 @@ namespace Scene_
 		return shaders[shader_idx].instances.size() - 1;
 	}
 
-	bool Scene::remove_instance(size_t shader_idx, size_t instance_idx) {
+	[[nodiscard]] bool Scene::remove_instance(size_t shader_idx, size_t instance_idx) {
 		if (!valid_instance_index(shader_idx, instance_idx)) return false;
 		auto& v = shaders[shader_idx].instances;
 		v.erase(v.begin() + static_cast<std::ptrdiff_t>(instance_idx));
@@ -164,112 +165,124 @@ namespace Scene_
 
 
 	// -------- Instance: groups & drawcalls --------
-	bool Scene::set_instance_group_size(size_t s, size_t i, int gx, int gy, int gz) {
+	[[nodiscard]] bool Scene::set_instance_group_size(size_t s, size_t i, int gx, int gy, int gz) {
 		if (!valid_instance_index(s, i)) return false;
 		auto& inst = shaders[s].instances[i];
 		inst.group_size_x = gx; inst.group_size_y = gy; inst.group_size_z = gz;
 		return true;
 	}
 
-	bool Scene::get_instance_group_size(size_t s, size_t i, int& gx, int& gy, int& gz) const {
+	[[nodiscard]] bool Scene::get_instance_group_size(size_t s, size_t i, int& gx, int& gy, int& gz) const {
 		if (!valid_instance_index(s, i)) return false;
 		const auto& inst = shaders[s].instances[i];
 		gx = inst.group_size_x; gy = inst.group_size_y; gz = inst.group_size_z;
 		return true;
 	}
 
-	bool Scene::set_instance_drawcalls(size_t s, size_t i, int n) {
+	[[nodiscard]] bool Scene::set_instance_drawcalls(size_t s, size_t i, int n) {
 		if (!valid_instance_index(s, i)) return false;
 		shaders[s].instances[i].number_of_drawcalls = n;
 		return true;
 	}
 
-	bool Scene::get_instance_drawcalls(size_t s, size_t i, int& n) const {
+	[[nodiscard]] bool Scene::get_instance_drawcalls(size_t s, size_t i, int& n) const {
 		if (!valid_instance_index(s, i)) return false;
 		n = shaders[s].instances[i].number_of_drawcalls;
 		return true;
 	}
 
 	// -------- Instance: transforms (start) --------
-	bool Scene::set_instance_position_start(size_t s, size_t i, float x, float y, float z) {
+	[[nodiscard]] bool Scene::set_instance_position_start(size_t s, size_t i, float x, float y, float z) {
 		if (!valid_instance_index(s, i)) return false;
 		auto& t = shaders[s].instances[i].transform_start;
 		t.position_x = x; t.position_y = y; t.position_z = z; return true;
 	}
-	bool Scene::set_instance_euler_start(size_t s, size_t i, float ex, float ey, float ez) {
+
+	[[nodiscard]] bool Scene::set_instance_euler_start(size_t s, size_t i, float ex, float ey, float ez) {
 		if (!valid_instance_index(s, i)) return false;
 		auto& t = shaders[s].instances[i].transform_start;
 		t.euler_x = ex; t.euler_y = ey; t.euler_z = ez; return true;
 	}
-	bool Scene::set_instance_scale_start(size_t s, size_t i, float sx, float sy, float sz) {
+
+	[[nodiscard]] bool Scene::set_instance_scale_start(size_t s, size_t i, float sx, float sy, float sz) {
 		if (!valid_instance_index(s, i)) return false;
 		auto& t = shaders[s].instances[i].transform_start;
 		t.scale_x = sx; t.scale_y = sy; t.scale_z = sz; return true;
 	}
-	bool Scene::get_instance_position_start(size_t s, size_t i, float& x, float& y, float& z) const {
+
+	[[nodiscard]] bool Scene::get_instance_position_start(size_t s, size_t i, float& x, float& y, float& z) const {
 		if (!valid_instance_index(s, i)) return false;
 		const auto& t = shaders[s].instances[i].transform_start;
 		x = t.position_x; y = t.position_y; z = t.position_z; return true;
 	}
-	bool Scene::get_instance_euler_start(size_t s, size_t i, float& ex, float& ey, float& ez) const {
+
+	[[nodiscard]] bool Scene::get_instance_euler_start(size_t s, size_t i, float& ex, float& ey, float& ez) const {
 		if (!valid_instance_index(s, i)) return false;
 		const auto& t = shaders[s].instances[i].transform_start;
 		ex = t.euler_x; ey = t.euler_y; ez = t.euler_z; return true;
 	}
-	bool Scene::get_instance_scale_start(size_t s, size_t i, float& sx, float& sy, float& sz) const {
+
+	[[nodiscard]] bool Scene::get_instance_scale_start(size_t s, size_t i, float& sx, float& sy, float& sz) const {
 		if (!valid_instance_index(s, i)) return false;
 		const auto& t = shaders[s].instances[i].transform_start;
 		sx = t.scale_x; sy = t.scale_y; sz = t.scale_z; return true;
 	}
 
 	// -------- Instance: transforms (end) --------
-	bool Scene::set_instance_position_end(size_t s, size_t i, float x, float y, float z) {
+	[[nodiscard]] bool Scene::set_instance_position_end(size_t s, size_t i, float x, float y, float z) {
 		if (!valid_instance_index(s, i)) return false;
 		auto& t = shaders[s].instances[i].transform_end;
 		t.position_x = x; t.position_y = y; t.position_z = z; return true;
 	}
-	bool Scene::set_instance_euler_end(size_t s, size_t i, float ex, float ey, float ez) {
+
+	[[nodiscard]] bool Scene::set_instance_euler_end(size_t s, size_t i, float ex, float ey, float ez) {
 		if (!valid_instance_index(s, i)) return false;
 		auto& t = shaders[s].instances[i].transform_end;
 		t.euler_x = ex; t.euler_y = ey; t.euler_z = ez; return true;
 	}
-	bool Scene::set_instance_scale_end(size_t s, size_t i, float sx, float sy, float sz) {
+
+	[[nodiscard]] bool Scene::set_instance_scale_end(size_t s, size_t i, float sx, float sy, float sz) {
 		if (!valid_instance_index(s, i)) return false;
 		auto& t = shaders[s].instances[i].transform_end;
 		t.scale_x = sx; t.scale_y = sy; t.scale_z = sz; return true;
 	}
-	bool Scene::get_instance_position_end(size_t s, size_t i, float& x, float& y, float& z) const {
+
+	[[nodiscard]] bool Scene::get_instance_position_end(size_t s, size_t i, float& x, float& y, float& z) const {
 		if (!valid_instance_index(s, i)) return false;
 		const auto& t = shaders[s].instances[i].transform_end;
 		x = t.position_x; y = t.position_y; z = t.position_z; return true;
 	}
-	bool Scene::get_instance_euler_end(size_t s, size_t i, float& ex, float& ey, float& ez) const {
+
+	[[nodiscard]] bool Scene::get_instance_euler_end(size_t s, size_t i, float& ex, float& ey, float& ez) const {
 		if (!valid_instance_index(s, i)) return false;
 		const auto& t = shaders[s].instances[i].transform_end;
 		ex = t.euler_x; ey = t.euler_y; ez = t.euler_z; return true;
 	}
-	bool Scene::get_instance_scale_end(size_t s, size_t i, float& sx, float& sy, float& sz) const {
+
+	[[nodiscard]] bool Scene::get_instance_scale_end(size_t s, size_t i, float& sx, float& sy, float& sz) const {
 		if (!valid_instance_index(s, i)) return false;
 		const auto& t = shaders[s].instances[i].transform_end;
 		sx = t.scale_x; sy = t.scale_y; sz = t.scale_z; return true;
 	}
 
 	// -------- Instance: uniforms (start/end, u0..u9 by index) --------
-	bool Scene::set_instance_uniform_start(size_t s, size_t i, int u_index, float value) {
+	[[nodiscard]] bool Scene::set_instance_uniform_start(size_t s, size_t i, int u_index, float value) {
 		if (!valid_instance_index(s, i)) return false;
 		return set_uniform_by_index(shaders[s].instances[i].uniforms_start, u_index, value);
 	}
-	bool Scene::set_instance_uniform_end(size_t s, size_t i, int u_index, float value) {
+
+	[[nodiscard]] bool Scene::set_instance_uniform_end(size_t s, size_t i, int u_index, float value) {
 		if (!valid_instance_index(s, i)) return false;
 		return set_uniform_by_index(shaders[s].instances[i].uniforms_end, u_index, value);
 	}
 
-	bool Scene::get_instance_uniform_start(size_t s, size_t i, int u_index, float& out_value) const {
+	[[nodiscard]] bool Scene::get_instance_uniform_start(size_t s, size_t i, int u_index, float& out_value) const {
 		if (!valid_instance_index(s, i) || u_index < 0 || u_index > 9) return false;
 		out_value = get_uniform_by_index(shaders[s].instances[i].uniforms_start, u_index);
 		return true;
 	}
-	bool Scene::get_instance_uniform_end(size_t s, size_t i, int u_index, float& out_value) const {
+
+	[[nodiscard]] bool Scene::get_instance_uniform_end(size_t s, size_t i, int u_index, float& out_value) const {
 		if (!valid_instance_index(s, i) || u_index < 0 || u_index > 9) return false;
 		out_value = get_uniform_by_index(shaders[s].instances[i].uniforms_end, u_index);
 		return true;
@@ -398,7 +411,7 @@ namespace Scene_
 
 
 	// --------------- Helpers ---------------
-	bool Scene::set_uniform_by_index(Instance::Uniforms& u, int idx, float v)
+	[[nodiscard]] bool Scene::set_uniform_by_index(Instance::Uniforms& u, int idx, float v)
 	{
 		switch (idx)
 		{
@@ -421,15 +434,27 @@ namespace Scene_
 		}
 	}
 
-	bool Scene::valid_shader_index(size_t s) const
+	[[nodiscard]] bool Scene::valid_shader_index(size_t s) const
 	{
 		return s < shaders.size();
 	}
 
-	bool Scene::valid_instance_index(size_t s, size_t i) const
+	[[nodiscard]] bool Scene::valid_instance_index(size_t s, size_t i) const
 	{
 		if (!valid_shader_index(s)) return false;
 		return i < shaders[s].instances.size();
+	}
+
+	[[nodiscard]] bool Scene::clear_instances(size_t shader_idx)
+	{
+		if (!valid_shader_index(shader_idx)) return false;
+		shaders[shader_idx].instances.clear();
+		return true;
+	}
+
+	[[nodiscard]] bool Scene::has_shader(size_t shader_idx) const
+	{
+		return valid_shader_index(shader_idx);
 	}
 
 }
@@ -502,7 +527,7 @@ namespace Scene_
 	static inline bool parse_int(const std::string& in, int& out) { std::istringstream iss(in); iss >> out; return (bool)iss && iss.eof(); }
 	static inline bool parse_float(const std::string& in, float& out) { std::istringstream iss(in); iss >> out; return (bool)iss && iss.eof(); }
 
-	inline std::optional<Scene> load(const std::string& filepath)
+	std::optional<Scene> load(const std::string& filepath)
 	{
 		Scene scene;
 		scene.clear_shaders();
@@ -901,7 +926,7 @@ namespace Scene_
 
 		// ---------- Build reference scene S ----------
 		Scene s;
-		// s.set_frame_size(1234, 888);
+		
 		s.set_width(1234);
 		s.set_height(888);
 		s.set_render_fps(61);

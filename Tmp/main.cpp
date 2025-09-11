@@ -1,6 +1,14 @@
 #include "Scene.h"
 
 
+void scene_init()
+{
+    // if there is no tmp folder we create the folder
+    
+    // we check if 
+    // 
+}
+
 
 int main()
 {

@@ -255,10 +255,19 @@ namespace Scene_
 		bool get_instance_uniform_start(size_t s, size_t i, int u_index, float& out_value) const;
 		bool get_instance_uniform_end(size_t s, size_t i, int u_index, float& out_value) const;
 
+		// ----
+		bool clear_instances(size_t shader_idx);
+		bool has_shader(size_t shader_idx) const;
+
 		// --- Image/output size: explicit setters/getters ---
 		void set_width(int w);
 		void set_height(int h);
 		void print(std::ostream& os = std::cout) const;
+
+
+
+		
+
 	private:
 		// --------------- Helpers ---------------
 		static bool set_uniform_by_index(Instance::Uniforms& u, int idx, float v);
@@ -291,8 +300,8 @@ namespace Scene_
 
 namespace Scene_ {
 
-	inline std::optional<Scene> load(const std::string& filepath);
-	inline void save(const Scene& scene, const std::string& filepath);
+	std::optional<Scene> load(const std::string& filepath);
+	void save(const Scene& scene, const std::string& filepath);
 }
 
 
