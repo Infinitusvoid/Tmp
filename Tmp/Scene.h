@@ -304,3 +304,9 @@ namespace Scene_
 {
 	void unit_test_with_round_trip();
 }
+
+
+namespace Scene_
+{
+	Scene_::Scene load(int argc, char* argv[]);
+}

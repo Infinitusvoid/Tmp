@@ -159,7 +159,7 @@
     <None Include="CppCommponents\README.md" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="commands.txt" />
+    <Text Include="commands_base.txt" />
     <Text Include="commands_new.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

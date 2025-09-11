@@ -1,5 +1,4 @@
 
-
 // render / display settings
 render.width 3840
 render.height 2160
@@ -45,7 +44,7 @@ le.msaaSamples 4
 
 
 // Shader 0
-shader.add "shader_vertex.glsl" "shader_fragment.glsl"
+shader.add "shader_fragment.glsl" "shader_vertex.glsl"
 
 # (Optional) override a path later
 # shader.vertex 0 shaders/experiment_vs.glsl
@@ -152,30 +151,29 @@ shader.instance.end.u   0 0 9 0.100000
 // shader.instance.start.scale 1 0   2.000000  2.000000  2.000000
 
 # end transform
-// shader.instance.end.pos     1 0   0.000000  0.000000  5.000000
-// shader.instance.end.euler   1 0   0.000000  6.283185  0.000000    # 360 deg about Y
-// shader.instance.end.scale   1 0   2.000000  2.000000  2.000000
+shader.instance.end.pos     1 0   0.000000  0.000000  5.000000
+shader.instance.end.euler   1 0   0.000000  6.283185  0.000000    # 360 deg about Y
+shader.instance.end.scale   1 0   2.000000  2.000000  2.000000
 
 # full uniform sweep start/end
-// shader.instance.start.u 1 0 0 0.000000
-// shader.instance.start.u 1 0 1 0.111111
-// shader.instance.start.u 1 0 2 0.222222
-// shader.instance.start.u 1 0 3 0.333333
-// shader.instance.start.u 1 0 4 0.444444
-// shader.instance.start.u 1 0 5 0.555555
-// shader.instance.start.u 1 0 6 0.666666
-// shader.instance.start.u 1 0 7 0.777777
-// shader.instance.start.u 1 0 8 0.888888
-// shader.instance.start.u 1 0 9 1.000000
+shader.instance.start.u 1 0 0 0.000000
+shader.instance.start.u 1 0 1 0.111111
+shader.instance.start.u 1 0 2 0.222222
+shader.instance.start.u 1 0 3 0.333333
+shader.instance.start.u 1 0 4 0.444444
+shader.instance.start.u 1 0 5 0.555555
+shader.instance.start.u 1 0 6 0.666666
+shader.instance.start.u 1 0 7 0.777777
+shader.instance.start.u 1 0 8 0.888888
+shader.instance.start.u 1 0 9 1.000000
 
-// shader.instance.end.u   1 0 0 1.000000
-// shader.instance.end.u   1 0 1 0.888888
-// shader.instance.end.u   1 0 2 0.777777
-// shader.instance.end.u   1 0 3 0.666666
-// shader.instance.end.u   1 0 4 0.555555
-// shader.instance.end.u   1 0 5 0.444444
-// shader.instance.end.u   1 0 6 0.333333
-// shader.instance.end.u   1 0 7 0.222222
-// shader.instance.end.u   1 0 8 0.111111
-// shader.instance.end.u   1 0 9 0.000000
-
+shader.instance.end.u   1 0 0 1.000000
+shader.instance.end.u   1 0 1 0.888888
+shader.instance.end.u   1 0 2 0.777777
+shader.instance.end.u   1 0 3 0.666666
+shader.instance.end.u   1 0 4 0.555555
+shader.instance.end.u   1 0 5 0.444444
+shader.instance.end.u   1 0 6 0.333333
+shader.instance.end.u   1 0 7 0.222222
+shader.instance.end.u   1 0 8 0.111111
+shader.instance.end.u   1 0 9 0.000000

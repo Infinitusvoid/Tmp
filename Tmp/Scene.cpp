@@ -12,7 +12,14 @@
 #include <algorithm>
 #include <cctype>
 #include <optional>
+#include <filesystem>
+#include <fstream>
+#include <stdexcept>
 
+#include "CppCommponents/Folder.h"
+#include "CppCommponents/File.h"
+
+#include "DefaultShaderSourceCode.h"
 
 namespace Scene_
 {
@@ -1146,5 +1153,355 @@ namespace Scene_
 		std::cout << "[UNIT] round-trip textual equality: " << (A == B ? "true" : "false") << "\n";
 		std::cout << "[UNIT] checks=" << checks << " failures=" << fails << "\n";
 		std::cout << (fails == 0 ? "[UNIT] PASS\n" : "[UNIT] FAIL\n");
+	}
+}
+
+
+
+
+
+namespace Scene_
+{
+	void scene_init()
+	{
+		// writing default shaders into tmp
+		{
+			Folder::create_folder_if_does_not_exist_already("tmp");
+			Folder::create_folder_if_does_not_exist_already("tmp/default_shaders");
+
+			// Vertex Shader
+			{
+				File::writeFileIfNotExists("tmp/default_shaders/vertex_shader.glsl", DefaultShaderSourceCode_::GLSL_Vertex);
+			}
+
+			// Fragment shader
+			{
+				File::writeFileIfNotExists("tmp/default_shaders/fragment_shader.glsl", DefaultShaderSourceCode_::GLSL_Fragment);
+			}
+
+			// bloom_blur_fs.glsl
+			{
+				File::writeFileIfNotExists("tmp/default_shaders/bloom_blur_fs.glsl", DefaultShaderSourceCode_::GLSL_bloom_blur_fs);
+			}
+
+			// bloom_bright_fs.glsl
+			{
+				File::writeFileIfNotExists("tmp/default_shaders/bloom_bright_fs.glsl", DefaultShaderSourceCode_::GLSL_bloom_bright_fs);
+			}
+
+			// le_combine_fs.gls
+			{
+				File::writeFileIfNotExists("tmp/default_shaders/le_combine_fs.glsl", DefaultShaderSourceCode_::GLSL_le_combine_fs);
+			}
+
+			// le_fullscreen_vs.glsl
+			{
+				File::writeFileIfNotExists("tmp/default_shaders/le_fullscreen_vs.glsl", DefaultShaderSourceCode_::GLSL_le_fullscreen_vs);
+			}
+
+			// le_present_fs.glsl
+			{
+				File::writeFileIfNotExists("tmp/default_shaders/le_present_fs.glsl", DefaultShaderSourceCode_::GLSL_le_present_fs);
+			}
+
+
+		}
+
+		// Well here we can be sure we have the valid shader that we can compile if the other ones are not finee
+
+
+		{
+			bool we_have_an_argument = true;
+
+			if (we_have_an_argument)
+			{
+				//if (File::exists("path_to_commands/command.txt"))
+				{
+					// we read commands 
+					bool commands_error = true;
+					if (commands_error)
+					{
+						// std::cout << "error with commands\n";
+						return;
+					}
+				}
+			}
+			else
+			{
+				if (false)// if (File::exists("commands.txt"))
+				{
+					// we read commands 
+					bool commands_error = true;
+					if (commands_error)
+					{
+						// std::cout << "error with commands\n";
+						return;
+					}
+				}
+				else
+				{
+					// we write the commands file
+					// with a starting shaders as well
+
+				}
+			}
+		}
+
+		// well here we are sure we have valid commands 
+
+	}
+
+	Scene_::Scene load_commmands_no_argument()
+	{
+
+		const std::string filepath = "commands.txt";
+
+		// 1) Try to load existing file
+		if (auto scene = Scene_::load(filepath)) {
+			std::cout << "commands.txt loaded\n";
+			return std::move(*scene); // or just: return *scene;
+		}
+
+
+
+
+
+
+
+
+
+		std::string commands_base_source = R"DSL_COMMANDS(
+
+// render / display settings
+render.width 3840
+render.height 2160
+render.fps 60
+render.number_of_frames 100
+render.time.start 0.0
+
+// capture
+capture false
+capture.png true
+capture.bmp false
+
+// camera start
+camera.start.x 0.0
+camera.start.y 0.0
+camera.start.z 0.0
+camera.start.pitch 0.0
+camera.start.yaw 0.0
+camera.start.fov 45.0
+
+// camera end
+camera.end.x 0.0
+camera.end.y 0.0
+camera.end.z 0.0
+camera.end.pitch 0.0
+camera.end.yaw 0.0
+camera.end.fov 45.0
+
+// LE
+le.halfLife 0.2
+le.bloomThreshold 1.1
+le.bloomSoftKnee 0.7
+le.bloomStrength 2.0
+le.bloomIterations 6
+le.exposure 0.3
+le.gamma 2.2
+le.brightness 0.0
+le.contrast 1.0
+le.saturation 1.0
+
+le.msaaSamples 4
+
+
+
+// Shader 0
+shader.add "shader_vertex.glsl" "shader_fragment.glsl"
+
+# (Optional) override a path later
+# shader.vertex 0 shaders/experiment_vs.glsl
+# shader.fragment 0 shaders/experiment_fs.glsl
+
+# =========================
+# Instances — Shader 0
+# =========================
+
+# Instance 0 on Shader 0
+shader.instance.add 0              # -> instance index 0
+shader.instance.group 0 0 1000 1000 1
+
+// shader 0
+// instance 0
+// drawcalls 4
+shader.instance.drawcalls 0 0 4
+
+# start transform
+shader.instance.start.pos   0 0  0.000000  0.000000  0.000000
+shader.instance.start.euler 0 0  0.000000  0.000000  0.000000
+shader.instance.start.scale 0 0  1.000000  1.000000  1.000000
+
+# end transform
+shader.instance.end.pos     0 0  5.000000  0.000000  0.000000
+shader.instance.end.euler   0 0  0.000000  1.570796  0.000000    # 90 deg about Y
+shader.instance.end.scale   0 0  1.000000  1.000000  1.000000
+
+# start uniforms (u0..u9)
+shader.instance.start.u 0 0 0 0.000000
+shader.instance.start.u 0 0 1 0.100000
+shader.instance.start.u 0 0 2 0.200000
+shader.instance.start.u 0 0 3 0.300000
+shader.instance.start.u 0 0 4 0.400000
+shader.instance.start.u 0 0 5 0.500000
+shader.instance.start.u 0 0 6 0.600000
+shader.instance.start.u 0 0 7 0.700000
+shader.instance.start.u 0 0 8 0.800000
+shader.instance.start.u 0 0 9 0.900000
+
+# end uniforms (u0..u9)
+shader.instance.end.u   0 0 0 1.000000
+shader.instance.end.u   0 0 1 0.900000
+shader.instance.end.u   0 0 2 0.800000
+shader.instance.end.u   0 0 3 0.700000
+shader.instance.end.u   0 0 4 0.600000
+shader.instance.end.u   0 0 5 0.500000
+shader.instance.end.u   0 0 6 0.400000
+shader.instance.end.u   0 0 7 0.300000
+shader.instance.end.u   0 0 8 0.200000
+shader.instance.end.u   0 0 9 0.100000
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# -------------------------
+# Instance 1 on Shader 0
+// shader.instance.add 0              # -> instance index 1
+// shader.instance.group 0 1 512 512 4
+// shader.instance.drawcalls 0 1 8
+
+# start transform
+// shader.instance.start.pos   0 1  -2.000000  0.500000  1.000000
+// shader.instance.start.euler 0 1   0.100000  0.200000  0.300000
+// shader.instance.start.scale 0 1   0.500000  0.500000  0.500000
+
+# end transform
+// shader.instance.end.pos     0 1   2.000000  1.000000 -1.000000
+// shader.instance.end.euler   0 1   0.300000  0.200000  0.100000
+// shader.instance.end.scale   0 1   1.500000  1.500000  1.500000
+
+# a few uniforms
+// shader.instance.start.u 0 1 0 0.250000
+// shader.instance.start.u 0 1 1 0.750000
+// shader.instance.end.u   0 1 0 0.900000
+// shader.instance.end.u   0 1 1 0.100000
+
+# =========================
+# Instances — Shader 1
+# =========================
+
+# Instance 0 on Shader 1
+// shader.instance.add 1              # -> instance index 0
+// shader.instance.group 1 0 256 256 1
+// shader.instance.drawcalls 1 0 2
+
+# start transform
+// shader.instance.start.pos   1 0   0.000000  0.000000  5.000000
+// shader.instance.start.euler 1 0   0.000000  0.000000  0.000000
+// shader.instance.start.scale 1 0   2.000000  2.000000  2.000000
+
+# end transform
+// shader.instance.end.pos     1 0   0.000000  0.000000  5.000000
+// shader.instance.end.euler   1 0   0.000000  6.283185  0.000000    # 360 deg about Y
+// shader.instance.end.scale   1 0   2.000000  2.000000  2.000000
+
+# full uniform sweep start/end
+// shader.instance.start.u 1 0 0 0.000000
+// shader.instance.start.u 1 0 1 0.111111
+// shader.instance.start.u 1 0 2 0.222222
+// shader.instance.start.u 1 0 3 0.333333
+// shader.instance.start.u 1 0 4 0.444444
+// shader.instance.start.u 1 0 5 0.555555
+// shader.instance.start.u 1 0 6 0.666666
+// shader.instance.start.u 1 0 7 0.777777
+// shader.instance.start.u 1 0 8 0.888888
+// shader.instance.start.u 1 0 9 1.000000
+
+// shader.instance.end.u   1 0 0 1.000000
+// shader.instance.end.u   1 0 1 0.888888
+// shader.instance.end.u   1 0 2 0.777777
+// shader.instance.end.u   1 0 3 0.666666
+// shader.instance.end.u   1 0 4 0.555555
+// shader.instance.end.u   1 0 5 0.444444
+// shader.instance.end.u   1 0 6 0.333333
+// shader.instance.end.u   1 0 7 0.222222
+// shader.instance.end.u   1 0 8 0.111111
+// shader.instance.end.u   1 0 9 0.000000
+
+)DSL_COMMANDS";
+
+		// NOTE: make sure File::writeFileIfNotExists returns bool
+		File::writeFileIfNotExists(filepath, commands_base_source);
+
+
+		// 3) Load the freshly written defaults
+		if (auto scene2 = Scene_::load(filepath)) {
+			std::cout << "commands.txt created with defaults\n";
+			return std::move(*scene2);
+		}
+
+		// 4) Still failing -> surface a clear error
+		throw std::runtime_error("Created '" + filepath + "' but failed to parse it.");
+	}
+
+	Scene_::Scene load_with_arguments(const std::string& filepath)
+	{
+		if (auto scene = Scene_::load(filepath))
+		{
+			std::cout << filepath << " loaded\n";
+			return *scene;            // or: return std::move(*scene);
+		}
+
+		throw std::runtime_error(
+			"Failed to load/parse scene from '" + filepath + "'."
+		);
+	}
+
+	Scene_::Scene load(int argc, char* argv[])
+	{
+		scene_init();
+
+		if (argc < 2)
+		{
+			std::cout << "no arguments\n";
+			// load commands.txt
+			Scene_::Scene scene = load_commmands_no_argument();
+
+			// std::cout << "start fov : " << scene.get_camera_start_fov() << "\n";
+
+			return scene;
+		}
+		else
+		{
+			std::string firstArg = argv[1];
+			// std::cout << "First argument as std::string: " << firstArg << std::endl;
+			Scene_::Scene scene = load_with_arguments(firstArg);
+			// std::cout << "start fov : " << scene.get_camera_start_fov() << "\n";
+
+			return scene;
+		}
 	}
 }
