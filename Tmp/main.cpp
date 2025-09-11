@@ -9,6 +9,10 @@
 
 #include "Scene.h"
 
+#include <fstream>
+#include <sstream>
+#include <algorithm>
+#include <cctype>
 
 
 // Returns true if the line is ignorable as a comment:
@@ -450,9 +454,25 @@ int main()
 
     Scene_::Scene scene;
 
-    scene.add_shader("vertex_file_path", "fragment_file_path");
-    scene.add_instance(0, 0);
+    scene.set_camera_start_x(0.0f);
+    scene.set_camera_start_y(0.0f);
+    scene.set_camera_start_z(0.0f);
+    scene.set_camera_start_fov(45.0f);
+    scene.set_camera_start_pitch(0.0);
+    scene.set_camera_start_yaw(0.0);
+    
+    
 
+    scene.add_shader("vertex_file_path", "fragment_file_path");
+    scene.add_instance(0);
+
+    scene.set_instance_uniform_start(0, 0, 0, 0.0f);
+    scene.set_instance_uniform_end(0, 0, 0, 1.0f);
+    
+    std::cout << "--- scene loading ---\n";
+    Scene_::load(scene, "commands_new.txt");
+    
+    std::cout << "--- scene printing ---\n";
     scene.print();
 
     

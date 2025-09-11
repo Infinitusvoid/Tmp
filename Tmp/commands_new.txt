@@ -1,0 +1,28 @@
+
+render.fps 1000
+render.number_of_frames 100
+render.time.start 0.0
+
+// camera start
+camera.start.x 990.01
+camera.start.y 990.02
+camera.start.z 990.03
+camera.start.pitch 990.01
+camera.start.yaw 990.02
+camera.start.fov 9945.03
+
+// camera end
+camera.end.x 0.1
+camera.end.y 0.2
+camera.end.z 0.3
+camera.end.pitch 0.1
+camera.end.yaw 0.2
+camera.end.fov 45.3
+
+// capture
+capture false
+capture.png true
+capture.bmp false
+
+
+

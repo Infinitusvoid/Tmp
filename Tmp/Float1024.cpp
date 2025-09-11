@@ -1,3 +1,5 @@
+#include <vector>
+
 namespace Float1024_
 {
 	enum class CompositionFuncton
@@ -5,7 +7,7 @@ namespace Float1024_
 		ADD,
 		SUBTRACT,
 		MULTIPLY,
-		GENESIS
+		BASE
 	};
 
 	struct Composition
@@ -17,7 +19,7 @@ namespace Float1024_
 		int index_2 = 0;
 	};
 
-	
+	std::vector<Composition> compositions;
 
 	void build()
 	{

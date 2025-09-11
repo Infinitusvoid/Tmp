@@ -82,5 +82,6 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="commands.txt" />
+    <Text Include="commands_new.txt" />
   </ItemGroup>
 </Project>
