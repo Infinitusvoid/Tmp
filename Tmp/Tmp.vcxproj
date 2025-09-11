@@ -139,6 +139,7 @@
     <ClCompile Include="CppCommponents\Search_BreadthFirst_2d.cpp" />
     <ClCompile Include="Float1024.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MaybeUsfullInFuture.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CppCommponents\File.h" />

@@ -5,15 +5,12 @@
 #include <functional>
 #include <iomanip>
 #include <string>
-#include <utility>   // std::move
-#include <cstddef>   // std::ptrdiff_t
-
-// add these at the top of the file (with your other includes)
+#include <utility>
+#include <cstddef>
 #include <fstream>
 #include <sstream>
 #include <algorithm>
 #include <cctype>
-#include <iomanip> // for std::quoted
 #include <optional>
 
 namespace Scene_
@@ -112,7 +109,6 @@ namespace Scene_
 		static constexpr size_t kInvalidIndex = static_cast<size_t>(-1);
 
 		// ----------------- Render / output size -----------------
-		void  set_frame_size(int w, int h) { width = w; height = h; }
 		int   get_width() const { return width; }
 		int   get_height() const { return height; }
 
@@ -386,10 +382,10 @@ namespace Scene_
 		}
 
 		// --- Image/output size: explicit setters/getters ---
-		void setWidth(int w) { width = w; }
-		void setHeight(int h) { height = h; }
-		int  getWidth() const { return width; }
-		int  getHeight() const { return height; }
+		void set_width(int w) { width = w; }
+		void set_height(int h) { height = h; }
+		// int  get_width() const { return width; }
+		// int  get_height() const { return height; }
 
 		// Pretty-print the entire scene state
 		void print(std::ostream& os = std::cout) const
@@ -707,7 +703,7 @@ namespace Scene_ {
 				else if (prop == "y")     scene.set_camera_start_y(v);
 				else if (prop == "z")     scene.set_camera_start_z(v);
 				else if (prop == "pitch") scene.set_camera_start_pitch(v);
-				else if (prop == "yaw" || prop == "yew") scene.set_camera_start_yaw(v);
+				else if (prop == "yaw") scene.set_camera_start_yaw(v);
 				else if (prop == "fov")   scene.set_camera_start_fov(v);
 				else warn("unknown camera.start.* key");
 			}
@@ -721,7 +717,7 @@ namespace Scene_ {
 				else if (prop == "y")     scene.set_camera_end_y(v);
 				else if (prop == "z")     scene.set_camera_end_z(v);
 				else if (prop == "pitch") scene.set_camera_end_pitch(v);
-				else if (prop == "yaw" || prop == "yew") scene.set_camera_end_yaw(v);
+				else if (prop == "yaw") scene.set_camera_end_yaw(v);
 				else if (prop == "fov")   scene.set_camera_end_fov(v);
 				else warn("unknown camera.end.* key");
 			}
@@ -855,14 +851,15 @@ namespace Scene_ {
 				}
 				else
 				{
-					scene.set_frame_size(w, h);
+					scene.set_width(w);
+					scene.set_height(h);
 				}
 			}
 			else if (key == "image.width" || key == "render.width") {
-				int w; if (parse_int(rest, w)) scene.setWidth(w); else warn("expected int");
+				int w; if (parse_int(rest, w)) scene.set_width(w); else warn("expected int");
 			}
 			else if (key == "image.height" || key == "render.height") {
-				int h; if (parse_int(rest, h)) scene.setHeight(h); else warn("expected int");
+				int h; if (parse_int(rest, h)) scene.set_height(h); else warn("expected int");
 			}
 
 			// ===== unknown =====
@@ -1010,4 +1007,10 @@ namespace Scene_ {
 		out.flush();
 	}
 
+}
+
+
+namespace Scene_
+{
+	
 }

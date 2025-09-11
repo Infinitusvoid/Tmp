@@ -1,462 +1,239 @@
-#include <iostream>
-#include <array>
-#include <fstream>
-#include <assert.h>
-#include <algorithm>
-#include <optional>
-
-#include "CppCommponents/File.h"
-
 #include "Scene.h"
 
-#include <fstream>
-#include <sstream>
-#include <algorithm>
-#include <cctype>
-
-//
-//// Returns true if the line is ignorable as a comment:
-//// - empty / whitespace-only
-//// - or first non-space chars are "//"
-//inline bool is_comment(std::string line)
-//{
-//    // Strip UTF-8 BOM if present
-//    if (line.size() >= 3 &&
-//        static_cast<unsigned char>(line[0]) == 0xEF &&
-//        static_cast<unsigned char>(line[1]) == 0xBB &&
-//        static_cast<unsigned char>(line[2]) == 0xBF) {
-//        line.erase(0, 3);
-//    }
-//
-//    // Find first non-whitespace char
-//    std::size_t i = 0;
-//    for (; i < line.size(); ++i) {
-//        unsigned char ch = static_cast<unsigned char>(line[i]);
-//        if (!std::isspace(ch)) break;
-//    }
-//
-//    // Whitespace-only  treat as comment/ignore
-//    if (i == line.size()) return true;
-//
-//    // Starts with // after leading whitespace?
-//    if (line[i] == '/' && (i + 1) < line.size() && line[i + 1] == '/') return true;
-//
-//    return false;
-//}
-//
-//inline std::string remove_white_space_before_command(std::string line)
-//{
-//    // Strip UTF-8 BOM if present
-//    if (line.size() >= 3 &&
-//        static_cast<unsigned char>(line[0]) == 0xEF &&
-//        static_cast<unsigned char>(line[1]) == 0xBB &&
-//        static_cast<unsigned char>(line[2]) == 0xBF) {
-//        line.erase(0, 3);
-//    }
-//
-//    // Left-trim
-//    std::size_t i = 0;
-//    for (; i < line.size(); ++i) {
-//        unsigned char ch = static_cast<unsigned char>(line[i]);
-//        if (!std::isspace(ch)) break;
-//    }
-//    if (i > 0) line.erase(0, i);
-//
-//    return line;
-//}
-//
 
 
-struct Command
+
+void unit_test_with_round_trip()
 {
-    std::string command;
-    std::vector<std::string> arguments;
-};
+	using Scene_::Scene;
 
+	auto feq = [](float a, float b, float eps = 1e-5f) {
+		float d = a - b; if (d < 0) d = -d; return d <= eps;
+		};
+	int checks = 0, fails = 0;
+	auto CHECK = [&](bool ok, const char* what) {
+		++checks;
+		if (!ok) { ++fails; std::cerr << "[FAIL] " << what << "\n"; }
+		};
 
-//inline std::optional<Command> line_to_command(std::string line)
-//{
-//    // Ignore comment/blank lines
-//    if (is_comment(line)) return std::nullopt;
-//
-//    // Remove leading whitespace/BOM
-//    std::string s = remove_white_space_before_command(line);
-//
-//    // Strip inline // comments (outside quotes)
-//    bool in_string = false;
-//    bool esc = false;
-//    std::size_t cut = s.size();
-//    for (std::size_t i = 0; i < s.size(); ++i) {
-//        char c = s[i];
-//        if (!in_string) {
-//            if (c == '"') { in_string = true; esc = false; continue; }
-//            if (c == '/' && (i + 1) < s.size() && s[i + 1] == '/') { cut = i; break; }
-//        }
-//        else {
-//            if (esc) { esc = false; continue; }
-//            if (c == '\\') { esc = true; continue; }
-//            if (c == '"') { in_string = false; continue; }
-//        }
-//    }
-//    if (cut != s.size()) s.erase(cut);
-//
-//    // Right-trim trailing whitespace
-//    if (!s.empty()) {
-//        std::size_t j = s.size();
-//        while (j > 0 && std::isspace(static_cast<unsigned char>(s[j - 1]))) --j;
-//        s.erase(j);
-//    }
-//    if (s.empty()) return std::nullopt;
-//
-//    // Tokenize (supports quoted strings with escapes)
-//    std::vector<std::string> tokens;
-//    std::string cur;
-//    in_string = false; esc = false;
-//
-//    std::size_t i = 0;
-//    // (Leading spaces already trimmed, but guard anyway)
-//    while (i < s.size() && std::isspace(static_cast<unsigned char>(s[i]))) ++i;
-//
-//    for (; i < s.size(); ++i) {
-//        char c = s[i];
-//        if (!in_string) {
-//            if (std::isspace(static_cast<unsigned char>(c))) {
-//                if (!cur.empty()) { tokens.push_back(cur); cur.clear(); }
-//                // collapse consecutive spaces
-//                while ((i + 1) < s.size() && std::isspace(static_cast<unsigned char>(s[i + 1]))) ++i;
-//            }
-//            else if (c == '"') {
-//                in_string = true; esc = false;
-//            }
-//            else {
-//                cur.push_back(c);
-//            }
-//        }
-//        else {
-//            if (esc) {
-//                switch (c) {
-//                case 'n': cur.push_back('\n'); break;
-//                case 't': cur.push_back('\t'); break;
-//                case 'r': cur.push_back('\r'); break;
-//                case '\\': cur.push_back('\\'); break;
-//                case '"': cur.push_back('"'); break;
-//                default:  cur.push_back(c); break;
-//                }
-//                esc = false;
-//            }
-//            else if (c == '\\') {
-//                esc = true;
-//            }
-//            else if (c == '"') {
-//                in_string = false;
-//            }
-//            else {
-//                cur.push_back(c);
-//            }
-//        }
-//    }
-//    if (!cur.empty() || in_string) {
-//        // If quote was unterminated, we still accept what we have.
-//        tokens.push_back(cur);
-//    }
-//
-//    if (tokens.empty()) return std::nullopt;
-//
-//    Command cmd;
-//    cmd.command = tokens[0];
-//    for (std::size_t k = 1; k < tokens.size(); ++k) cmd.arguments.push_back(tokens[k]);
-//    return cmd;
-//}
+	// ---------- Build reference scene S ----------
+	Scene s;
+	// s.set_frame_size(1234, 888);
+	s.set_width(1234);
+	s.set_height(888);
+	s.set_render_fps(61);
+	s.set_number_of_frames(777);
+	s.set_render_time_start(3.141593f);
 
-enum class ArgumentTypes
-{
-    INT,
-    UINT,
-    FLOAT,
-    DOUBLE,
-    STRING
-};
+	s.set_capture(true);
+	s.set_capture_png(true);
+	s.set_capture_bmp(false);
 
-struct CommandDescription
-{
-    std::string command_name;
-    std::vector<ArgumentTypes> types;
-    void* callback; // function_pointer
-};
+	s.set_le_halfLife(0.012345f);
+	s.set_le_bloomThreshold(1.234567f);
+	s.set_le_bloomSoftKnee(0.765432f);
+	s.set_le_bloomStrength(3.5f);
+	s.set_le_bloomIterations(7);
+	s.set_le_exposure(1.111111f);
+	s.set_le_gamma(2.222222f);
+	s.set_le_brightness(-0.05f);
+	s.set_le_contrast(1.05f);
+	s.set_le_saturation(0.95f);
+	s.set_le_msaaSamples(8);
 
+	// Camera start
+	s.set_camera_start_x(1.0f);
+	s.set_camera_start_y(2.0f);
+	s.set_camera_start_z(3.0f);
+	s.set_camera_start_pitch(0.10f);
+	s.set_camera_start_yaw(0.20f);
+	s.set_camera_start_fov(60.0f);
 
-struct Convert
-{
-    static bool to_int64(const std::string& s, long long& out)
-    {
-        if (has_edge_whitespace(s)) return false;
+	// Camera end
+	s.set_camera_end_x(4.0f);
+	s.set_camera_end_y(5.0f);
+	s.set_camera_end_z(6.0f);
+	s.set_camera_end_pitch(0.30f);
+	s.set_camera_end_yaw(0.40f);
+	s.set_camera_end_fov(45.0f);
 
-        errno = 0;
-        char* end = nullptr;
-        const char* b = s.c_str();
-        long long v = std::strtoll(b, &end, 10);
+	// Shaders & instances
+	size_t sh0 = s.add_shader("vs0.glsl", "fs0.glsl");
+	size_t sh1 = s.add_shader("vs1.glsl", "fs1.glsl");
 
-        if (errno == ERANGE) return false;                   // overflow/underflow
-        if (end == b || *end != '\0') return false;          // no digits or trailing junk
-        out = v;
-        return true;
-    }
+	size_t i0 = s.add_instance(sh0);
+	size_t i1 = s.add_instance(sh0);
+	size_t i2 = s.add_instance(sh1);
 
-    static bool to_uint64(const std::string& s, unsigned long long& out) {
-        if (has_edge_whitespace(s)) return false;
-        // no sign allowed for unsigned
-        if (!s.empty() && (s[0] == '+' || s[0] == '-')) return false;
+	// Instance 0 (shader 0) — rich settings
+	s.set_instance_group_size(sh0, i0, 8, 9, 10);
+	s.set_instance_drawcalls(sh0, i0, 3);
+	s.set_instance_position_start(sh0, i0, 1.0f, 2.0f, 3.0f);
+	s.set_instance_euler_start(sh0, i0, 0.1f, 0.2f, 0.3f);
+	s.set_instance_scale_start(sh0, i0, 1.0f, 2.0f, 3.0f);
+	s.set_instance_position_end(sh0, i0, 4.0f, 5.0f, 6.0f);
+	s.set_instance_euler_end(sh0, i0, 0.4f, 0.5f, 0.6f);
+	s.set_instance_scale_end(sh0, i0, 4.0f, 5.0f, 6.0f);
+	for (int u = 0; u <= 9; ++u) {
+		s.set_instance_uniform_start(sh0, i0, u, u * 0.5f);
+		s.set_instance_uniform_end(sh0, i0, u, u * 1.5f);
+	}
 
-        errno = 0;
-        char* end = nullptr;
-        const char* b = s.c_str();
-        unsigned long long v = std::strtoull(b, &end, 10);
+	// Instance 1 (shader 0) — minimal but non-default
+	s.set_instance_group_size(sh0, i1, 1, 1, 1);
+	s.set_instance_drawcalls(sh0, i1, 1);
+	s.set_instance_position_start(sh0, i1, -1.0f, 0.0f, 1.0f);
+	s.set_instance_position_end(sh0, i1, -2.0f, 0.5f, 2.0f);
+	s.set_instance_scale_start(sh0, i1, 0.5f, 0.5f, 0.5f);
+	s.set_instance_scale_end(sh0, i1, 2.0f, 2.0f, 2.0f);
+	s.set_instance_euler_start(sh0, i1, 0.0f, 0.1f, 0.2f);
+	s.set_instance_euler_end(sh0, i1, 0.3f, 0.4f, 0.5f);
 
-        if (errno == ERANGE) return false;                   // overflow
-        if (end == b || *end != '\0') return false;          // no digits or trailing junk
-        out = v;
-        return true;
-    }
+	// Instance 2 (shader 1)
+	s.set_instance_group_size(sh1, i2, 16, 8, 1);
+	s.set_instance_drawcalls(sh1, i2, 2);
 
-    [[nodiscard]] static bool to_float32(const std::string& s, float& out) {
-        if (has_edge_whitespace(s)) return false;
+	// ---------- Round-trip ----------
+	const char* fileA = "roundtrip_A.txt";
+	const char* fileB = "roundtrip_B.txt";
 
-        errno = 0;
-        char* end = nullptr;
-        const char* b = s.c_str();
-        float v = std::strtof(b, &end);
+	Scene_::save(s, fileA);
+	auto loaded = Scene_::load(fileA);
+	CHECK(loaded.has_value(), "load(fileA) should succeed");
+	if (!loaded) { std::cerr << "[UNIT] ABORT: load failed\n"; return; }
+	Scene t = *loaded;
 
-        if (end == b || *end != '\0') return false;          // parse failed or trailing junk
-        if (!std::isfinite(v)) return false;                 // reject NaN/Inf
-        out = v;
-        return true;
-    }
+	Scene_::save(t, fileB);
 
-    static bool to_float64(const std::string& s, double& out) {
-        if (has_edge_whitespace(s)) return false;
+	auto read_all = [](const char* path) {
+		std::ifstream fin(path, std::ios::binary);
+		std::ostringstream ss;
+		ss << fin.rdbuf();
+		return ss.str();
+		};
+	const std::string A = read_all(fileA);
+	const std::string B = read_all(fileB);
+	CHECK(A == B, "textual save(load(save(S))) should be byte-identical");
 
-        errno = 0;
-        char* end = nullptr;
-        const char* b = s.c_str();
-        double v = std::strtod(b, &end);
+	// ---------- Programmatic comparisons ----------
+	CHECK(s.get_width() == t.get_width(), "width");
+	CHECK(s.get_height() == t.get_height(), "height");
+	CHECK(s.get_render_fps() == t.get_render_fps(), "render_fps");
+	CHECK(s.get_number_of_frames() == t.get_number_of_frames(), "number_of_frames");
+	CHECK(feq(s.get_render_time_start(), t.get_render_time_start()), "render_time_start");
 
-        if (end == b || *end != '\0') return false;          // parse failed or trailing junk
-        if (!std::isfinite(v)) return false;                 // reject NaN/Inf
-        out = v;
-        return true;
-    }
+	CHECK(s.get_capture() == t.get_capture(), "capture");
+	CHECK(s.get_capture_png() == t.get_capture_png(), "capture_png");
+	CHECK(s.get_capture_bmp() == t.get_capture_bmp(), "capture_bmp");
 
-    // Handy for your DSL: accepts true/false (case-insensitive) and 1/0.
-    [[nodiscard]] static bool to_bool(const std::string& s, bool& out)
-    {
-        if (s.empty()) return false;
+	CHECK(feq(s.get_le_halfLife(), t.get_le_halfLife()), "le.halfLife");
+	CHECK(feq(s.get_le_bloomThreshold(), t.get_le_bloomThreshold()), "le.bloomThreshold");
+	CHECK(feq(s.get_le_bloomSoftKnee(), t.get_le_bloomSoftKnee()), "le.bloomSoftKnee");
+	CHECK(feq(s.get_le_bloomStrength(), t.get_le_bloomStrength()), "le.bloomStrength");
+	CHECK(s.get_le_bloomIterations() == t.get_le_bloomIterations(), "le.bloomIterations");
+	CHECK(feq(s.get_le_exposure(), t.get_le_exposure()), "le.exposure");
+	CHECK(feq(s.get_le_gamma(), t.get_le_gamma()), "le.gamma");
+	CHECK(feq(s.get_le_brightness(), t.get_le_brightness()), "le.brightness");
+	CHECK(feq(s.get_le_contrast(), t.get_le_contrast()), "le.contrast");
+	CHECK(feq(s.get_le_saturation(), t.get_le_saturation()), "le.saturation");
+	CHECK(s.get_le_msaaSamples() == t.get_le_msaaSamples(), "le.msaaSamples");
 
-        // Fast path for 1/0
-        if (s.size() == 1) {
-            if (s[0] == '1') { out = true;  return true; }
-            if (s[0] == '0') { out = false; return true; }
-        }
+	// Cameras
+	CHECK(feq(s.get_camera_start_x(), t.get_camera_start_x()), "cam.start.x");
+	CHECK(feq(s.get_camera_start_y(), t.get_camera_start_y()), "cam.start.y");
+	CHECK(feq(s.get_camera_start_z(), t.get_camera_start_z()), "cam.start.z");
+	CHECK(feq(s.get_camera_start_pitch(), t.get_camera_start_pitch()), "cam.start.pitch");
+	CHECK(feq(s.get_camera_start_yaw(), t.get_camera_start_yaw()), "cam.start.yaw");
+	CHECK(feq(s.get_camera_start_fov(), t.get_camera_start_fov()), "cam.start.fov");
 
-        // Case-insensitive compare for "true"/"false"
-        std::string t;
-        t.reserve(s.size());
-        for (char c : s) t.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+	CHECK(feq(s.get_camera_end_x(), t.get_camera_end_x()), "cam.end.x");
+	CHECK(feq(s.get_camera_end_y(), t.get_camera_end_y()), "cam.end.y");
+	CHECK(feq(s.get_camera_end_z(), t.get_camera_end_z()), "cam.end.z");
+	CHECK(feq(s.get_camera_end_pitch(), t.get_camera_end_pitch()), "cam.end.pitch");
+	CHECK(feq(s.get_camera_end_yaw(), t.get_camera_end_yaw()), "cam.end.yaw");
+	CHECK(feq(s.get_camera_end_fov(), t.get_camera_end_fov()), "cam.end.fov");
 
-        if (t == "true") { out = true;  return true; }
-        if (t == "false") { out = false; return true; }
-        return false;
-    }
+	// Shaders & instances
+	CHECK(s.shader_count() == t.shader_count(), "shader_count");
+	for (size_t si = 0; si < s.shader_count(); ++si) {
+		CHECK(s.get_shader_vertex_path(si) == t.get_shader_vertex_path(si), "shader.vertex path");
+		CHECK(s.get_shader_fragment_path(si) == t.get_shader_fragment_path(si), "shader.fragment path");
 
-private:
+		CHECK(s.instance_count(si) == t.instance_count(si), "instance_count");
+		for (size_t ii = 0; ii < s.instance_count(si); ++ii) {
+			int sgx = 0, sgy = 0, sgz = 0, tgx = 0, tgy = 0, tgz = 0, sn = 0, tn = 0;
 
-    // Reject if there is any leading or trailing whitespace.
-    // (Internal spaces are already impossible if you tokenized properly.)
-    static bool has_edge_whitespace(const std::string& s) {
-        if (s.empty()) return true; // empty token is not a number
-        // leading
-        std::size_t i = 0;
-        while (i < s.size() && std::isspace(static_cast<unsigned char>(s[i]))) ++i;
-        if (i != 0) return true;
-        // trailing
-        std::size_t j = s.size();
-        while (j > 0 && std::isspace(static_cast<unsigned char>(s[j - 1]))) --j;
-        if (j != s.size()) return true;
-        return false;
-    }
-};
+			CHECK(s.get_instance_group_size(si, ii, sgx, sgy, sgz), "get_instance_group_size S");
+			CHECK(t.get_instance_group_size(si, ii, tgx, tgy, tgz), "get_instance_group_size T");
+			CHECK(sgx == tgx && sgy == tgy && sgz == tgz, "group_size equal");
 
+			CHECK(s.get_instance_drawcalls(si, ii, sn), "get_instance_drawcalls S");
+			CHECK(t.get_instance_drawcalls(si, ii, tn), "get_instance_drawcalls T");
+			CHECK(sn == tn, "drawcalls equal");
 
+			float sx, sy, sz, tx, ty, tz;
 
-Scene_::Scene g_scene;
+			CHECK(s.get_instance_position_start(si, ii, sx, sy, sz), "pos_start S");
+			CHECK(t.get_instance_position_start(si, ii, tx, ty, tz), "pos_start T");
+			CHECK(feq(sx, tx) && feq(sy, ty) && feq(sz, tz), "pos_start equal");
 
+			CHECK(s.get_instance_euler_start(si, ii, sx, sy, sz), "euler_start S");
+			CHECK(t.get_instance_euler_start(si, ii, tx, ty, tz), "euler_start T");
+			CHECK(feq(sx, tx) && feq(sy, ty) && feq(sz, tz), "euler_start equal");
 
+			CHECK(s.get_instance_scale_start(si, ii, sx, sy, sz), "scale_start S");
+			CHECK(t.get_instance_scale_start(si, ii, tx, ty, tz), "scale_start T");
+			CHECK(feq(sx, tx) && feq(sy, ty) && feq(sz, tz), "scale_start equal");
 
-//void process_one_line(std::string line)
-//{
-//    
-//    
-//    std::optional<Command> command = line_to_command(line);
-//
-//    if (command.has_value())
-//    {
-//        Command& command_safe = command.value();
-//        
-//        std::cout << command_safe.command << "\n";
-//
-//        for (int i = 0; i < command_safe.arguments.size(); i++)
-//        {
-//            std::cout << command_safe.arguments[i] << "\n";
-//
-//            if (command_safe.command == "camera.start.x")
-//            {
-//                float camera_start_x = 0.0;
-//                if (Convert::to_float32(command_safe.arguments[0], camera_start_x))
-//                {
-//                
-//                }
-//                else
-//                {
-//                    std::cout << "can't decode argument for camera.start.x\n";
-//                }
-//            }
-//
-//            if (command_safe.command == "camera.start.y")
-//            {
-//                float camera_start_y = 0.0;
-//                if (Convert::to_float32(command_safe.arguments[0], camera_start_y))
-//                {
-//
-//                }
-//                else
-//                {
-//                    std::cout << "can't decode argument for camera.start.y\n";
-//                }
-//            }
-//        }
-//    }
-//
-//    
-//}
+			CHECK(s.get_instance_position_end(si, ii, sx, sy, sz), "pos_end S");
+			CHECK(t.get_instance_position_end(si, ii, tx, ty, tz), "pos_end T");
+			CHECK(feq(sx, tx) && feq(sy, ty) && feq(sz, tz), "pos_end equal");
 
+			CHECK(s.get_instance_euler_end(si, ii, sx, sy, sz), "euler_end S");
+			CHECK(t.get_instance_euler_end(si, ii, tx, ty, tz), "euler_end T");
+			CHECK(feq(sx, tx) && feq(sy, ty) && feq(sz, tz), "euler_end equal");
 
+			CHECK(s.get_instance_scale_end(si, ii, sx, sy, sz), "scale_end S");
+			CHECK(t.get_instance_scale_end(si, ii, tx, ty, tz), "scale_end T");
+			CHECK(feq(sx, tx) && feq(sy, ty) && feq(sz, tz), "scale_end equal");
 
-#include <iostream>
-#include <string>
+			for (int u = 0; u <= 9; ++u) {
+				float us = 0, ut = 0;
+				CHECK(s.get_instance_uniform_start(si, ii, u, us), "uniform_start S");
+				CHECK(t.get_instance_uniform_start(si, ii, u, ut), "uniform_start T");
+				CHECK(feq(us, ut), "uniform_start equal");
 
-#include <sstream>
-#include <cctype>
+				CHECK(s.get_instance_uniform_end(si, ii, u, us), "uniform_end S");
+				CHECK(t.get_instance_uniform_end(si, ii, u, ut), "uniform_end T");
+				CHECK(feq(us, ut), "uniform_end equal");
+			}
+		}
+	}
 
-// tiny helpers
-static std::string ltrim(std::string s) {
-    while (!s.empty() && std::isspace((unsigned char)s.front())) s.erase(s.begin());
-    return s;
+	// A couple of negative checks (invalid indices)
+	float dummy;
+	CHECK(!t.get_instance_uniform_start(999, 0, 0, dummy), "invalid shader index rejected");
+	CHECK(!t.get_instance_uniform_start(0, 999, 0, dummy), "invalid instance index rejected");
+
+	std::cout << "[UNIT] round-trip textual equality: " << (A == B ? "true" : "false") << "\n";
+	std::cout << "[UNIT] checks=" << checks << " failures=" << fails << "\n";
+	std::cout << (fails == 0 ? "[UNIT] PASS\n" : "[UNIT] FAIL\n");
 }
-static std::string rtrim(std::string s) {
-    while (!s.empty() && std::isspace((unsigned char)s.back())) s.pop_back();
-    return s;
-}
-
-
-static std::string trim(std::string s) { return rtrim(ltrim(std::move(s))); }
-
-void read_eval_print_loop_example()
-{
-    // File::read_file_line_by_line_with_FpCallback(filepath, process_one_line);
-
-    // std::cout << "NICE camera.start.x : " << g_scene.camera_start.camera_x << "\n";
-
-    std::string userInput;
-
-    // Print a welcome message and instructions just once, before the loop starts.
-    std::cout << "Welcome to the Echo Looper!" << std::endl;
-    std::cout << "Type anything and press Enter. I will echo it back." << std::endl;
-    std::cout << "Type 'end' to quit the program." << std::endl;
-    std::cout << "----------------------------------" << std::endl;
-
-    // This is the main program loop.
-    // while(true) creates a loop that will run forever unless we
-    // explicitly tell it to stop from inside.
-    while (true) {
-
-        {
-            std::cout << "> " << std::flush;
-            if (!std::getline(std::cin, userInput)) break;
-
-            userInput = trim(userInput);
-            if (userInput.empty() || userInput[0] == '#') continue;
-
-            if (userInput == "end" || userInput == "exit" || userInput == "quit") {
-                break;
-            }
-        }
-
-        std::string cmd;
-        std::string args;
-        {
-            // ---- minimal command parsing: first token = cmd, rest = args ----
-            std::istringstream iss(userInput);
-            iss >> cmd;
-            std::getline(iss, args);
-            if (!args.empty() && args[0] == ' ') args.erase(0, 1);
-        }
-
-        // 3. PRINT: If the loop hasn't ended, print the response.
-        // std::cout << "You entered: " << userInput << std::endl;
-
-
-        if (cmd == "help")
-        {
-            std::cout
-                << "Commands:\n"
-                << "  help            - this help\n"
-                << "  ping            - prints 'pong'\n"
-                << "  echo <text>     - prints <text>\n"
-                << "  add <a> <b>     - prints a+b (integers)\n"
-                << "  end|exit|quit   - leave\n";
-            // create shader
-            // print_shader <int:index>
-
-        }
-        else if (cmd == "ping")
-        {
-            std::cout << "pong\n";
-        }
-        else if (cmd == "echo")
-        {
-            std::cout << args << "\n";
-        }
-        else if (cmd == "echo") {
-            std::cout << args << "\n";
-        }
-        else if (cmd == "add") {
-            long long a, b;
-            std::istringstream nums(args);
-            if (nums >> a >> b) std::cout << (a + b) << "\n";
-            else std::cout << "usage: add <a> <b>\n";
-        }
-        else {
-            // fallback: behave exactly like your original echo
-            std::cout << "You entered: " << userInput << "\n";
-        }
-
-    }
-
-    // This code is outside the loop. It will only run after the `break`
-    // statement is executed.
-    std::cout << "Goodbye!" << std::endl;
-}
-
 
 int main()
 {
     std::cout << "Tmp\n";
 
+    unit_test_with_round_trip();
+
+    return 0;
+
     // std::string filepath = "commands.txt";
 
     Scene_::Scene scene;
 
-    scene.setWidth(1000);
-    scene.setHeight(1000);
+    scene.set_width(1000);
+    scene.set_height(1000);
     
 
     scene.set_camera_start_x(0.0f);
