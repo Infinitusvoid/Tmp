@@ -39,6 +39,9 @@
     <ClCompile Include="CppCommponents\Search_BreadthFirst_2d.cpp">
       <Filter>Resource Files\CppCommponents</Filter>
     </ClCompile>
+    <ClCompile Include="Float1024.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Scene.h">

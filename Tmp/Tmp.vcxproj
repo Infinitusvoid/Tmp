@@ -137,6 +137,7 @@
     <ClCompile Include="CppCommponents\NameGenerators.cpp" />
     <ClCompile Include="CppCommponents\Rectangle2d.cpp" />
     <ClCompile Include="CppCommponents\Search_BreadthFirst_2d.cpp" />
+    <ClCompile Include="Float1024.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>

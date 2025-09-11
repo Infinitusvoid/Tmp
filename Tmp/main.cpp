@@ -305,7 +305,8 @@ void process_one_line(std::string line)
 
             if (command_safe.command == "camera.start.x")
             {
-                if (Convert::to_float32(command_safe.arguments[0], g_scene.camera_start.camera_x))
+                float camera_start_x = 0.0;
+                if (Convert::to_float32(command_safe.arguments[0], camera_start_x))
                 {
                 
                 }
@@ -317,7 +318,8 @@ void process_one_line(std::string line)
 
             if (command_safe.command == "camera.start.y")
             {
-                if (Convert::to_float32(command_safe.arguments[0], g_scene.camera_start.camera_y))
+                float camera_start_y = 0.0;
+                if (Convert::to_float32(command_safe.arguments[0], camera_start_y))
                 {
 
                 }
@@ -353,19 +355,12 @@ static std::string rtrim(std::string s) {
 
 static std::string trim(std::string s) { return rtrim(ltrim(std::move(s))); }
 
-int main()
+void read_eval_print_loop_example()
 {
-    std::cout << "Tmp\n";
-
-    // std::string filepath = "commands.txt";
-
-
-    
-
     // File::read_file_line_by_line_with_FpCallback(filepath, process_one_line);
 
     // std::cout << "NICE camera.start.x : " << g_scene.camera_start.camera_x << "\n";
-    
+
     std::string userInput;
 
     // Print a welcome message and instructions just once, before the loop starts.
@@ -378,7 +373,7 @@ int main()
     // while(true) creates a loop that will run forever unless we
     // explicitly tell it to stop from inside.
     while (true) {
-        
+
         {
             std::cout << "> " << std::flush;
             if (!std::getline(std::cin, userInput)) break;
@@ -414,6 +409,9 @@ int main()
                 << "  echo <text>     - prints <text>\n"
                 << "  add <a> <b>     - prints a+b (integers)\n"
                 << "  end|exit|quit   - leave\n";
+            // create shader
+            // print_shader <int:index>
+
         }
         else if (cmd == "ping")
         {
@@ -442,6 +440,22 @@ int main()
     // This code is outside the loop. It will only run after the `break`
     // statement is executed.
     std::cout << "Goodbye!" << std::endl;
+}
+
+int main()
+{
+    std::cout << "Tmp\n";
+
+    // std::string filepath = "commands.txt";
+
+    Scene_::Scene scene;
+
+    scene.add_shader("vertex_file_path", "fragment_file_path");
+    scene.add_instance(0, 0);
+
+    scene.print();
+
+    
 
 
     return 0;
