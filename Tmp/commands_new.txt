@@ -3,6 +3,7 @@ render.fps 1000
 render.number_of_frames 100
 render.time.start 0.0
 
+
 // camera start
 camera.start.x 990.01
 camera.start.y 990.02

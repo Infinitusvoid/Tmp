@@ -384,6 +384,12 @@ namespace Scene_
             return true;
         }
 
+        // --- Image/output size: explicit setters/getters ---
+        void setWidth(int w) { width = w; }
+        void setHeight(int h) { height = h; }
+        int  getWidth() const { return width; }
+        int  getHeight() const { return height; }
+
         // Pretty-print the entire scene state
         void print(std::ostream& os = std::cout) const
         {
@@ -799,6 +805,20 @@ namespace Scene_ {
                 if (!scene.set_instance_uniform_end(s, i, u, v)) warn("invalid shader/instance index");
             }
 
+            // ===== image/render size =====
+            else if (key == "render.size" || key == "image.size") {
+                std::istringstream ss(rest);
+                int w, h;
+                if (!(ss >> w >> h)) { warn("usage: render.size <width> <height>"); }
+                else { scene.set_frame_size(w, h); }
+                }
+            else if (key == "image.width" || key == "render.width") {
+                    int w; if (parse_int(rest, w)) scene.setWidth(w); else warn("expected int");
+                    }
+            else if (key == "image.height" || key == "render.height") {
+                        int h; if (parse_int(rest, h)) scene.setHeight(h); else warn("expected int");
+                        }
+
             // ===== unknown =====
             else {
                 warn("unknown key");
@@ -822,7 +842,12 @@ namespace Scene_ {
         out << "# =========================\n";
         out << "# Scene config (auto-saved)\n";
         out << "# =========================\n\n";
-        out << "# resolution: " << scene.get_width() << " x " << scene.get_height() << "\n\n";
+
+        out << "# ---- Image / Output ----\n";
+        out << "image.width " << scene.get_width() << "\n";
+        out << "image.height " << scene.get_height() << "\n";
+        out << "render.size " << scene.get_width() << " " << scene.get_height() << "\n\n";
+
 
         // ---- Render ----
         out << "# ---- Render ----\n";

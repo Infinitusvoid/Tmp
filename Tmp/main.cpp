@@ -454,6 +454,10 @@ int main()
 
     Scene_::Scene scene;
 
+    scene.setWidth(1000);
+    scene.setHeight(1000);
+    
+
     scene.set_camera_start_x(0.0f);
     scene.set_camera_start_y(0.0f);
     scene.set_camera_start_z(0.0f);
@@ -470,7 +474,7 @@ int main()
     scene.set_instance_uniform_end(0, 0, 0, 1.0f);
     
     std::cout << "--- scene loading ---\n";
-    Scene_::load(scene, "commands_new.txt");
+    //Scene_::load(scene, "commands_new.txt");
     
     std::cout << "--- scene printing ---\n";
     scene.print();
