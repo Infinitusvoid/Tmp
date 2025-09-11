@@ -5,7 +5,19 @@ void scene_init()
 {
     // if there is no tmp folder we create the folder
     
-    // we check if 
+    // we check if all default shaders exist if not we write them 
+    // tmp/default_shaders/fragment.glsl
+    // 
+    
+    
+
+    // check if there is commands.txt present in the folder 
+    // if there is no comamnds.txt than we create the default one 
+    
+    // check if we have any argument if we have the argument 
+    // we get the string path to that commands and we try to read 
+    // well if file does not exist we std::abourt()
+
     // 
 }
 

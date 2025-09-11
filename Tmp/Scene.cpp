@@ -1,5 +1,19 @@
 #include "Scene.h"
 
+#include <iostream>
+#include <vector>
+#include <functional>
+#include <iomanip>
+#include <string>
+#include <utility>
+#include <cstddef>
+#include <fstream>
+#include <sstream>
+#include <algorithm>
+#include <cctype>
+#include <optional>
+
+
 namespace Scene_
 {
 	// ----------------- Render / output size -----------------
@@ -769,7 +783,7 @@ namespace Scene_
 		return scene;
 	}
 
-	inline void save(const Scene& scene, const std::string& filepath)
+	void save(const Scene& scene, const std::string& filepath)
 	{
 		std::ofstream out(filepath);
 		if (!out) {
@@ -1117,6 +1131,12 @@ namespace Scene_
 				}
 			}
 		}
+
+		CHECK(s.has_shader(sh0), "has_shader(sh0)");
+		CHECK(s.clear_instances(sh0), "clear_instances(sh0)");
+		CHECK(s.instance_count(sh0) == 0, "instances cleared");
+
+
 
 		// A couple of negative checks (invalid indices)
 		float dummy;
