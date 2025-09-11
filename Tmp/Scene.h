@@ -806,4 +806,9 @@ namespace Scene_ {
         }
     }
 
-} // namespace Scene_
+    void save(Scene& save, std::string filepath)
+    {
+        // TODO : need implementation
+    }
+
+}
