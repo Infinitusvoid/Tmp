@@ -597,12 +597,15 @@ namespace Scene_ {
     static inline bool parse_int(const std::string& in, int& out) { std::istringstream iss(in); iss >> out; return (bool)iss && iss.eof(); }
     static inline bool parse_float(const std::string& in, float& out) { std::istringstream iss(in); iss >> out; return (bool)iss && iss.eof(); }
 
-    void load(Scene& scene, std::string filepath)
+    std::optional<Scene> load(std::string filepath)
     {
+        Scene scene;
+        scene.clear_shaders();
+
         std::ifstream in(filepath);
         if (!in) {
             std::cerr << "[Scene::load] ERROR: cannot open file: " << filepath << "\n";
-            return;
+            return std::nullopt;
         }
 
         std::string line; int lineno = 0;
@@ -824,6 +827,8 @@ namespace Scene_ {
                 warn("unknown key");
             }
         }
+
+        return std::move(scene);
     }
 
     void save(Scene& scene, std::string filepath)
@@ -843,17 +848,12 @@ namespace Scene_ {
         out << "# Scene config (auto-saved)\n";
         out << "# =========================\n\n";
 
-        out << "# ---- Image / Output ----\n";
-        out << "image.width " << scene.get_width() << "\n";
-        out << "image.height " << scene.get_height() << "\n";
-        out << "render.size " << scene.get_width() << " " << scene.get_height() << "\n\n";
-
-
         // ---- Render ----
         out << "# ---- Render ----\n";
         out << "render.fps " << scene.get_render_fps() << "\n";
         out << "render.number_of_frames " << scene.get_number_of_frames() << "\n";
-        out << "render.time.start " << scene.get_render_time_start() << "\n\n";
+        out << "render.time.start " << scene.get_render_time_start() << "\n";
+        out << "render.size " << scene.get_width() << " " << scene.get_height() << "\n\n";
 
         // ---- Capture ----
         out << "# ---- Capture ----\n";

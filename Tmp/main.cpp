@@ -474,12 +474,21 @@ int main()
     scene.set_instance_uniform_end(0, 0, 0, 1.0f);
     
     std::cout << "--- scene loading ---\n";
-    //Scene_::load(scene, "commands_new.txt");
-    
-    std::cout << "--- scene printing ---\n";
-    scene.print();
+    std::optional<Scene_::Scene> scene_from_file = Scene_::load("commands_new.txt");
+    if (scene_from_file.has_value())
+    {
+        std::cout << "--- scene printing ---\n";
+        scene_from_file.value().print();
 
-    Scene_::save(scene, "exported_commands.txt");
+        
+        Scene_::save(scene_from_file.value(), "exported_commands.txt");
+    }
+    
+    
+    
+    
+
+    
 
 
     return 0;
