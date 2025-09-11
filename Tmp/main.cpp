@@ -14,57 +14,57 @@
 #include <algorithm>
 #include <cctype>
 
-
-// Returns true if the line is ignorable as a comment:
-// - empty / whitespace-only
-// - or first non-space chars are "//"
-inline bool is_comment(std::string line)
-{
-    // Strip UTF-8 BOM if present
-    if (line.size() >= 3 &&
-        static_cast<unsigned char>(line[0]) == 0xEF &&
-        static_cast<unsigned char>(line[1]) == 0xBB &&
-        static_cast<unsigned char>(line[2]) == 0xBF) {
-        line.erase(0, 3);
-    }
-
-    // Find first non-whitespace char
-    std::size_t i = 0;
-    for (; i < line.size(); ++i) {
-        unsigned char ch = static_cast<unsigned char>(line[i]);
-        if (!std::isspace(ch)) break;
-    }
-
-    // Whitespace-only  treat as comment/ignore
-    if (i == line.size()) return true;
-
-    // Starts with // after leading whitespace?
-    if (line[i] == '/' && (i + 1) < line.size() && line[i + 1] == '/') return true;
-
-    return false;
-}
-
-inline std::string remove_white_space_before_command(std::string line)
-{
-    // Strip UTF-8 BOM if present
-    if (line.size() >= 3 &&
-        static_cast<unsigned char>(line[0]) == 0xEF &&
-        static_cast<unsigned char>(line[1]) == 0xBB &&
-        static_cast<unsigned char>(line[2]) == 0xBF) {
-        line.erase(0, 3);
-    }
-
-    // Left-trim
-    std::size_t i = 0;
-    for (; i < line.size(); ++i) {
-        unsigned char ch = static_cast<unsigned char>(line[i]);
-        if (!std::isspace(ch)) break;
-    }
-    if (i > 0) line.erase(0, i);
-
-    return line;
-}
-
+//
+//// Returns true if the line is ignorable as a comment:
+//// - empty / whitespace-only
+//// - or first non-space chars are "//"
+//inline bool is_comment(std::string line)
+//{
+//    // Strip UTF-8 BOM if present
+//    if (line.size() >= 3 &&
+//        static_cast<unsigned char>(line[0]) == 0xEF &&
+//        static_cast<unsigned char>(line[1]) == 0xBB &&
+//        static_cast<unsigned char>(line[2]) == 0xBF) {
+//        line.erase(0, 3);
+//    }
+//
+//    // Find first non-whitespace char
+//    std::size_t i = 0;
+//    for (; i < line.size(); ++i) {
+//        unsigned char ch = static_cast<unsigned char>(line[i]);
+//        if (!std::isspace(ch)) break;
+//    }
+//
+//    // Whitespace-only  treat as comment/ignore
+//    if (i == line.size()) return true;
+//
+//    // Starts with // after leading whitespace?
+//    if (line[i] == '/' && (i + 1) < line.size() && line[i + 1] == '/') return true;
+//
+//    return false;
+//}
+//
+//inline std::string remove_white_space_before_command(std::string line)
+//{
+//    // Strip UTF-8 BOM if present
+//    if (line.size() >= 3 &&
+//        static_cast<unsigned char>(line[0]) == 0xEF &&
+//        static_cast<unsigned char>(line[1]) == 0xBB &&
+//        static_cast<unsigned char>(line[2]) == 0xBF) {
+//        line.erase(0, 3);
+//    }
+//
+//    // Left-trim
+//    std::size_t i = 0;
+//    for (; i < line.size(); ++i) {
+//        unsigned char ch = static_cast<unsigned char>(line[i]);
+//        if (!std::isspace(ch)) break;
+//    }
+//    if (i > 0) line.erase(0, i);
+//
+//    return line;
+//}
+//
 
 
 struct Command
@@ -74,99 +74,99 @@ struct Command
 };
 
 
-inline std::optional<Command> line_to_command(std::string line)
-{
-    // Ignore comment/blank lines
-    if (is_comment(line)) return std::nullopt;
-
-    // Remove leading whitespace/BOM
-    std::string s = remove_white_space_before_command(line);
-
-    // Strip inline // comments (outside quotes)
-    bool in_string = false;
-    bool esc = false;
-    std::size_t cut = s.size();
-    for (std::size_t i = 0; i < s.size(); ++i) {
-        char c = s[i];
-        if (!in_string) {
-            if (c == '"') { in_string = true; esc = false; continue; }
-            if (c == '/' && (i + 1) < s.size() && s[i + 1] == '/') { cut = i; break; }
-        }
-        else {
-            if (esc) { esc = false; continue; }
-            if (c == '\\') { esc = true; continue; }
-            if (c == '"') { in_string = false; continue; }
-        }
-    }
-    if (cut != s.size()) s.erase(cut);
-
-    // Right-trim trailing whitespace
-    if (!s.empty()) {
-        std::size_t j = s.size();
-        while (j > 0 && std::isspace(static_cast<unsigned char>(s[j - 1]))) --j;
-        s.erase(j);
-    }
-    if (s.empty()) return std::nullopt;
-
-    // Tokenize (supports quoted strings with escapes)
-    std::vector<std::string> tokens;
-    std::string cur;
-    in_string = false; esc = false;
-
-    std::size_t i = 0;
-    // (Leading spaces already trimmed, but guard anyway)
-    while (i < s.size() && std::isspace(static_cast<unsigned char>(s[i]))) ++i;
-
-    for (; i < s.size(); ++i) {
-        char c = s[i];
-        if (!in_string) {
-            if (std::isspace(static_cast<unsigned char>(c))) {
-                if (!cur.empty()) { tokens.push_back(cur); cur.clear(); }
-                // collapse consecutive spaces
-                while ((i + 1) < s.size() && std::isspace(static_cast<unsigned char>(s[i + 1]))) ++i;
-            }
-            else if (c == '"') {
-                in_string = true; esc = false;
-            }
-            else {
-                cur.push_back(c);
-            }
-        }
-        else {
-            if (esc) {
-                switch (c) {
-                case 'n': cur.push_back('\n'); break;
-                case 't': cur.push_back('\t'); break;
-                case 'r': cur.push_back('\r'); break;
-                case '\\': cur.push_back('\\'); break;
-                case '"': cur.push_back('"'); break;
-                default:  cur.push_back(c); break;
-                }
-                esc = false;
-            }
-            else if (c == '\\') {
-                esc = true;
-            }
-            else if (c == '"') {
-                in_string = false;
-            }
-            else {
-                cur.push_back(c);
-            }
-        }
-    }
-    if (!cur.empty() || in_string) {
-        // If quote was unterminated, we still accept what we have.
-        tokens.push_back(cur);
-    }
-
-    if (tokens.empty()) return std::nullopt;
-
-    Command cmd;
-    cmd.command = tokens[0];
-    for (std::size_t k = 1; k < tokens.size(); ++k) cmd.arguments.push_back(tokens[k]);
-    return cmd;
-}
+//inline std::optional<Command> line_to_command(std::string line)
+//{
+//    // Ignore comment/blank lines
+//    if (is_comment(line)) return std::nullopt;
+//
+//    // Remove leading whitespace/BOM
+//    std::string s = remove_white_space_before_command(line);
+//
+//    // Strip inline // comments (outside quotes)
+//    bool in_string = false;
+//    bool esc = false;
+//    std::size_t cut = s.size();
+//    for (std::size_t i = 0; i < s.size(); ++i) {
+//        char c = s[i];
+//        if (!in_string) {
+//            if (c == '"') { in_string = true; esc = false; continue; }
+//            if (c == '/' && (i + 1) < s.size() && s[i + 1] == '/') { cut = i; break; }
+//        }
+//        else {
+//            if (esc) { esc = false; continue; }
+//            if (c == '\\') { esc = true; continue; }
+//            if (c == '"') { in_string = false; continue; }
+//        }
+//    }
+//    if (cut != s.size()) s.erase(cut);
+//
+//    // Right-trim trailing whitespace
+//    if (!s.empty()) {
+//        std::size_t j = s.size();
+//        while (j > 0 && std::isspace(static_cast<unsigned char>(s[j - 1]))) --j;
+//        s.erase(j);
+//    }
+//    if (s.empty()) return std::nullopt;
+//
+//    // Tokenize (supports quoted strings with escapes)
+//    std::vector<std::string> tokens;
+//    std::string cur;
+//    in_string = false; esc = false;
+//
+//    std::size_t i = 0;
+//    // (Leading spaces already trimmed, but guard anyway)
+//    while (i < s.size() && std::isspace(static_cast<unsigned char>(s[i]))) ++i;
+//
+//    for (; i < s.size(); ++i) {
+//        char c = s[i];
+//        if (!in_string) {
+//            if (std::isspace(static_cast<unsigned char>(c))) {
+//                if (!cur.empty()) { tokens.push_back(cur); cur.clear(); }
+//                // collapse consecutive spaces
+//                while ((i + 1) < s.size() && std::isspace(static_cast<unsigned char>(s[i + 1]))) ++i;
+//            }
+//            else if (c == '"') {
+//                in_string = true; esc = false;
+//            }
+//            else {
+//                cur.push_back(c);
+//            }
+//        }
+//        else {
+//            if (esc) {
+//                switch (c) {
+//                case 'n': cur.push_back('\n'); break;
+//                case 't': cur.push_back('\t'); break;
+//                case 'r': cur.push_back('\r'); break;
+//                case '\\': cur.push_back('\\'); break;
+//                case '"': cur.push_back('"'); break;
+//                default:  cur.push_back(c); break;
+//                }
+//                esc = false;
+//            }
+//            else if (c == '\\') {
+//                esc = true;
+//            }
+//            else if (c == '"') {
+//                in_string = false;
+//            }
+//            else {
+//                cur.push_back(c);
+//            }
+//        }
+//    }
+//    if (!cur.empty() || in_string) {
+//        // If quote was unterminated, we still accept what we have.
+//        tokens.push_back(cur);
+//    }
+//
+//    if (tokens.empty()) return std::nullopt;
+//
+//    Command cmd;
+//    cmd.command = tokens[0];
+//    for (std::size_t k = 1; k < tokens.size(); ++k) cmd.arguments.push_back(tokens[k]);
+//    return cmd;
+//}
 
 enum class ArgumentTypes
 {
@@ -291,52 +291,52 @@ Scene_::Scene g_scene;
 
 
 
-void process_one_line(std::string line)
-{
-    
-    
-    std::optional<Command> command = line_to_command(line);
-
-    if (command.has_value())
-    {
-        Command& command_safe = command.value();
-        
-        std::cout << command_safe.command << "\n";
-
-        for (int i = 0; i < command_safe.arguments.size(); i++)
-        {
-            std::cout << command_safe.arguments[i] << "\n";
-
-            if (command_safe.command == "camera.start.x")
-            {
-                float camera_start_x = 0.0;
-                if (Convert::to_float32(command_safe.arguments[0], camera_start_x))
-                {
-                
-                }
-                else
-                {
-                    std::cout << "can't decode argument for camera.start.x\n";
-                }
-            }
-
-            if (command_safe.command == "camera.start.y")
-            {
-                float camera_start_y = 0.0;
-                if (Convert::to_float32(command_safe.arguments[0], camera_start_y))
-                {
-
-                }
-                else
-                {
-                    std::cout << "can't decode argument for camera.start.y\n";
-                }
-            }
-        }
-    }
-
-    
-}
+//void process_one_line(std::string line)
+//{
+//    
+//    
+//    std::optional<Command> command = line_to_command(line);
+//
+//    if (command.has_value())
+//    {
+//        Command& command_safe = command.value();
+//        
+//        std::cout << command_safe.command << "\n";
+//
+//        for (int i = 0; i < command_safe.arguments.size(); i++)
+//        {
+//            std::cout << command_safe.arguments[i] << "\n";
+//
+//            if (command_safe.command == "camera.start.x")
+//            {
+//                float camera_start_x = 0.0;
+//                if (Convert::to_float32(command_safe.arguments[0], camera_start_x))
+//                {
+//                
+//                }
+//                else
+//                {
+//                    std::cout << "can't decode argument for camera.start.x\n";
+//                }
+//            }
+//
+//            if (command_safe.command == "camera.start.y")
+//            {
+//                float camera_start_y = 0.0;
+//                if (Convert::to_float32(command_safe.arguments[0], camera_start_y))
+//                {
+//
+//                }
+//                else
+//                {
+//                    std::cout << "can't decode argument for camera.start.y\n";
+//                }
+//            }
+//        }
+//    }
+//
+//    
+//}
 
 
 
@@ -445,6 +445,7 @@ void read_eval_print_loop_example()
     // statement is executed.
     std::cout << "Goodbye!" << std::endl;
 }
+
 
 int main()
 {

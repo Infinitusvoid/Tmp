@@ -3,9 +3,9 @@
 # =========================
 
 # ---- Render ----
-render.fps 1000
-render.number_of_frames 100
-render.time.start 0.000000
+render.fps 100099
+render.number_of_frames 10099
+render.time.start 0.099000
 render.size 3840 2160
 
 # ---- Capture ----
