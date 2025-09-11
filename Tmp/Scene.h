@@ -550,11 +550,20 @@ namespace Scene_
         std::vector<Shader> shaders;
     };
 
-    
+}
 
-    
 
-    // Load
+
+
+
+
+
+
+
+
+
+
+namespace Scene_ {
 
     static inline std::string trim_copy(std::string s) {
         auto issp = [](unsigned char c) { return std::isspace(c); };
@@ -622,7 +631,7 @@ namespace Scene_
                 std::cerr << "[Scene::load] line " << lineno << ": " << msg << "  (" << key << " " << rest << ")\n";
                 };
 
-            // render.*
+            // ===== render.* =====
             if (key == "render.fps" || key == "render.framerate") {
                 int v; if (parse_int(rest, v)) scene.set_render_fps(v); else warn("expected int");
             }
@@ -633,7 +642,7 @@ namespace Scene_
                 float v; if (parse_float(rest, v)) scene.set_render_time_start(v); else warn("expected float");
             }
 
-            // capture
+            // ===== capture.* =====
             else if (key == "capture") {
                 bool v; if (parse_bool(rest, v)) scene.set_capture(v); else warn("expected bool");
             }
@@ -644,7 +653,7 @@ namespace Scene_
                 bool v; if (parse_bool(rest, v)) scene.set_capture_bmp(v); else warn("expected bool");
             }
 
-            // camera.start.*
+            // ===== camera.start.* =====
             else if (key.rfind("camera.start.", 0) == 0) {
                 std::string prop = key.substr(std::string("camera.start.").size());
                 float v; if (!parse_float(rest, v)) { warn("expected float"); continue; }
@@ -653,12 +662,12 @@ namespace Scene_
                 else if (prop == "y")     scene.set_camera_start_y(v);
                 else if (prop == "z")     scene.set_camera_start_z(v);
                 else if (prop == "pitch") scene.set_camera_start_pitch(v);
-                else if (prop == "yaw") scene.set_camera_start_yaw(v);
+                else if (prop == "yaw" || prop == "yew") scene.set_camera_start_yaw(v);
                 else if (prop == "fov")   scene.set_camera_start_fov(v);
                 else warn("unknown camera.start.* key");
             }
 
-            // camera.end.*
+            // ===== camera.end.* =====
             else if (key.rfind("camera.end.", 0) == 0) {
                 std::string prop = key.substr(std::string("camera.end.").size());
                 float v; if (!parse_float(rest, v)) { warn("expected float"); continue; }
@@ -667,12 +676,12 @@ namespace Scene_
                 else if (prop == "y")     scene.set_camera_end_y(v);
                 else if (prop == "z")     scene.set_camera_end_z(v);
                 else if (prop == "pitch") scene.set_camera_end_pitch(v);
-                else if (prop == "yaw") scene.set_camera_end_yaw(v);
+                else if (prop == "yaw" || prop == "yew") scene.set_camera_end_yaw(v);
                 else if (prop == "fov")   scene.set_camera_end_fov(v);
                 else warn("unknown camera.end.* key");
             }
 
-            // le.*
+            // ===== le.* =====
             else if (key.rfind("le.", 0) == 0) {
                 std::string prop = key.substr(3);
                 if (prop == "msaaSamples") {
@@ -697,51 +706,104 @@ namespace Scene_
                 }
             }
 
-            // shader.add <vertex> <fragment>    (quoted or unquoted)
+            // ===== shader.add / shader.vertex / shader.fragment =====
             else if (key == "shader.add") {
                 std::istringstream ss(rest);
                 std::string vtx, frag;
-
-                if (!(ss >> std::quoted(vtx))) {
-                    ss.clear(); ss.str(rest);
-                    if (!(ss >> vtx)) { warn("usage: shader.add <vertex> <fragment>"); continue; }
-                }
-                if (!(ss >> std::quoted(frag))) {
-                    if (!(ss >> frag)) { warn("usage: shader.add <vertex> <fragment>"); continue; }
-                }
+                if (!(ss >> std::quoted(vtx))) { ss.clear(); ss.str(rest); if (!(ss >> vtx)) { warn("usage: shader.add <vertex> <fragment>"); continue; } }
+                if (!(ss >> std::quoted(frag))) { if (!(ss >> frag)) { warn("usage: shader.add <vertex> <fragment>"); continue; } }
                 scene.add_shader(vtx, frag);
             }
-
-            // shader.vertex <index> <path>
             else if (key == "shader.vertex") {
                 std::istringstream ss(rest);
                 size_t idx; if (!(ss >> idx)) { warn("usage: shader.vertex <index> <path>"); continue; }
                 std::string path;
-                if (!(ss >> std::quoted(path))) {
-                    if (!(ss >> path)) { warn("usage: shader.vertex <index> <path>"); continue; }
-                }
+                if (!(ss >> std::quoted(path))) { if (!(ss >> path)) { warn("usage: shader.vertex <index> <path>"); continue; } }
                 if (!scene.set_shader_vertex_path(idx, path.c_str())) warn("invalid shader index");
             }
-
-            // shader.fragment <index> <path>
             else if (key == "shader.fragment") {
                 std::istringstream ss(rest);
                 size_t idx; if (!(ss >> idx)) { warn("usage: shader.fragment <index> <path>"); continue; }
                 std::string path;
-                if (!(ss >> std::quoted(path))) {
-                    if (!(ss >> path)) { warn("usage: shader.fragment <index> <path>"); continue; }
-                }
+                if (!(ss >> std::quoted(path))) { if (!(ss >> path)) { warn("usage: shader.fragment <index> <path>"); continue; } }
                 if (!scene.set_shader_fragment_path(idx, path.c_str())) warn("invalid shader index");
             }
 
+            // ===== shader.instance.* =====
+            else if (key == "shader.instance.add") {
+                std::istringstream ss(rest);
+                size_t s; if (!(ss >> s)) { warn("usage: shader.instance.add <shader_idx>"); continue; }
+                size_t idx = scene.add_instance(s);
+                if (idx == static_cast<size_t>(-1)) warn("invalid shader index");
+            }
+            else if (key == "shader.instance.group") {
+                std::istringstream ss(rest);
+                size_t s, i; int gx, gy, gz;
+                if (!(ss >> s >> i >> gx >> gy >> gz)) { warn("usage: shader.instance.group <shader_idx> <instance_idx> <gx> <gy> <gz>"); continue; }
+                if (!scene.set_instance_group_size(s, i, gx, gy, gz)) warn("invalid shader/instance index");
+            }
+            else if (key == "shader.instance.drawcalls") {
+                std::istringstream ss(rest);
+                size_t s, i; int n;
+                if (!(ss >> s >> i >> n)) { warn("usage: shader.instance.drawcalls <shader_idx> <instance_idx> <n>"); continue; }
+                if (!scene.set_instance_drawcalls(s, i, n)) warn("invalid shader/instance index");
+            }
+            else if (key == "shader.instance.start.pos") {
+                std::istringstream ss(rest);
+                size_t s, i; float x, y, z;
+                if (!(ss >> s >> i >> x >> y >> z)) { warn("usage: shader.instance.start.pos <s> <i> <x> <y> <z>"); continue; }
+                if (!scene.set_instance_position_start(s, i, x, y, z)) warn("invalid shader/instance index");
+            }
+            else if (key == "shader.instance.start.euler") {
+                std::istringstream ss(rest);
+                size_t s, i; float ex, ey, ez;
+                if (!(ss >> s >> i >> ex >> ey >> ez)) { warn("usage: shader.instance.start.euler <s> <i> <ex> <ey> <ez>"); continue; }
+                if (!scene.set_instance_euler_start(s, i, ex, ey, ez)) warn("invalid shader/instance index");
+            }
+            else if (key == "shader.instance.start.scale") {
+                std::istringstream ss(rest);
+                size_t s, i; float sx, sy, sz;
+                if (!(ss >> s >> i >> sx >> sy >> sz)) { warn("usage: shader.instance.start.scale <s> <i> <sx> <sy> <sz>"); continue; }
+                if (!scene.set_instance_scale_start(s, i, sx, sy, sz)) warn("invalid shader/instance index");
+            }
+            else if (key == "shader.instance.end.pos") {
+                std::istringstream ss(rest);
+                size_t s, i; float x, y, z;
+                if (!(ss >> s >> i >> x >> y >> z)) { warn("usage: shader.instance.end.pos <s> <i> <x> <y> <z>"); continue; }
+                if (!scene.set_instance_position_end(s, i, x, y, z)) warn("invalid shader/instance index");
+            }
+            else if (key == "shader.instance.end.euler") {
+                std::istringstream ss(rest);
+                size_t s, i; float ex, ey, ez;
+                if (!(ss >> s >> i >> ex >> ey >> ez)) { warn("usage: shader.instance.end.euler <s> <i> <ex> <ey> <ez>"); continue; }
+                if (!scene.set_instance_euler_end(s, i, ex, ey, ez)) warn("invalid shader/instance index");
+            }
+            else if (key == "shader.instance.end.scale") {
+                std::istringstream ss(rest);
+                size_t s, i; float sx, sy, sz;
+                if (!(ss >> s >> i >> sx >> sy >> sz)) { warn("usage: shader.instance.end.scale <s> <i> <sx> <sy> <sz>"); continue; }
+                if (!scene.set_instance_scale_end(s, i, sx, sy, sz)) warn("invalid shader/instance index");
+            }
+            else if (key == "shader.instance.start.u") {
+                std::istringstream ss(rest);
+                size_t s, i; int u; float v;
+                if (!(ss >> s >> i >> u >> v)) { warn("usage: shader.instance.start.u <s> <i> <u_index:0-9> <value>"); continue; }
+                if (u < 0 || u > 9) { warn("u_index out of range (0..9)"); continue; }
+                if (!scene.set_instance_uniform_start(s, i, u, v)) warn("invalid shader/instance index");
+            }
+            else if (key == "shader.instance.end.u") {
+                std::istringstream ss(rest);
+                size_t s, i; int u; float v;
+                if (!(ss >> s >> i >> u >> v)) { warn("usage: shader.instance.end.u <s> <i> <u_index:0-9> <value>"); continue; }
+                if (u < 0 || u > 9) { warn("u_index out of range (0..9)"); continue; }
+                if (!scene.set_instance_uniform_end(s, i, u, v)) warn("invalid shader/instance index");
+            }
+
+            // ===== unknown =====
             else {
                 warn("unknown key");
             }
         }
     }
 
-
-
-
-    
-}
+} // namespace Scene_
