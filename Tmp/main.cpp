@@ -45,8 +45,77 @@ private:
 ShadersFilepath shaders;
 
 
+struct Video
+{
+    static int generate()
+    {
+        FFmpeg_::FfmpegImageToVideo job;
+        job.input_dir = folder_output_frames; // "C:/renders/shot01";     // folder with frame_000000.png etc.
+        job.input_pattern = "frame_%06d.png";        // change if your naming differs
+        job.start_number = 0;
+        job.input_fps = 60;
+        job.output_fps = 60;
+        job.preset = "slow";
+        job.crf = 14;
+        job.pix_fmt = "yuv420p";
+        job.faststart = true;
+        job.output_path = folder_output_frames + std::string("output.mp4"); //"C:/renders/shot01/output.mp4";
 
-void write_commands_using_scene()
+        return job.run();
+    }
+};
+
+
+struct Camera
+{
+
+    void init()
+    {
+        // CAPTURED: { pos: [0.187691, -0.043775, 0.381654] , yaw : -24.120005, pitch : 5.879999, fov : 45.000000 }
+
+        x = 0.187691;
+        y = -0.043775;
+        z = 0.381654;
+        yaw = -24.120005;
+        pitch = 5.879999;
+        fov = 45.000000;
+    }
+
+
+    void init2()
+    {
+        // CAPTURED: { pos: [2.695665, -0.675831, 5.983052] , yaw : -24.120005, pitch : 5.879999, fov : 45.000000 }
+        
+        x = 2.695665;
+        y = -0.675831;
+        z = 5.983052;
+        yaw = -24.120005;
+        pitch = 5.879999;
+        fov = 45.000000;
+    }
+
+    void init3()
+    {
+        // CAPTURED: { pos:[-1.245056,-2.551750,19.370687], yaw:5.759995, pitch:4.920000, fov:45.000000 }
+
+        x = -1.245056;
+        y = -2.551750;
+        z = 19.370687;
+        yaw = 5.759995;
+        pitch = 4.920000;
+        fov = 45.000000;
+    }
+
+    double x = 0;
+    double y = 0;
+    double z = 0;
+    double yaw = 0;
+    double pitch = 0;
+    double fov = 45;
+
+};
+
+void write_commands_using_scene(Camera camera_start, Camera camera_end)
 {
     Scene_::Scene scene = Scene_::Scene();
     
@@ -63,20 +132,20 @@ void write_commands_using_scene()
     scene.set_capture_bmp(false);
 
     // ----- camera start -----
-    scene.set_camera_start_x(0.0f);
-    scene.set_camera_start_y(0.0f);
-    scene.set_camera_start_z(0.0f);
-    scene.set_camera_start_pitch(0.0f);
-    scene.set_camera_start_yaw(0.0f);
-    scene.set_camera_start_fov(45.0f);
+    scene.set_camera_start_x(camera_start.x);
+    scene.set_camera_start_y(camera_start.y);
+    scene.set_camera_start_z(camera_start.z);
+    scene.set_camera_start_pitch(camera_start.pitch);
+    scene.set_camera_start_yaw(camera_start.yaw);
+    scene.set_camera_start_fov(camera_start.fov);
 
     // ----- camera end -----
-    scene.set_camera_end_x(0.0f);
-    scene.set_camera_end_y(0.0f);
-    scene.set_camera_end_z(0.0f);
-    scene.set_camera_end_pitch(0.0f);
-    scene.set_camera_end_yaw(0.0f);
-    scene.set_camera_end_fov(45.0f);
+    scene.set_camera_end_x(camera_end.x);
+    scene.set_camera_end_y(camera_end.y);
+    scene.set_camera_end_z(camera_end.z);
+    scene.set_camera_end_pitch(camera_end.pitch);
+    scene.set_camera_end_yaw(camera_end.yaw);
+    scene.set_camera_end_fov(camera_end.fov);
 
     // ----- LE settings -----
     scene.set_le_halfLife(0.2f);
@@ -93,46 +162,47 @@ void write_commands_using_scene()
 
 
     // ----- Shader 0 -----
-    // const std::string vs = "C:/Users/Cosmos/Documents/GitHub/Tmp/Tmp/tmp/default_shaders/vertex_shader.glsl";
-    std::string vs = shaders.get_vertex(0);
-       
-    // const std::string fs = "C:/Users/Cosmos/Documents/GitHub/Tmp/Tmp/tmp/default_shaders/fragment_shader.glsl";
-    std::string fs = shaders.get_freagment(0);
-    const size_t shader0 = scene.add_shader(vs, fs);
+    {
+        std::string vs = shaders.get_vertex(1);
+        std::string fs = shaders.get_freagment(1);
 
-    // sanity: you can rely on the returned index instead of assuming 0
-    assert(scene.has_shader(shader0));
+        const size_t shader0 = scene.add_shader(vs, fs);
 
-    // ----- Instances — Shader 0 -----
-    const size_t inst0 = scene.add_instance(shader0);
+        // sanity: you can rely on the returned index instead of assuming 0
+        assert(scene.has_shader(shader0));
 
-    // group size 1000 1000 1
-    assert(scene.set_instance_group_size(shader0, inst0, 1000, 1000, 1));
+        // ----- Instances — Shader 0 -----
+        const size_t inst0 = scene.add_instance(shader0);
 
-    // drawcalls 4
-    assert(scene.set_instance_drawcalls(shader0, inst0, 4));
+        // group size 1000 1000 1
+        assert(scene.set_instance_group_size(shader0, inst0, 1000, 1000, 1));
 
-    // start transform
-    assert(scene.set_instance_position_start(shader0, inst0, 0.0f, 0.0f, 0.0f));
-    assert(scene.set_instance_euler_start(shader0, inst0, 0.0f, 0.0f, 0.0f));
-    assert(scene.set_instance_scale_start(shader0, inst0, 1.0f, 1.0f, 1.0f));
+        // drawcalls 4
+        assert(scene.set_instance_drawcalls(shader0, inst0, 4));
 
-    // end transform
-    assert(scene.set_instance_position_end(shader0, inst0, 5.0f, 0.0f, 0.0f));
-    assert(scene.set_instance_euler_end(shader0, inst0, 0.0f, 1.570796f, 0.0f)); // 90° about Y
-    assert(scene.set_instance_scale_end(shader0, inst0, 1.0f, 1.0f, 1.0f));
+        // start transform
+        assert(scene.set_instance_position_start(shader0, inst0, 0.0f, 0.0f, 0.0f));
+        assert(scene.set_instance_euler_start(shader0, inst0, 0.0f, 0.0f, 0.0f));
+        assert(scene.set_instance_scale_start(shader0, inst0, 1.0f, 1.0f, 1.0f));
 
-    // start uniforms (u0..u9) = 0.0, 0.1, ..., 0.9
-    for (int u = 0; u <= 9; ++u) {
-        const float v = 0.1f * static_cast<float>(u);
-        assert(scene.set_instance_uniform_start(shader0, inst0, u, v));
+        // end transform
+        assert(scene.set_instance_position_end(shader0, inst0, 0.0f, 0.0f, 0.0f));
+        assert(scene.set_instance_euler_end(shader0, inst0, 0.0f, 0.0f, 0.0f)); // 90° about Y
+        assert(scene.set_instance_scale_end(shader0, inst0, 1.0f, 1.0f, 1.0f));
+
+        // start uniforms (u0..u9) = 0.0, 0.1, ..., 0.9
+        for (int u = 0; u <= 9; ++u) {
+            const float v = 0.1f * static_cast<float>(u);
+            assert(scene.set_instance_uniform_start(shader0, inst0, u, v));
+        }
+
+        // end uniforms (u0..u9) = 1.0, 0.9, ..., 0.1
+        for (int u = 0; u <= 9; ++u) {
+            const float v = 1.0f - 0.1f * static_cast<float>(u);
+            assert(scene.set_instance_uniform_end(shader0, inst0, u, v));
+        }
     }
-
-    // end uniforms (u0..u9) = 1.0, 0.9, ..., 0.1
-    for (int u = 0; u <= 9; ++u) {
-        const float v = 1.0f - 0.1f * static_cast<float>(u);
-        assert(scene.set_instance_uniform_end(shader0, inst0, u, v));
-    }
+   
 
     // optional: print to verify
     // scene.print();
@@ -141,7 +211,17 @@ void write_commands_using_scene()
     Scene_::save(scene, filepath);
 }
 
+void generate_video(int fps)
+{
+    
+    // ffmpeg -framerate 60 -start_number 0 -i "frame_%06d.png" -c:v libx264 -preset slow -crf 14 -pix_fmt yuv420p -r 60 -movflags +faststart output.mp4
 
+    int start_number = 0;
+
+    std::string output_name = "output.mp4";
+
+    std::string("ffmpeg -framerate ") + std::to_string(fps) + std::string(" -start_number ") + std::to_string(start_number) + std::string(" -i \"frame_%06d.png\" -c:v libx264 -preset slow -crf 14 -pix_fmt yuv420p -r 60 -movflags +faststart ") + output_name;
+}
 
 int main(int argc, char* argv[])
 {
@@ -153,7 +233,13 @@ int main(int argc, char* argv[])
     Folder::create_folder_if_does_not_exist_already(folder_output_commands);
     
     // write_commands();
-    write_commands_using_scene();
+
+    Camera camera_start;
+    camera_start.init2();
+    Camera camera_end;
+    camera_end.init3();
+
+    write_commands_using_scene(camera_start, camera_end);
 
     if(true)
     {
@@ -166,7 +252,9 @@ int main(int argc, char* argv[])
         int exitCode = std::system(cmd.c_str());
     }
     
+    
 
+    
 
     return 0;
 }

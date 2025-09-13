@@ -12,9 +12,6 @@
     <Filter Include="Source Files\N">
       <UniqueIdentifier>{51f14807-882f-420f-89b9-8161729e6b0c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Scene">
-      <UniqueIdentifier>{571e15e2-420a-4ea9-9aa4-357da8941f9f}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\Resource Files">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
@@ -25,11 +22,17 @@
     <Filter Include="glsl_shaders">
       <UniqueIdentifier>{b562be7d-4427-4c7f-9b2d-f6c54c57c297}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Scene\Shaders">
+    <Filter Include="Source Files\Shaders">
       <UniqueIdentifier>{71fd69e9-7120-40ee-9891-0e717c2b3a22}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Scene\Shaders\shader_0">
+    <Filter Include="Source Files\Shaders\shader_0">
       <UniqueIdentifier>{2b7e14c2-e832-4bb0-a4e9-4508cbb9af41}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Resource Files\Scene">
+      <UniqueIdentifier>{571e15e2-420a-4ea9-9aa4-357da8941f9f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Shaders\shader_1">
+      <UniqueIdentifier>{cfcb6c70-c0b3-4748-bc63-24df0cba4be9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -61,7 +64,7 @@
       <Filter>Source Files\N</Filter>
     </ClCompile>
     <ClCompile Include="Scene.cpp">
-      <Filter>Source Files\Scene</Filter>
+      <Filter>Source Files\Resource Files\Scene</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -93,7 +96,7 @@
       <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </ClInclude>
     <ClInclude Include="Scene.h">
-      <Filter>Source Files\Scene</Filter>
+      <Filter>Source Files\Resource Files\Scene</Filter>
     </ClInclude>
     <ClInclude Include="WinProcess.h">
       <Filter>Source Files\N</Filter>
@@ -107,10 +110,16 @@
       <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </None>
     <None Include="vertex_0.glsl">
-      <Filter>Source Files\Scene\Shaders\shader_0</Filter>
+      <Filter>Source Files\Shaders\shader_0</Filter>
     </None>
     <None Include="fragment_0.glsl">
-      <Filter>Source Files\Scene\Shaders\shader_0</Filter>
+      <Filter>Source Files\Shaders\shader_0</Filter>
+    </None>
+    <None Include="vertex_1.glsl">
+      <Filter>Source Files\Shaders\shader_1</Filter>
+    </None>
+    <None Include="fragment_1.glsl">
+      <Filter>Source Files\Shaders\shader_1</Filter>
     </None>
   </ItemGroup>
 </Project>
