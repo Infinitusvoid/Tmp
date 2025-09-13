@@ -263,7 +263,7 @@ struct Program
 
 	
 
-	void write_commands_using_scene(Scene_::Scene& scene, const std::string& filepath) const
+	void configure(Scene_::Scene& scene) const
 	{
 		
 		// ----- render / display settings -----
@@ -308,40 +308,17 @@ struct Program
 		scene.set_le_msaaSamples(le.msaaSamples);
 
 
-		// ----- Shader 0 -----
-		{
-			Program::Shader sh(scene, 1);
-			
-			auto inst_id = sh.create_instance();
-			sh.instance(inst_id)
-				.set_group_size(1000, 1000, 1)
-				.set_drawcalls(4)
-				.set_position_start(0.0f, 0.0f, 0.0f)
-				.set_position_end(0.0f, 0.0f, 0.0f)
-				.set_euler_start(0.0f, 0.0f, 0.0f)
-				.set_euler_end(0.0f, 0.0f, 0.0f)
-				.set_scale_start(1.0f, 1.0f, 1.0f)
-				.set_scale_end(1.0f, 1.0f, 1.0f);
-
-			// start uniforms (u0..u9) = 0.0, 0.1, ..., 0.9
-			constexpr int kU = 10;
-			for (int u = 0; u < kU; ++u)
-			{
-				const float v_start = 0.1f * static_cast<float>(u);
-				const float v_end = 1.0f - 0.1f * static_cast<float>(u);
-				sh.instance(inst_id).set_u_start_end(u, v_start, v_end);
-			}
-		}
-
-
-		// optional: print to verify
-		// scene.print();
-		Scene_::save(scene, filepath);
+		
 
 	}
 };
 
 
+template<class Fn>
+void add_shader(Scene_::Scene& scene, int index, Fn&& fn) {
+	Program::Shader sh(scene, index);
+	std::invoke(std::forward<Fn>(fn), sh);
+}
 
 
 int main(int argc, char* argv[])
@@ -361,7 +338,94 @@ int main(int argc, char* argv[])
 	std::string filepath = folder_output_commands + "commands.txt";
 	{
 		Program program;
-		program.write_commands_using_scene(scene, filepath);
+		program.configure(scene);
+
+
+		// ----- Shader 0 -----
+		//{
+		//	Program::Shader sh(scene, 1);
+
+		//	auto inst_id = sh.create_instance();
+		//	sh.instance(inst_id)
+		//		.set_group_size(1000, 1000, 1)
+		//		.set_drawcalls(4)
+		//		.set_position_start(0.0f, 0.0f, 0.0f)
+		//		.set_position_end(0.0f, 0.0f, 0.0f)
+		//		.set_euler_start(0.0f, 0.0f, 0.0f)
+		//		.set_euler_end(0.0f, 0.0f, 0.0f)
+		//		.set_scale_start(1.0f, 1.0f, 1.0f)
+		//		.set_scale_end(1.0f, 1.0f, 1.0f);
+
+		//	// start uniforms (u0..u9) = 0.0, 0.1, ..., 0.9
+		//	constexpr int kU = 10;
+		//	for (int u = 0; u < kU; ++u)
+		//	{
+		//		const float v_start = 0.1f * static_cast<float>(u);
+		//		const float v_end = 1.0f - 0.1f * static_cast<float>(u);
+		//		sh.instance(inst_id).set_u_start_end(u, v_start, v_end);
+		//	}
+		//}
+
+		{
+			add_shader(scene, 1, [](Program::Shader& sh) {
+					
+					{
+					auto id = sh.create_instance();
+					auto I = sh.instance(id);
+					I.set_group_size(1000, 1000, 1)
+						.set_drawcalls(4)
+						.set_position_start(0.0f, 0.0f, 0.0f)
+						.set_position_end(0.0f, 0.0f, 0.0f)
+						.set_euler_start(0.0f, 0.0f, 0.0f)
+						.set_euler_end(0.0f, 0.0f, 0.0f)
+						.set_scale_start(1.0f, 1.0f, 1.0f)
+						.set_scale_end(1.0f, 1.0f, 1.0f);
+
+
+					constexpr int kU = 10;
+					for (int u = 0; u < kU; ++u)
+					{
+						const float v_start = 0.1f * static_cast<float>(u);
+						const float v_end = 1.0f - 0.1f * static_cast<float>(u);
+						I.set_u_start_end(u, v_start, v_end);
+					}
+					}
+
+					{
+
+						auto id = sh.create_instance();
+						auto I = sh.instance(id);
+						I.set_group_size(1000, 1000, 1)
+							.set_drawcalls(4)
+							.set_position_start(10.0f, 0.0f, 0.0f)
+							.set_position_end(10.0f, 0.0f, 0.0f)
+							.set_euler_start(0.0f, 0.0f, 0.0f)
+							.set_euler_end(0.0f, 0.0f, 0.0f)
+							.set_scale_start(1.0f, 1.0f, 1.0f)
+							.set_scale_end(1.0f, 1.0f, 1.0f);
+
+
+						constexpr int kU = 10;
+						for (int u = 0; u < kU; ++u)
+						{
+							const float v_start = 0.1f * static_cast<float>(u);
+							const float v_end = 1.0f - 0.1f * static_cast<float>(u);
+							I.set_u_start_end(u, v_start, v_end);
+						}
+
+					}
+					
+
+				});
+
+				
+
+		}
+
+
+		// optional: print to verify
+		// scene.print();
+		Scene_::save(scene, filepath);
 	}
 	
 
