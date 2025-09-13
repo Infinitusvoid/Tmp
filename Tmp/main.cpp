@@ -40,10 +40,7 @@ private:
     const std::string filepath = "C:/Users/Cosmos/Documents/GitHub/Tmp/Tmp/";
 };
 
-
-
 ShadersFilepath shaders;
-
 
 struct Video
 {
@@ -64,7 +61,6 @@ struct Video
         return job.run();
     }
 };
-
 
 struct Camera
 {
@@ -127,7 +123,7 @@ void write_commands_using_scene(Camera camera_start, Camera camera_end)
     scene.set_render_time_start(0.0f);
 
     // ----- capture -----
-    scene.set_capture(false);
+    scene.set_capture(true);
     scene.set_capture_png(true);
     scene.set_capture_bmp(false);
 
@@ -253,7 +249,9 @@ int main(int argc, char* argv[])
     }
     
     
-
+    {
+        Video::generate();
+    }
     
 
     return 0;
