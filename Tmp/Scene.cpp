@@ -1856,7 +1856,7 @@ namespace Scene_
 
 	}
 
-	Scene load_commmands_no_argument()
+	Scene load_commands_no_argument()
 	{
 
 		const std::string filepath = "commands.txt";
@@ -1864,7 +1864,7 @@ namespace Scene_
 		// 1) Try to load existing file
 		if (auto scene = Scene_::load(filepath)) {
 			std::cout << "commands.txt loaded\n";
-			return std::move(*scene); // or just: return *scene;
+			return *scene; // or just: return *scene;
 		}
 
 
@@ -1922,7 +1922,7 @@ le.msaaSamples 4
 
 
 // Shader 0
-shader.add "shader_vertex.glsl" "shader_fragment.glsl"
+shader.add "tmp/default_shaders/vertex_shader.glsl" "tmp/default_shaders/fragment_shader.glsl"
 
 # (Optional) override a path later
 # shader.vertex 0 shaders/experiment_vs.glsl
@@ -2065,7 +2065,7 @@ shader.instance.end.u   0 0 9 0.100000
 		// 3) Load the freshly written defaults
 		if (auto scene2 = Scene_::load(filepath)) {
 			std::cout << "commands.txt created with defaults\n";
-			return std::move(*scene2);
+			return *scene2;
 		}
 
 		// 4) Still failing -> surface a clear error
@@ -2093,7 +2093,7 @@ shader.instance.end.u   0 0 9 0.100000
 		{
 			std::cout << "no arguments\n";
 			// load commands.txt
-			Scene_::Scene scene = load_commmands_no_argument();
+			Scene_::Scene scene = load_commands_no_argument();
 
 			// std::cout << "start fov : " << scene.get_camera_start_fov() << "\n";
 
