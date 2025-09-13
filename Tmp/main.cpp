@@ -16,28 +16,22 @@ const std::string folder_output_frames = folder_ouput + "frames/";
 const std::string folder_output_commands = folder_ouput + "commands/";
 
 
-
 struct ShadersFilepath
 {
-    ShadersFilepath()
-    {
-
+public:
+    // No instances needed; call statically.
+    static std::string vertex(int index) {
+        return base + "vertex_" + std::to_string(index) + ".glsl";
     }
 
-
-    std::string get_vertex(int index)
-    {
-        return ShadersFilepath::filepath + "vertex_" + std::to_string(index) + std::string(".glsl");
+    static std::string fragment(int index) {
+        return base + "fragment_" + std::to_string(index) + ".glsl";
     }
-
-    std::string get_freagment(int index)
-    {
-        return ShadersFilepath::filepath + "fragment_" + std::to_string(index) + std::string(".glsl");
-    }
-
 
 private:
-    const std::string filepath = "C:/Users/Cosmos/Documents/GitHub/Tmp/Tmp/";
+    // Compile-time base folder (note the trailing backslash).
+    inline static const std::string base = R"(C:\Users\Cosmos\Documents\GitHub\Tmp\Tmp\)";
+
 };
 
 ShadersFilepath shaders;
@@ -111,6 +105,196 @@ struct Camera
 
 };
 
+/*
+struct Shader
+{
+    Shader(Scene_::Scene& scene, int source_index)
+    {
+        std::string vs = ShadersFilepath::vertex(source_index);
+        std::string fs = ShadersFilepath::fragment(source_index);
+
+        shader_id = scene.add_shader(vs, fs);
+
+        // sanity: you can rely on the returned index instead of assuming 0
+        assert(scene.has_shader(shader_id));
+    }
+
+    struct Instance
+    {
+        Instance(size_t set_id, size_t shader_id_set) :
+            instance_id{set_id},
+            shader_id{shader_id_set}
+        {
+
+        }
+
+        ~Instance()
+        {
+
+        }
+
+        void set_group_size(int num_x, int num_y, int num_z)
+        {
+
+        }
+
+        void set_position_start(Scene_::Scene& scene, float x, float y, float z)
+        {
+            assert(scene.set_instance_position_start(shader_id, instance_id, 0.0f, 0.0f, 0.0f));
+        }
+
+        void set_position_end(float x, float y, float z)
+        {
+
+        }
+
+        void set_euler_start(float x, float y, float z)
+        {
+
+        }
+
+        void set_euler_end(float x, float y, float z)
+        {
+
+        }
+
+        void set_scale_start(float x, float y, float z)
+        {
+
+        }
+
+        void set_scale_end(float x, float y, float z)
+        {
+
+        }
+
+        void set_u_start_end(int index, float u_start, float u_end)
+        {
+
+        }
+
+    private:
+        size_t instance_id;
+        size_t shader_id;
+    };
+    
+
+    const Instance& instance(size_t id)
+    {
+        return instances.at(id);
+    }
+
+    size_t create_instance(Scene_::Scene& scene)
+    {
+        size_t id = scene.add_instance(shader_id);
+        instances.emplace_back(Instance(id, shader_id));
+        return id;
+    }
+
+private:
+    std::vector<Instance> instances;
+    size_t shader_id = 0;
+};
+*/
+
+
+
+
+
+struct Shader
+{
+    using ShaderId = std::size_t;
+    using InstanceId = std::size_t;
+
+    explicit Shader(Scene_::Scene& scene, int source_index)
+        : scene_{ &scene }
+        , shader_id_{ scene.add_shader(ShadersFilepath::vertex(source_index),
+                                       ShadersFilepath::fragment(source_index)) }
+    {
+        assert(scene_->has_shader(shader_id_));
+    }
+
+    Shader(const Shader&) = delete;
+    Shader& operator=(const Shader&) = delete;
+    Shader(Shader&&) = default;
+    Shader& operator=(Shader&&) = default;
+
+    // ---- Thin, stateless handle that carries BOTH IDs -------------------------
+    class Instance {
+    public:
+        Instance(Scene_::Scene& scene, ShaderId sh, InstanceId inst)
+            : scene_{ &scene }, shader_id_{ sh }, id_{ inst } {
+        }
+
+        [[nodiscard]] InstanceId id() const noexcept { return id_; }
+        [[nodiscard]] ShaderId   shader_id() const noexcept { return shader_id_; }
+
+        // Chainable const setters (mutate Scene via both ids)
+        const Instance& set_group_size(int x, int y, int z) const {
+            scene_->set_instance_group_size(shader_id_, id_, x, y, z);
+            return *this;
+        }
+        const Instance& set_position_start(float x, float y, float z) const {
+            scene_->set_instance_position_start(shader_id_, id_, x, y, z);
+            return *this;
+        }
+        const Instance& set_position_end(float x, float y, float z) const {
+            scene_->set_instance_position_end(shader_id_, id_, x, y, z);
+            return *this;
+        }
+        const Instance& set_euler_start(float x, float y, float z) const {
+            scene_->set_instance_euler_start(shader_id_, id_, x, y, z);
+            return *this;
+        }
+        const Instance& set_euler_end(float x, float y, float z) const {
+            scene_->set_instance_euler_end(shader_id_, id_, x, y, z);
+            return *this;
+        }
+        const Instance& set_scale_start(float x, float y, float z) const {
+            scene_->set_instance_scale_start(shader_id_, id_, x, y, z);
+            return *this;
+        }
+        const Instance& set_scale_end(float x, float y, float z) const {
+            scene_->set_instance_scale_end(shader_id_, id_, x, y, z);
+            return *this;
+        }
+        const Instance& set_u_start_end(int idx, float u_start, float u_end) const
+        {
+            // adjust the bound if you expose more than 10 uniforms
+            assert(idx >= 0 && idx < 10);
+            scene_->set_instance_uniform_start(shader_id_, id_, idx, u_start);
+            scene_->set_instance_uniform_end(shader_id_, id_, idx, u_end);
+            return *this;
+        }
+
+    private:
+        Scene_::Scene* scene_;
+        ShaderId       shader_id_;
+        InstanceId     id_;
+    };
+    // ---------------------------------------------------------------------------
+
+    // Create -> returns the new instance id (sequential, never deleted)
+    [[nodiscard]] InstanceId create_instance() {
+        return scene_->add_instance(shader_id_);
+    }
+
+    // Cheap by-value handle (no lifetime issues)
+    [[nodiscard]] Instance instance(InstanceId id) const {
+        // Optional: assert(Scene has this (shader_id_, id)) if you expose it
+        return Instance(*scene_, shader_id_, id);
+    }
+
+    [[nodiscard]] ShaderId id() const noexcept { return shader_id_; }
+
+private:
+    Scene_::Scene* scene_;
+    const ShaderId  shader_id_;
+};
+
+
+
+
 void write_commands_using_scene(Camera camera_start, Camera camera_end)
 {
     Scene_::Scene scene = Scene_::Scene();
@@ -123,7 +307,7 @@ void write_commands_using_scene(Camera camera_start, Camera camera_end)
     scene.set_render_time_start(0.0f);
 
     // ----- capture -----
-    scene.set_capture(true);
+    scene.set_capture(false);
     scene.set_capture_png(true);
     scene.set_capture_bmp(false);
 
@@ -159,8 +343,10 @@ void write_commands_using_scene(Camera camera_start, Camera camera_end)
 
     // ----- Shader 0 -----
     {
-        std::string vs = shaders.get_vertex(1);
-        std::string fs = shaders.get_freagment(1);
+        
+
+        std::string vs = ShadersFilepath::vertex(1);
+        std::string fs = ShadersFilepath::fragment(1);
 
         const size_t shader0 = scene.add_shader(vs, fs);
 
@@ -250,7 +436,7 @@ int main(int argc, char* argv[])
     
     
     {
-        Video::generate();
+        // Video::generate();
     }
     
 
