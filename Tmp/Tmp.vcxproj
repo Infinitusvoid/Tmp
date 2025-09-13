@@ -153,6 +153,7 @@
     <ClInclude Include="CppCommponents\Search_BreadthFirst_2d.h" />
     <ClInclude Include="CppCommponents\TempleteUtils.h" />
     <ClInclude Include="Scene.h" />
+    <ClInclude Include="WinProcess.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="CppCommponents\README.md" />

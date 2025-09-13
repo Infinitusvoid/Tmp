@@ -9,18 +9,24 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
-    <Filter Include="Resource Files\CppCommponents">
-      <UniqueIdentifier>{4f58d23c-5c63-4eae-a43e-4e08a25f2b45}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\N">
       <UniqueIdentifier>{51f14807-882f-420f-89b9-8161729e6b0c}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files\Scene">
       <UniqueIdentifier>{571e15e2-420a-4ea9-9aa4-357da8941f9f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\Resource Files\CppCommponents">
+      <UniqueIdentifier>{4f58d23c-5c63-4eae-a43e-4e08a25f2b45}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="glsl_shaders">
+      <UniqueIdentifier>{b562be7d-4427-4c7f-9b2d-f6c54c57c297}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Scene\Shaders">
+      <UniqueIdentifier>{71fd69e9-7120-40ee-9891-0e717c2b3a22}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -28,22 +34,22 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CppCommponents\File.cpp">
-      <Filter>Resource Files\CppCommponents</Filter>
+      <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </ClCompile>
     <ClCompile Include="CppCommponents\Folder.cpp">
-      <Filter>Resource Files\CppCommponents</Filter>
+      <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </ClCompile>
     <ClCompile Include="CppCommponents\ImageRGBA.cpp">
-      <Filter>Resource Files\CppCommponents</Filter>
+      <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </ClCompile>
     <ClCompile Include="CppCommponents\NameGenerators.cpp">
-      <Filter>Resource Files\CppCommponents</Filter>
+      <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </ClCompile>
     <ClCompile Include="CppCommponents\Rectangle2d.cpp">
-      <Filter>Resource Files\CppCommponents</Filter>
+      <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </ClCompile>
     <ClCompile Include="CppCommponents\Search_BreadthFirst_2d.cpp">
-      <Filter>Resource Files\CppCommponents</Filter>
+      <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </ClCompile>
     <ClCompile Include="MaybeUsfullInFuture.cpp">
       <Filter>Source Files\N</Filter>
@@ -57,39 +63,42 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CppCommponents\File.h">
-      <Filter>Resource Files\CppCommponents</Filter>
+      <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </ClInclude>
     <ClInclude Include="CppCommponents\Folder.h">
-      <Filter>Resource Files\CppCommponents</Filter>
+      <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </ClInclude>
     <ClInclude Include="CppCommponents\ImageRGBA.h">
-      <Filter>Resource Files\CppCommponents</Filter>
+      <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </ClInclude>
     <ClInclude Include="CppCommponents\json.h">
-      <Filter>Resource Files\CppCommponents</Filter>
+      <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </ClInclude>
     <ClInclude Include="CppCommponents\NameGenerators.h">
-      <Filter>Resource Files\CppCommponents</Filter>
+      <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </ClInclude>
     <ClInclude Include="CppCommponents\Random.h">
-      <Filter>Resource Files\CppCommponents</Filter>
+      <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </ClInclude>
     <ClInclude Include="CppCommponents\Rectangle2d.h">
-      <Filter>Resource Files\CppCommponents</Filter>
+      <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </ClInclude>
     <ClInclude Include="CppCommponents\Search_BreadthFirst_2d.h">
-      <Filter>Resource Files\CppCommponents</Filter>
+      <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </ClInclude>
     <ClInclude Include="CppCommponents\TempleteUtils.h">
-      <Filter>Resource Files\CppCommponents</Filter>
+      <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </ClInclude>
     <ClInclude Include="Scene.h">
       <Filter>Source Files\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="WinProcess.h">
+      <Filter>Source Files\N</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="CppCommponents\README.md">
-      <Filter>Resource Files\CppCommponents</Filter>
+      <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </None>
   </ItemGroup>
 </Project>
