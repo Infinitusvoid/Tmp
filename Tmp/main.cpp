@@ -58,8 +58,17 @@ struct Video
 
 
 
+static void run_program(const std::string& name)
+{
+	std::string cmd = std::string("LightPainting.exe") + std::string(" ") + folder_output_commands + std::string(name) + std::string(" ") + std::string(folder_output_frames);
+	int exitCode = std::system(cmd.c_str());
+}
 
-
+static void save_program(Scene_::Scene& scene, const std::string& name)
+{
+	std::string filepath = folder_output_commands + name;
+	Scene_::save(scene, filepath);
+}
 
 
 
@@ -335,7 +344,9 @@ int main(int argc, char* argv[])
 
 	Scene_::Scene scene = Scene_::Scene();
 
-	std::string filepath = folder_output_commands + "commands.txt";
+	
+	std::string program_name = "commands_new_name_n.txt";
+
 	{
 		Program program;
 		
@@ -485,20 +496,14 @@ int main(int argc, char* argv[])
 
 		// optional: print to verify
 		// scene.print();
-		Scene_::save(scene, filepath);
+		save_program(scene, program_name);
 	}
 
 
 
 	if (true)
 	{
-		// Example: run "C:\Tools\my app\tool.exe" --mode test "C:\path with spaces\file.txt"
-		std::string cmd = std::string("LightPainting.exe") + std::string(" ") + folder_output_commands + std::string("commands.txt") + std::string(" ") + std::string(folder_output_frames);
-		// R"("LightPainting.exe"";      // quote the exe path
-		// " " + folder_output_commands + "commands.txt)";
-		// R"("C:\path with spaces\file.txt")"; // quote args with spaces
-
-		int exitCode = std::system(cmd.c_str());
+		run_program(program_name);
 	}
 
 
