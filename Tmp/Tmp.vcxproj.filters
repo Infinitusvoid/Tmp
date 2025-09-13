@@ -28,6 +28,9 @@
     <Filter Include="Source Files\Scene\Shaders">
       <UniqueIdentifier>{71fd69e9-7120-40ee-9891-0e717c2b3a22}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Scene\Shaders\shader_0">
+      <UniqueIdentifier>{2b7e14c2-e832-4bb0-a4e9-4508cbb9af41}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -95,10 +98,19 @@
     <ClInclude Include="WinProcess.h">
       <Filter>Source Files\N</Filter>
     </ClInclude>
+    <ClInclude Include="Utils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="CppCommponents\README.md">
       <Filter>Source Files\Resource Files\CppCommponents</Filter>
+    </None>
+    <None Include="vertex_0.glsl">
+      <Filter>Source Files\Scene\Shaders\shader_0</Filter>
+    </None>
+    <None Include="fragment_0.glsl">
+      <Filter>Source Files\Scene\Shaders\shader_0</Filter>
     </None>
   </ItemGroup>
 </Project>
