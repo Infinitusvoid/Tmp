@@ -19,6 +19,9 @@
     <Filter Include="Source Files\N">
       <UniqueIdentifier>{51f14807-882f-420f-89b9-8161729e6b0c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Scene">
+      <UniqueIdentifier>{571e15e2-420a-4ea9-9aa4-357da8941f9f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -48,6 +51,9 @@
     <ClCompile Include="Float1024.cpp">
       <Filter>Source Files\N</Filter>
     </ClCompile>
+    <ClCompile Include="Scene.cpp">
+      <Filter>Source Files\Scene</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CppCommponents\File.h">
@@ -76,6 +82,9 @@
     </ClInclude>
     <ClInclude Include="CppCommponents\TempleteUtils.h">
       <Filter>Resource Files\CppCommponents</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene.h">
+      <Filter>Source Files\Scene</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

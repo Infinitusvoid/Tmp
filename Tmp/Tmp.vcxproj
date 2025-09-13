@@ -140,6 +140,7 @@
     <ClCompile Include="Float1024.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MaybeUsfullInFuture.cpp" />
+    <ClCompile Include="Scene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CppCommponents\File.h" />
@@ -151,6 +152,7 @@
     <ClInclude Include="CppCommponents\Rectangle2d.h" />
     <ClInclude Include="CppCommponents\Search_BreadthFirst_2d.h" />
     <ClInclude Include="CppCommponents\TempleteUtils.h" />
+    <ClInclude Include="Scene.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="CppCommponents\README.md" />
