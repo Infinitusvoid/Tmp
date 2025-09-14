@@ -72,7 +72,7 @@ struct Video
 
 static void run_program(const std::string& name)
 {
-	std::string cmd = std::string("LightPainting.exe") + std::string(" ") + folder_output_commands + std::string(name) + std::string(" ") + std::string(folder_output_frames);
+	std::string cmd = std::string("LightPainting_v_0_1_1.exe") + std::string(" ") + folder_output_commands + std::string(name) + std::string(" ") + std::string(folder_output_frames);
 	int exitCode = std::system(cmd.c_str());
 }
 
