@@ -227,6 +227,9 @@ void main()
     uint s_1 = uSeed + uint(id + 42);
     float rnd_y = rand01(s_1);
 
+    uint s_2 = uSeed + uint(id + 100);
+    float rnd_z = rand01(s_1);
+
     float px = rnd_x;
     float py = rnd_y;
     float pz = 0.0;
@@ -239,9 +242,9 @@ void main()
     float factor_y = 0.1 * sin(rnd_y * TAU * 10.0);
     float factor_x_multipled_y = abs(sin((factor_x * factor_y) * 100.0 + uTime * 2.0));
 
-    radius += factor_x;
-    radius += factor_y;
-    radius += factor_x_multipled_y;
+    radius += sin(factor_x);
+    radius += sin(factor_y);
+    radius += sin(sin(factor_x * 100.0) * cos(factor_y * 100.0) + uTime + rnd_z * 10.0);
 
     vec3 sphere_position = spherical01(radius, rnd_x, rnd_y);
     px = sphere_position.x;
@@ -249,7 +252,8 @@ void main()
     pz = sphere_position.z;
 
 
-
+    px += 4.0 * sin(uTime);
+    py += 4.0 * cos(uTime);
 
 
     float scale_cube = 0.01 * 0.7 * 2.0 * 2.0 * 2.0 * 0.4 * 0.1;
@@ -264,7 +268,7 @@ void main()
     vec3 pos = vec3(px, pz, py);
     vec3 scale = vec3(scale_cube, scale_cube, scale_cube);
 
-
+    
 
 
     // The block that stays the same 
