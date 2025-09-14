@@ -67,12 +67,8 @@ void main()
     // Base (very dim albedo so faces aren’t pitch black)
     vec3 base = hue * uBase;
 
-    
-
     // Emissive HDR glow (this is what bloom picks up!)
     vec3 emissive = hue * glowMask * uGlowStrength;
-
-    
 
     vec3 color = base + emissive;  // HDR
     FragColor = vec4(color * color_vs, 1.0);

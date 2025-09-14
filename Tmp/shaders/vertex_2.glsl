@@ -233,22 +233,30 @@ void main()
 
 
     // --- SPHERE CALCULATION ---
-    float radius = 2.0;
+    float radius = 4.0;
+
+    float factor_x = 0.1 * sin(rnd_x * TAU * 10.0);
+    float factor_y = 0.1 * sin(rnd_y * TAU * 10.0);
+    float factor_x_multipled_y = abs(sin((factor_x * factor_y) * 100.0 + uTime * 2.0));
+
+    radius += factor_x;
+    radius += factor_y;
+    radius += factor_x_multipled_y;
 
     vec3 sphere_position = spherical01(radius, rnd_x, rnd_y);
     px = sphere_position.x;
     py = sphere_position.y;
     pz = sphere_position.z;
 
-
+    
 
 
 
     float scale_cube = 0.01 * 0.7 * 2.0 * 2.0 * 2.0 * 0.4 * 0.1;
 
     // 312312
-    float color_r = 0.2;
-    float color_g = 0.2;
+    float color_r = 0.2 + 2.0 * factor_x;
+    float color_g = 0.2 + 2.0 * factor_y;
     float color_b = 0.2;
 
     // Prepering data for the next block

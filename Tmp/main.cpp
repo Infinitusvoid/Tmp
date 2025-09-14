@@ -175,6 +175,31 @@ int main(int argc, char* argv[])
 
 				}
 
+				// Instance 2
+				/*{
+
+					auto id = sh.create_instance();
+					auto I = sh.instance(id);
+					I.set_group_size(1000, 1000, 1)
+						.set_drawcalls(4)
+						.set_position_start(10.0f, 20.0f, 10.0f)
+						.set_position_end(10.0f, 10.0f, 10.0f)
+						.set_euler_start(0.0f, 0.0f, 0.0f)
+						.set_euler_end(0.0f, 0.0f, 0.0f)
+						.set_scale_start(1.0f, 1.0f, 1.0f)
+						.set_scale_end(1.0f, 1.0f, 1.0f);
+
+
+					constexpr int kU = 10;
+					for (int u = 0; u < kU; ++u)
+					{
+						const float v_start = 0.1f * static_cast<float>(u);
+						const float v_end = 1.0f - 0.1f * static_cast<float>(u);
+						I.set_u_start_end(u, v_start, v_end);
+					}
+
+				}*/
+
 
 				});
 		}

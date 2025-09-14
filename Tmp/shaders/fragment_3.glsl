@@ -21,6 +21,12 @@ const float PI = 3.14159265359;
 
 in vec3 color_vs;
 
+
+// lighting
+in vec3 vWorldPos;
+in vec3 vCubeLocalPos;     // just aPos
+flat in mat3 vNormalMat;   // normal matrix
+
 // Little color palette (Inigo Quilez style)
 vec3 palette(float t) {
     vec3 a = vec3(0.55, 0.45, 0.60);
@@ -33,6 +39,13 @@ vec3 palette(float t) {
 // Gaussian helper (for soft peaks)
 float gauss(float x, float s) {
     return exp(-(x * x) / (2.0 * s * s));
+}
+
+vec3 faceNormalLocal(vec3 p) {
+    vec3 ap = abs(p);
+    if (ap.x >= ap.y && ap.x >= ap.z) return vec3(sign(p.x), 0, 0);
+    if (ap.y >= ap.z)               return vec3(0, sign(p.y), 0);
+    return                            vec3(0, 0, sign(p.z));
 }
 
 void main()
@@ -70,7 +83,15 @@ void main()
     // Emissive HDR glow (this is what bloom picks up!)
     vec3 emissive = hue * glowMask * uGlowStrength;
 
+
+    vec3 N = normalize(vNormalMat * faceNormalLocal(vCubeLocalPos));
+    // vec3 N = normalize(cross(dFdx(vWorldPos), dFdy(vWorldPos)));
+
     vec3 color = base + emissive;  // HDR
+
+
+    color *= N;
+
     FragColor = vec4(color * color_vs, 1.0);
 }
 
