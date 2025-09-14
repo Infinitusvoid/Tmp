@@ -72,7 +72,9 @@ void main()
 {
     int id = gl_InstanceID;
     const int number_per_dimension = 1000;
-    id += (number_per_dimension * number_per_dimension) * int(uDrawcallNumber);
+    id =  id + (number_per_dimension * number_per_dimension) * int(uDrawcallNumber);
+
+
 
     // Per-instance randomness
     uint s0 = uSeed + uint(id + 0);
@@ -92,19 +94,121 @@ void main()
 
 
     // Position on sphere
-    float radius = 1.0 + 0.2 * sin(rnd_x * TAU * 10.0) + 0.001 * sin(rnd_y * 100 * TAU + uTime * 1.0);
+
+
+
+    float radius_offset = 0.2 * sin(rnd_x * TAU * 10.0) + 0.02 * sin(rnd_y * 20 * TAU + uTime * 1.0);
+
+
+    float radius = 4.0 + radius_offset;
     vec3 sphere_position = spherical01(radius, rnd_x, rnd_y);
     float px = sphere_position.x;
     float py = sphere_position.y;
     float pz = sphere_position.z;
 
+    if(false)
+    {
+        float nx = py;
+        float ny = px;
+
+        float factor = fract(rnd_cube_rotation_x * 10.2);
+        float inv_factor = 1.0f - factor;
+        px = nx * factor + px * inv_factor;
+        py = ny * factor + py * inv_factor;
+    }
+
+    
+    
+
     // Instance transform (tiny cubes, uniform scale)
-    float scale_cube = 0.01 * 0.7 * 2.0 * 2.0 * 2.0 * 0.4 * 0.1;
+    float scale_cube = 0.01 * 0.7 * 2.0 * 2.0 * 2.0 * 0.4 * 0.27 + 0.1 * radius_offset;
     vec3  pos = vec3(px, pz, py);
     vec3  scale = vec3(scale_cube);
 
+    
+
+
+
+
+    float x = float(id / 1000);
+    float y = float(id % 1000) * 0.01;
+    float z = float(id) * 0.1;
+
+
+    uint s0n = uSeed + uint(id + 10);
+    uint s1n = uSeed + uint(id + 142);
+    float rnd_xn = rand01(s0n);
+    float rnd_yn = rand01(s1n);
+    
+    
+    
+
+    // pos.x = x * 0.01;
+    // pos.y = 0.0;
+    // pos.z = y;
+    // The output color
+
+    float factor_radius_offset = pow(max(0.0, radius_offset), 4.0) * 10.0;
+    
+
+    float color_r = px + sin(radius * 10.0);
+    float color_g = py + factor_radius_offset * 100.0;
+    float color_b = pz;
+
+    color_r *= 0.1;
+    color_g *= 0.1;
+    color_b *= 0.1;
+
+    
+    
+    
+    vec4 new_position = vec4(vec3(pos), 1.0);
+
+    {
+        
+        uint s0_instance_0 = uSeed + uint(uint(u0 * 1000.0f));
+        uint s0_instance_1 = uSeed + uint(uint(u0 * 1421.0f));
+        float rnd_instance_0 = rand01(s0_instance_0);
+        float rnd_instance_1 = rand01(s0_instance_1);
+
+        uint s0_instance_x_scale = uSeed + uint(uint(u0 * 14024.0f));
+        uint s0_instance_y_scale = uSeed + uint(uint(u0 * 15214.0f));
+        uint s0_instance_z_scale = uSeed + uint(uint(u0 * 14215.0f));
+        float rnd_instance_scale_x = rand01(s0_instance_x_scale);
+        float rnd_instance_scale_y = rand01(s0_instance_y_scale);
+        float rnd_instance_scale_z = rand01(s0_instance_z_scale);
+
+
+        vec3 axis = normalize(vec3(1.0, 1.0, 0.0));
+        float angle = uTime;
+        mat3 R3 = axisAngleToMat3(axis, angle);
+        mat4 R = mat4(vec4(R3[0], 0.0), vec4(R3[1], 0.0), vec4(R3[2], 0.0), vec4(0, 0, 0, 1));
+
+
+        
+        mat4 T = mat4(1.0);
+
+        vec3 offset = vec3(sin(uTime + rnd_instance_0 * 10.0) * 10.0, sin(uTime + rnd_instance_1 * 0.0) * 10.0, 0.0);
+        T[3] = vec4(offset, 1.0);
+
+
+        mat4 S = mat4(1.0);
+        S[0][0] = 1.0;
+        S[1][1] = 1.0;
+        S[2][2] = 2.0 + 1.0 * sin(uTime + rnd_instance_scale_z * 10.0);
+
+        new_position =  T * R * S * new_position;
+    }
+    
+    
+
+    pos = new_position.xyz;
+
+
+
+
     // Per-instance tint (kept neutral here)
-    color_vs = vec3(0.2, 0.2, 0.2);
+    color_vs = vec3(color_r, color_g, color_b);
 
     // Build TRS
     mat4 T = mat4(1.0); T[3] = vec4(pos, 1.0);
@@ -132,6 +236,14 @@ void main()
     // Clip-space position and UV
     gl_Position = projection * view * wp;
     TexCoord = aTexCoord;
+
+
+    // World position color
+
+    // float world_x = wp.x;
+    // float world_y = wp.y;
+    // float world_z = wp.z;
+    // color_vs = vec3(sin(world_x * 10.0), sin(world_y * 10.0), sin(world_z * 10.0));
 }
 
 

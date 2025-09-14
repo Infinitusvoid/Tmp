@@ -89,7 +89,7 @@ void main()
     // ---- SPOT factor: make lighting follow camera *direction*, not just position
     // Inner/outer cone (degrees) -> cosine space
     const float spotInnerDeg = 18.0;
-    const float spotOuterDeg = 26.0 * 1.7;
+    const float spotOuterDeg = 26.0 * 2.0;
     float cosInner = cos(radians(spotInnerDeg));
     float cosOuter = cos(radians(spotOuterDeg));
 
@@ -107,7 +107,7 @@ void main()
     const float kDiff = 1.40;
     const float kSpec = 0.50;
     const float kPow = 64.0;
-    const float kInvSq = 0.12;
+    const float kInvSq = 0.12 * 2.0;
 
     // Attenuation + spotlight cone
     float atten = (1.0 / (1.0 + kInvSq * d2)) * spot;
@@ -129,7 +129,7 @@ void main()
     base = vec3(0.0);
     //emissive = vec3(0.0);
 
-    
+    lighting *= 100.0;
 
     // lighting = pow(lighting, vec3(4.0));
     //lighting *= 100.0;

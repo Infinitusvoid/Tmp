@@ -18,31 +18,35 @@ int universe(int argc, char* argv[])
 		// program.le.exposure = 4.0;
 		program.le.brightness = 0.0;
 
-		program.capture.capture = false;
+		program.capture.capture = true;
 
-		// CAPTURED: { pos: [-10.521732, -9.406315, 44.638687] , yaw : 24.840000, pitch : 23.040001, fov : 45.000000 }
+		// CAPTURED: { pos: [-142.341278, 171.578140, 448.985260] , yaw : 80.639992, pitch : 19.440002, fov : 45.000000 }
 
-		program.camera_start.x = -10.521732f;
-		program.camera_start.y = -9.406315f;
-		program.camera_start.z = 44.638687f;
+		program.camera_start.x = -142.341278f;
+		program.camera_start.y = 171.578140f;
+		program.camera_start.z = 448.985260f;
 
-		program.camera_start.yaw = 24.840000f;
-		program.camera_start.pitch = 23.040001f;
+		program.camera_start.yaw = 80.639992f;
+		program.camera_start.pitch = 19.440002f;
 
 		program.camera_start.fov = 45.0f;
 
-		// CAPTURED: { pos:[-7.651373,4.471294,134.883682], yaw:13.920000, pitch:3.720003, fov:45.000000 }
+		
 
-		program.camera_end.x = -7.651373f;
-		program.camera_end.y = 4.471294f;
-		program.camera_end.z = 134.883682f;
+		// CAPTURED: { pos: [-15.359919, -13.098754, 52.493931] , yaw : 20.400003, pitch : 16.679998, fov : 45.000000 }
 
-		program.camera_end.yaw = 13.920000f;
-		program.camera_end.pitch = 3.720003f;
+		program.camera_end.x = -15.359919f;
+		program.camera_end.y = -13.098754f;
+		program.camera_end.z =  52.493931f;
+
+		program.camera_end.yaw = 20.400003f;
+		program.camera_end.pitch = 16.679998f;
 
 		program.camera_end.fov = 45.0f;
 
-
+		program.render_display.number_of_frames = 60 * 4;
+		program.render_display.render_time_start = 60.0 * 4.0 * float(int(0));
+		
 
 		program.configure(scene);
 	}
@@ -59,7 +63,7 @@ int universe(int argc, char* argv[])
 				auto id = sh.create_instance();
 				auto I = sh.instance(id);
 				I.set_group_size(1000, 1000, 1)
-					.set_drawcalls(1)
+					.set_drawcalls(10)
 					.set_position_start(0.0f, 0.0f, 0.0f)
 					.set_position_end(0.0f, 0.0f, 0.0f)
 					.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -75,16 +79,19 @@ int universe(int argc, char* argv[])
 					const float v_end = 1.0f - 0.1f * static_cast<float>(u);
 					I.set_u_start_end(u, v_start, v_end);
 				}
+
+				I.set_u_start_end(0, 72.29710, 72.29710);
 			}
 
 
 			// Instance 1
+			
 			{
 
 				auto id = sh.create_instance();
 				auto I = sh.instance(id);
 				I.set_group_size(1000, 1000, 1)
-					.set_drawcalls(1)
+					.set_drawcalls(10)
 					.set_position_start(10.0f, 0.0f, 0.0f)
 					.set_position_end(10.0f, 0.0f, 0.0f)
 					.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -101,6 +108,7 @@ int universe(int argc, char* argv[])
 					I.set_u_start_end(u, v_start, v_end);
 				}
 
+				I.set_u_start_end(0, 4.237, 4.237);
 			}
 
 
@@ -111,11 +119,12 @@ int universe(int argc, char* argv[])
 
 
 			// Instance 0
+			
 			{
 				auto id = sh.create_instance();
 				auto I = sh.instance(id);
 				I.set_group_size(1000, 1000, 1)
-					.set_drawcalls(1)
+					.set_drawcalls(10)
 					.set_position_start(0.0f, 10.0f, 0.0f)
 					.set_position_end(0.0f, 10.0f, 0.0f)
 					.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -131,10 +140,13 @@ int universe(int argc, char* argv[])
 					const float v_end = 1.0f - 0.1f * static_cast<float>(u);
 					I.set_u_start_end(u, v_start, v_end);
 				}
+
+				I.set_u_start_end(0, 1.427, 1.427);
 			}
 
 
 			// Instance 1
+			
 			{
 
 				auto id = sh.create_instance();
@@ -157,33 +169,11 @@ int universe(int argc, char* argv[])
 					I.set_u_start_end(u, v_start, v_end);
 				}
 
+				I.set_u_start_end(0, 5.497, 5.497);
+
 			}
 
-			// Instance 2
-			/*{
-
-				auto id = sh.create_instance();
-				auto I = sh.instance(id);
-				I.set_group_size(1000, 1000, 1)
-					.set_drawcalls(4)
-					.set_position_start(10.0f, 20.0f, 10.0f)
-					.set_position_end(10.0f, 10.0f, 10.0f)
-					.set_euler_start(0.0f, 0.0f, 0.0f)
-					.set_euler_end(0.0f, 0.0f, 0.0f)
-					.set_scale_start(1.0f, 1.0f, 1.0f)
-					.set_scale_end(1.0f, 1.0f, 1.0f);
-
-
-				constexpr int kU = 10;
-				for (int u = 0; u < kU; ++u)
-				{
-					const float v_start = 0.1f * static_cast<float>(u);
-					const float v_end = 1.0f - 0.1f * static_cast<float>(u);
-					I.set_u_start_end(u, v_start, v_end);
-				}
-
-			}*/
-
+			
 
 			});
 	}
@@ -196,7 +186,7 @@ int universe(int argc, char* argv[])
 		std::string program_name = NameGenerators_::generate_prefix_timestamp_suffix_name();
 		save_program(scene, program_name);
 		run_program(program_name);
-		//Video::generate();
+		Video::generate();
 	}
 
 
