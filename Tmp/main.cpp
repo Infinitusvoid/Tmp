@@ -7,6 +7,8 @@
 
 
 
+
+
 int main(int argc, char* argv[])
 {
 	std::cout << "Tmp\n";
@@ -26,7 +28,7 @@ int main(int argc, char* argv[])
 			Program program;
 
 			program.le.halfLife = 0.02;
-			program.capture.capture = true;
+			program.capture.capture = false;
 
 			// CAPTURED: { pos: [-10.521732, -9.406315, 44.638687] , yaw : 24.840000, pitch : 23.040001, fov : 45.000000 }
 
@@ -179,7 +181,7 @@ int main(int argc, char* argv[])
 			std::string program_name = NameGenerators_::generate_prefix_timestamp_suffix_name();
 			save_program(scene, program_name);
 			run_program(program_name);
-			Video::generate();
+			//Video::generate();
 		}
 
 	}

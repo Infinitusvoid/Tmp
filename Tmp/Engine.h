@@ -33,11 +33,11 @@ struct ShadersFilepath
 public:
 	// No instances needed; call statically.
 	static std::string vertex(int index) {
-		return base + "vertex_" + std::to_string(index) + ".glsl";
+		return base + "shaders/vertex_" + std::to_string(index) + ".glsl";
 	}
 
 	static std::string fragment(int index) {
-		return base + "fragment_" + std::to_string(index) + ".glsl";
+		return base + "shaders/fragment_" + std::to_string(index) + ".glsl";
 	}
 
 private:
