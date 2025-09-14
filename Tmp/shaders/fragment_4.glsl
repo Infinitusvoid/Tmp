@@ -121,8 +121,30 @@ void main()
     vec3 lighting = vec3(kAmb) + atten * (diff + spec);
 
     // ---------------- final color ----------------
-    lighting *= 1000.0;
-    vec3 color = base * lighting + emissive;
+    // lighting *= 100.0;
+    //lighting = vec3(0.0);
+    
+    emissive = vec3(0.0);
+
+    base = vec3(0.0);
+    //emissive = vec3(0.0);
+
+    
+
+    // lighting = pow(lighting, vec3(4.0));
+    //lighting *= 100.0;
+    
+    //emissive *= vec3(0.0);
+    
+    vec3 w_color = color_vs * lighting;
+
+    
+
+
+    // --------------------------------------------.
+    
+
+    vec3 color = base * lighting + emissive + w_color;
     FragColor = vec4(color * color_vs, 1.0);
 }
 

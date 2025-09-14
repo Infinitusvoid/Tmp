@@ -57,14 +57,14 @@
     <ClCompile Include="MaybeUsfullInFuture.cpp">
       <Filter>Source Files\N</Filter>
     </ClCompile>
-    <ClCompile Include="Float1024.cpp">
-      <Filter>Source Files\N</Filter>
-    </ClCompile>
     <ClCompile Include="Scene.cpp">
       <Filter>Source Files\Resource Files\Scene</Filter>
     </ClCompile>
     <ClCompile Include="ShaderWriter.cpp">
       <Filter>Source Files\Shaders\ShaderWriter</Filter>
+    </ClCompile>
+    <ClCompile Include="Float1024.cpp">
+      <Filter>Source Files\Resource Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -104,11 +104,11 @@
     <ClInclude Include="Utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Engine.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="ShaderWriter.h">
       <Filter>Source Files\Shaders\ShaderWriter</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine.h">
+      <Filter>Source Files\Resource Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

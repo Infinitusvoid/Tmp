@@ -36,6 +36,9 @@ int main(int argc, char* argv[])
 			Program program;
 
 			program.le.halfLife = 0.02;
+			// program.le.exposure = 4.0;
+			program.le.brightness = 0.0;
+			
 			program.capture.capture = false;
 
 			// CAPTURED: { pos: [-10.521732, -9.406315, 44.638687] , yaw : 24.840000, pitch : 23.040001, fov : 45.000000 }
@@ -77,7 +80,7 @@ int main(int argc, char* argv[])
 					auto id = sh.create_instance();
 					auto I = sh.instance(id);
 					I.set_group_size(1000, 1000, 1)
-						.set_drawcalls(4)
+						.set_drawcalls(1)
 						.set_position_start(0.0f, 0.0f, 0.0f)
 						.set_position_end(0.0f, 0.0f, 0.0f)
 						.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -102,7 +105,7 @@ int main(int argc, char* argv[])
 					auto id = sh.create_instance();
 					auto I = sh.instance(id);
 					I.set_group_size(1000, 1000, 1)
-						.set_drawcalls(4)
+						.set_drawcalls(1)
 						.set_position_start(10.0f, 0.0f, 0.0f)
 						.set_position_end(10.0f, 0.0f, 0.0f)
 						.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -133,7 +136,7 @@ int main(int argc, char* argv[])
 					auto id = sh.create_instance();
 					auto I = sh.instance(id);
 					I.set_group_size(1000, 1000, 1)
-						.set_drawcalls(4)
+						.set_drawcalls(1)
 						.set_position_start(0.0f, 10.0f, 0.0f)
 						.set_position_end(0.0f, 10.0f, 0.0f)
 						.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -158,7 +161,7 @@ int main(int argc, char* argv[])
 					auto id = sh.create_instance();
 					auto I = sh.instance(id);
 					I.set_group_size(1000, 1000, 1)
-						.set_drawcalls(4)
+						.set_drawcalls(1)
 						.set_position_start(10.0f, 10.0f, 10.0f)
 						.set_position_end(10.0f, 10.0f, 10.0f)
 						.set_euler_start(0.0f, 0.0f, 0.0f)

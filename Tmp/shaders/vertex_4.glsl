@@ -92,19 +92,27 @@ void main()
 
 
     // Position on sphere
-    float radius = 1.0 + 0.2 * sin(rnd_x * TAU * 10.0) + 0.001 * sin(rnd_y * 100 * TAU + uTime * 1.0);
+    float radius = 4.0 + 0.2 * sin(rnd_x * TAU * 10.0) + 0.02 * sin(rnd_y * 20 * TAU + uTime * 1.0);
     vec3 sphere_position = spherical01(radius, rnd_x, rnd_y);
     float px = sphere_position.x;
     float py = sphere_position.y;
     float pz = sphere_position.z;
 
     // Instance transform (tiny cubes, uniform scale)
-    float scale_cube = 0.01 * 0.7 * 2.0 * 2.0 * 2.0 * 0.4 * 0.1;
+    float scale_cube = 0.01 * 0.7 * 2.0 * 2.0 * 2.0 * 0.4;
     vec3  pos = vec3(px, pz, py);
     vec3  scale = vec3(scale_cube);
 
+    pos.y += sin(uTime * 0.1)* 10.0;
+    
+    // The output color
+
+    float color_r = px + sin(radius * 10.0);
+    float color_g = py;
+    float color_b = pz;
+
     // Per-instance tint (kept neutral here)
-    color_vs = vec3(0.2, 0.2, 0.2);
+    color_vs = vec3(color_r, color_g, color_b);
 
     // Build TRS
     mat4 T = mat4(1.0); T[3] = vec4(pos, 1.0);
@@ -132,6 +140,14 @@ void main()
     // Clip-space position and UV
     gl_Position = projection * view * wp;
     TexCoord = aTexCoord;
+
+
+    // World position color
+
+    // float world_x = wp.x;
+    // float world_y = wp.y;
+    // float world_z = wp.z;
+    // color_vs = vec3(sin(world_x * 10.0), sin(world_y * 10.0), sin(world_z * 10.0));
 }
 
 
