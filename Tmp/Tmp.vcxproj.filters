@@ -115,16 +115,16 @@
     <None Include="CppCommponents\README.md">
       <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </None>
-    <None Include="shaders\fragment_2.glsl">
+    <None Include="shaders\fragment_4.glsl">
       <Filter>Source Files\Shaders</Filter>
     </None>
-    <None Include="shaders\vertex_2.glsl">
+    <None Include="shaders\fragment_5.glsl">
       <Filter>Source Files\Shaders</Filter>
     </None>
-    <None Include="shaders\fragment_3.glsl">
+    <None Include="shaders\vertex_4.glsl">
       <Filter>Source Files\Shaders</Filter>
     </None>
-    <None Include="shaders\vertex_3.glsl">
+    <None Include="shaders\vertex_5.glsl">
       <Filter>Source Files\Shaders</Filter>
     </None>
   </ItemGroup>

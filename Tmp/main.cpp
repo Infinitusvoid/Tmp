@@ -15,8 +15,10 @@ int main(int argc, char* argv[])
 	// ShaderWriter shader_writer;
 	// shader_writer.create_new_shader_from_last();
 
+	// ShaderWriter shader_writer;
+	// shader_writer.create_new_from_shader_index(0);
 	
-
+	// return 0;
 	
 
 
@@ -67,7 +69,7 @@ int main(int argc, char* argv[])
 
 		// shaders
 		{
-			add_shader(scene, 2, [](Program::Shader& sh) {
+			add_shader(scene, 4, [](Program::Shader& sh) {
 
 
 				// Instance 0
@@ -123,7 +125,7 @@ int main(int argc, char* argv[])
 				});
 
 
-			add_shader(scene, 3, [](Program::Shader& sh){
+			add_shader(scene, 5, [](Program::Shader& sh){
 
 
 				// Instance 0
