@@ -27,6 +27,18 @@ in vec3 vWorldPos;
 in vec3 vCubeLocalPos;     // just aPos
 flat in mat3 vNormalMat;   // normal matrix
 
+
+// ---- hardcoded lighting knobs (no new uniforms) ----
+const float AMBIENT = 0.08;
+const float LIGHT_INT = 25.0;     // overall brightness of the headlamp
+const float LIGHT_RANGE = 12.0;     // soft cutoff distance (meters-ish)
+const float SPEC_POWER = 32.0;     // shininess
+const float RIM_STRENGTH = 0.18;     // 0..0.4 is nice
+const float RIM_POWER = 2.0;
+const float FOG_DENSITY = 0.00;     // set >0.0 (e.g. 0.02) if you want fog
+const vec3  FOG_COLOR = vec3(0.0);
+const float GAMMA = 2.2;
+
 // Little color palette (Inigo Quilez style)
 vec3 palette(float t) {
     vec3 a = vec3(0.55, 0.45, 0.60);
@@ -78,21 +90,67 @@ void main()
     vec3 hue = palette(r * 1.2 + 0.05 * uTime + ang01 * 0.15);
 
     // Base (very dim albedo so faces aren’t pitch black)
-    vec3 base = hue * uBase;
+    //vec3 base = hue * uBase;
 
-    // Emissive HDR glow (this is what bloom picks up!)
-    vec3 emissive = hue * glowMask * uGlowStrength;
+    //// Emissive HDR glow (this is what bloom picks up!)
+    //vec3 emissive = hue * glowMask * uGlowStrength;
 
 
+    //vec3 N = normalize(vNormalMat * faceNormalLocal(vCubeLocalPos));
+    //// vec3 N = normalize(cross(dFdx(vWorldPos), dFdy(vWorldPos)));
+
+    //vec3 color = base + emissive;  // HDR
+
+
+    //color *= N;
+
+    //FragColor = vec4(color * color_vs, 1.0);
+
+    vec3 albedo = hue * uBase;                 // lit by light
+    vec3 emissive = hue * glowMask * uGlowStrength; // self-lit (bloom source)
+
+    // ---------- Per-pixel normal (analytic cube face) ----------
     vec3 N = normalize(vNormalMat * faceNormalLocal(vCubeLocalPos));
-    // vec3 N = normalize(cross(dFdx(vWorldPos), dFdy(vWorldPos)));
+    // fallback (uncomment if needed): N = normalize(cross(dFdx(vWorldPos), dFdy(vWorldPos)));
 
-    vec3 color = base + emissive;  // HDR
+    // ---------- Camera headlamp (point light at uCameraPos) ----------
+    vec3 Lvec = uCameraPos - vWorldPos;   // from surface to light
+    float d = length(Lvec);
+    vec3 L = (d > 0.0) ? (Lvec / d) : vec3(0.0, 1.0, 0.0);
 
+    // inverse-square with soft cutoff
+    float atten = 1.0 / max(d * d, 1e-6);
+    float s = clamp(1.0 - d / LIGHT_RANGE, 0.0, 1.0);
+    atten *= s * s;
 
-    color *= N;
+    float NdotL = max(dot(N, L), 0.0);
 
-    FragColor = vec4(color * color_vs, 1.0);
+    // ---------- Specular (Blinn-Phong) ----------
+    vec3 V = normalize(uCameraPos - vWorldPos);
+    vec3 H = normalize(L + V);
+    float spec = pow(max(dot(N, H), 0.0), SPEC_POWER);
+
+    // ---------- Rim light ----------
+    float rim = pow(clamp(1.0 - max(dot(N, V), 0.0), 0.0, 1.0), RIM_POWER);
+    vec3  rimTerm = RIM_STRENGTH * rim * hue;
+
+    // ---------- Combine ----------
+    vec3 radiance = vec3(LIGHT_INT) * atten;   // white light
+    vec3 lit = AMBIENT * albedo + (albedo * NdotL + spec) * radiance;
+    lit += rimTerm;
+    lit += emissive; // bloom-maker
+
+    // ---------- Optional camera-distance fog ----------
+    if (FOG_DENSITY > 0.0) {
+        float fog = 1.0 - exp(-d * FOG_DENSITY);
+        lit = mix(lit, FOG_COLOR, clamp(fog, 0.0, 1.0));
+    }
+
+    // ---------- Gamma ----------
+    vec3 outRGB = pow(max(lit, 0.0), vec3(1.0 / GAMMA));
+
+    FragColor = vec4(outRGB * color_vs, 1.0);
+
 }
 
 
