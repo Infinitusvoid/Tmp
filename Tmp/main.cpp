@@ -2,11 +2,9 @@
 
 #include "CppCommponents/NameGenerators.h"
 
-#include "GUniverse.h"
-
 #include "ShaderWriter.h"
 
-#include "universes/universe.h"
+#include "universes/universe_2.h"
 
 
 
@@ -21,34 +19,13 @@ int main(int argc, char* argv[])
 	std::cout << "Tmp\n";
 
 	
-	// Universes
-	if(false)
-	{
-		GUniverse uni("universes");
-		// uni.activate_universe_index(1);
-
-		// int idxA = uni.create_new_universe_from_the_last();
-		// uni.activate_universe_index(idxA);
-		// std::cout << "active universe : " << idxA << "\n";
-
-		// Create from a specific source and auto-activate:
-		// int idxB = uni.create_from_universe(idxA);
-
-		// Later, switch active universe explicitly:
-		// uni.activate_universe_index(idxA);
-
-		return 0;
-	}
-	
-
-	
 	if(false)
 	{
 		// ShaderWriter shader_writer;
 		// shader_writer.create_new_shader_from_last();
 
 		// ShaderWriter shader_writer;
-		// shader_writer.create_new_from_shader_index(0);
+		// shader_writer.create_new_from_shader_index(5);
 
 		return 0;
 	}
