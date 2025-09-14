@@ -27,12 +27,6 @@ uniform uint uDrawcallNumber;
 uniform vec3 uCameraPos;
 uniform float u0, u1, u2, u3, u4, u5, u6, u7, u8, u9;
 
-
-// ---- for ligting
-out vec3 vWorldPos;
-out vec3 vCubeLocalPos;     // just aPos
-flat out mat3 vNormalMat;   // normal matrix
-
 // ---------- Constants & tiny helpers ----------
 const float PI = 3.1415926535897932384626433832795;
 const float TAU = 6.2831853071795864769252867665590;
@@ -233,64 +227,37 @@ void main()
     uint s_1 = uSeed + uint(id + 42);
     float rnd_y = rand01(s_1);
 
-    uint s_2 = uSeed + uint(id + 100);
-    float rnd_z = rand01(s_2);
-
     float px = rnd_x;
     float py = rnd_y;
     float pz = 0.0;
 
 
     // --- SPHERE CALCULATION ---
-    float radius = 2.0;
+    float radius = 4.0;
+
+    float factor_x = 0.1 * sin(rnd_x * TAU * 10.0);
+    float factor_y = 0.1 * sin(rnd_y * TAU * 10.0);
+    float factor_x_multipled_y = abs(sin((factor_x * factor_y) * 100.0 + uTime * 2.0));
+
+    radius += factor_x;
+    radius += factor_y;
+    radius += factor_x_multipled_y;
 
     vec3 sphere_position = spherical01(radius, rnd_x, rnd_y);
-    
-    float px_0 = sphere_position.x;
-    float py_0 = sphere_position.y;
-    float pz_0 = sphere_position.z;
-
-    float px_1 = sphere_position.x + 10.0;
-    float py_1 = sphere_position.y + sin(rnd_x * 10.0 + uTime * 2.0 * 0.0);
-    float pz_1 = sphere_position.z + sin(rnd_y * 10.0 + uTime * 4.27 * 0.0);
-
-    const int num_el = 4;
-    const float num_el_inv = 1.0 / float(num_el);
-    int ix = int(rnd_z * num_el);
-    float factor_g = uTime  * 0.0 +  ix * num_el_inv;
-    factor_g = 0.0;
-    float factor_0 = fract(factor_g);
-    float factor_1 = 1.0 - factor_0;
-
-    px = px_0 * factor_0 + px_1 * factor_1;
-    py = py_0 * factor_0 + py_1 * factor_1;
-    pz = pz_0 * factor_0 + pz_1 * factor_1;
+    px = sphere_position.x;
+    py = sphere_position.y;
+    pz = sphere_position.z;
 
 
-    float distanace_cam = distance(uCameraPos, vec3(py, py, pz));
 
-    float atten = 1.0 / max(distanace_cam * distanace_cam, 1e-6);
 
-    // If you want a more “gamey” control instead of pure physics, use:
-    // 
-    // float atten = 1.0 / (1.0 + k1*r + k2*r*r); // k1,k2 tune falloff
 
-    // vec3 n = normalize(uCameraPos - vec3(px, py, pz));
-    // float factor_n = dot(n, uCameraPos);
-    // factor_n = abs(sin(abs(factor_n) * 10.0 + uTime));
-    
-    float factor_n = atten * 100.0;
-
-    float scale_cube = 0.01 * 0.7 * 2.0 * 2.0 * 2.0 * 0.4 * 0.2;
+    float scale_cube = 0.01 * 0.7 * 2.0 * 2.0 * 2.0 * 0.4 * 0.1;
 
     // 312312
-    float color_r = 0.2 + abs(sin(ix * 132.2));
-    float color_g = 0.2 + abs(sin(ix * 432.2));
-    float color_b = 0.2 + sin(ix * 832.4);
-
-    color_r = factor_n;
-    color_g = factor_n;
-    color_b = factor_n;
+    float color_r = 0.2 + 2.0 * factor_x;
+    float color_g = 0.2 + 2.0 * factor_y;
+    float color_b = 0.2;
 
     // Prepering data for the next block
     color_vs = vec3(color_r, color_g, color_b);
@@ -319,7 +286,7 @@ void main()
         vec3 axis = vec3(0.0, 1.0, 0.0);
         axis = normalize(axis);
 
-        float angle = uTime * 1.0 * 0.0;
+        float angle = uTime * 1.0;
 
         mat3 R3 = axisAngleToMat3(axis, angle);
 
@@ -338,12 +305,6 @@ void main()
         mat4 instanceModel = T * R * S;
 
 
-        // after you build instanceModel:
-        vec4 wp = model * instanceModel * vec4(aPos, 1.0);
-        vWorldPos = wp.xyz;
-        vCubeLocalPos = aPos;
-        vNormalMat = transpose(inverse(mat3(model * instanceModel)));
-        // gl_Position = projection * view * wp;
 
         gl_Position = projection * view * model * instanceModel * vec4(aPos, 1.0);
         TexCoord = aTexCoord;
