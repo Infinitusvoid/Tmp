@@ -22,9 +22,10 @@ int main(int argc, char* argv[])
 
 	
 	// Universes
+	if(false)
 	{
 		GUniverse uni("universes");
-		uni.activate_universe_index(1);
+		// uni.activate_universe_index(1);
 
 		// int idxA = uni.create_new_universe_from_the_last();
 		// uni.activate_universe_index(idxA);
@@ -36,11 +37,12 @@ int main(int argc, char* argv[])
 		// Later, switch active universe explicitly:
 		// uni.activate_universe_index(idxA);
 
-		// return 0;
+		return 0;
 	}
 	
 
 	
+	if(false)
 	{
 		// ShaderWriter shader_writer;
 		// shader_writer.create_new_shader_from_last();
@@ -48,7 +50,7 @@ int main(int argc, char* argv[])
 		// ShaderWriter shader_writer;
 		// shader_writer.create_new_from_shader_index(0);
 
-		// return 0;
+		return 0;
 	}
 
 	

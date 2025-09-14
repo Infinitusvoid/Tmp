@@ -3,3 +3,12 @@
 
 // Put your universe 0 content here.
 // This file is safe to include via universes/universe.h
+int universe(int argc, char* argv[])
+{
+	
+	
+	
+	
+	
+	return 0;
+}
