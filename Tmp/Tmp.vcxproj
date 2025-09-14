@@ -154,6 +154,7 @@
     <ClInclude Include="CppCommponents\Search_BreadthFirst_2d.h" />
     <ClInclude Include="CppCommponents\TempleteUtils.h" />
     <ClInclude Include="Engine.h" />
+    <ClInclude Include="GUniverse.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="ShaderWriter.h" />
     <ClInclude Include="Utils.h" />
