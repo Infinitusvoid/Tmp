@@ -25,14 +25,11 @@
     <Filter Include="Source Files\Shaders">
       <UniqueIdentifier>{71fd69e9-7120-40ee-9891-0e717c2b3a22}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Shaders\shader_0">
-      <UniqueIdentifier>{2b7e14c2-e832-4bb0-a4e9-4508cbb9af41}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\Resource Files\Scene">
       <UniqueIdentifier>{571e15e2-420a-4ea9-9aa4-357da8941f9f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Shaders\shader_1">
-      <UniqueIdentifier>{cfcb6c70-c0b3-4748-bc63-24df0cba4be9}</UniqueIdentifier>
+    <Filter Include="Source Files\Shaders\ShaderWriter">
+      <UniqueIdentifier>{9f35bc23-9eac-4491-9e96-8a017727fcad}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -67,7 +64,7 @@
       <Filter>Source Files\Resource Files\Scene</Filter>
     </ClCompile>
     <ClCompile Include="ShaderWriter.cpp">
-      <Filter>Source Files\Shaders</Filter>
+      <Filter>Source Files\Shaders\ShaderWriter</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -111,24 +108,24 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="ShaderWriter.h">
-      <Filter>Source Files\Shaders</Filter>
+      <Filter>Source Files\Shaders\ShaderWriter</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="CppCommponents\README.md">
       <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </None>
-    <None Include="vertex_0.glsl">
-      <Filter>Source Files\Shaders\shader_0</Filter>
+    <None Include="shaders\fragment_2.glsl">
+      <Filter>Source Files\Shaders</Filter>
     </None>
-    <None Include="fragment_0.glsl">
-      <Filter>Source Files\Shaders\shader_0</Filter>
+    <None Include="shaders\vertex_2.glsl">
+      <Filter>Source Files\Shaders</Filter>
     </None>
-    <None Include="vertex_1.glsl">
-      <Filter>Source Files\Shaders\shader_1</Filter>
+    <None Include="shaders\fragment_3.glsl">
+      <Filter>Source Files\Shaders</Filter>
     </None>
-    <None Include="fragment_1.glsl">
-      <Filter>Source Files\Shaders\shader_1</Filter>
+    <None Include="shaders\vertex_3.glsl">
+      <Filter>Source Files\Shaders</Filter>
     </None>
   </ItemGroup>
 </Project>

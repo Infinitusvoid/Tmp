@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
 
 		// shaders
 		{
-			add_shader(scene, 1, [](Program::Shader& sh) {
+			add_shader(scene, 2, [](Program::Shader& sh) {
 
 
 				// Instance 0
@@ -123,7 +123,7 @@ int main(int argc, char* argv[])
 				});
 
 
-			add_shader(scene, 0, [](Program::Shader& sh) {
+			add_shader(scene, 3, [](Program::Shader& sh){
 
 
 				// Instance 0

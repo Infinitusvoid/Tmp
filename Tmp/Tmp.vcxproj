@@ -161,10 +161,10 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="CppCommponents\README.md" />
-    <None Include="fragment_0.glsl" />
-    <None Include="fragment_1.glsl" />
-    <None Include="vertex_0.glsl" />
-    <None Include="vertex_1.glsl" />
+    <None Include="shaders\fragment_2.glsl" />
+    <None Include="shaders\fragment_3.glsl" />
+    <None Include="shaders\vertex_2.glsl" />
+    <None Include="shaders\vertex_3.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
