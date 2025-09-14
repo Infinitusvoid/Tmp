@@ -3,8 +3,7 @@
 #include "CppCommponents/NameGenerators.h"
 
 
-
-
+#include "ShaderWriter.h"
 
 
 
@@ -12,6 +11,13 @@
 int main(int argc, char* argv[])
 {
 	std::cout << "Tmp\n";
+
+	// ShaderWriter shader_writer;
+	// shader_writer.create_new_shader_from_last();
+
+	
+
+	
 
 
 	init();

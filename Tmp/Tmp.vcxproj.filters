@@ -66,6 +66,9 @@
     <ClCompile Include="Scene.cpp">
       <Filter>Source Files\Resource Files\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="ShaderWriter.cpp">
+      <Filter>Source Files\Shaders</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CppCommponents\File.h">
@@ -106,6 +109,9 @@
     </ClInclude>
     <ClInclude Include="Engine.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ShaderWriter.h">
+      <Filter>Source Files\Shaders</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
