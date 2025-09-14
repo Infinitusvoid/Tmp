@@ -152,6 +152,7 @@
     <ClInclude Include="CppCommponents\Rectangle2d.h" />
     <ClInclude Include="CppCommponents\Search_BreadthFirst_2d.h" />
     <ClInclude Include="CppCommponents\TempleteUtils.h" />
+    <ClInclude Include="Engine.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="Utils.h" />
     <ClInclude Include="WinProcess.h" />
