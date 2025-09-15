@@ -4,7 +4,7 @@
 #include "CppCommponents/Folder.h"
 #include "CppCommponents/File.h"
 
-
+#include "Extension_Folder.h"
 
 #include <assert.h>
 #include <iostream>
@@ -54,11 +54,11 @@ ShadersFilepath shaders;
 
 struct Video
 {
-	static int generate(std::string name = "output")
+	static int generate(std::string name = "output", std::string fileformat_frames = "png")
 	{
 		FFmpeg_::FfmpegImageToVideo job;
 		job.input_dir = folder_output_frames; // "C:/renders/shot01";     // folder with frame_000000.png etc.
-		job.input_pattern = "frame_%06d.png";        // change if your naming differs
+		job.input_pattern = std::string("frame_%06d.") + fileformat_frames;        // change if your naming differs
 		job.start_number = 0;
 		job.input_fps = 60;
 		job.output_fps = 60;
