@@ -290,11 +290,7 @@ int universe(int argc, char* argv[])
 			Program program;
 			program.le.halfLife = 0.02f;
 			program.le.brightness = 0.0f;
-			
 			program.capture.capture = true;
-			program.capture.capture_png = false;
-			program.capture.capture_bmp = true;
-			
 
 			// Fill program precisely for requested section
 			Universe_::fill_program_for_section(path, i, program, /*fps*/60.0f);
@@ -313,7 +309,7 @@ int universe(int argc, char* argv[])
 						auto id = sh.create_instance();
 						auto I = sh.instance(id);
 						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(1)
+							.set_drawcalls(32)
 							.set_position_start(0.0f, 0.0f, 0.0f)
 							.set_position_end(0.0f, 0.0f, 0.0f)
 							.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -345,7 +341,7 @@ int universe(int argc, char* argv[])
 						auto id = sh.create_instance();
 						auto I = sh.instance(id);
 						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(1)
+							.set_drawcalls(32)
 							.set_position_start(10.0f, 0.0f, 0.0f)
 							.set_position_end(10.0f, 0.0f, 0.0f)
 							.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -382,7 +378,7 @@ int universe(int argc, char* argv[])
 						auto id = sh.create_instance();
 						auto I = sh.instance(id);
 						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(1)
+							.set_drawcalls(32)
 							.set_position_start(0.0f, 10.0f, 0.0f)
 							.set_position_end(0.0f, 10.0f, 0.0f)
 							.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -414,7 +410,7 @@ int universe(int argc, char* argv[])
 						auto id = sh.create_instance();
 						auto I = sh.instance(id);
 						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(1)
+							.set_drawcalls(10)
 							.set_position_start(10.0f, 10.0f, 10.0f)
 							.set_position_end(10.0f, 10.0f, 10.0f)
 							.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -453,7 +449,7 @@ int universe(int argc, char* argv[])
 				run_program(program_name);
 
 				std::string name = "output_" + std::to_string(i);
-				Video::generate(name, "bmp");
+				Video::generate(name);
 			}
 
 		}
