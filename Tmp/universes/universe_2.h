@@ -6,6 +6,11 @@
 
 #include <cstdint>
 #include <limits>
+#include <vector>
+#include <algorithm>
+#include <cmath>
+#include <string>
+#include <iostream>
 
 namespace Universe_
 {
@@ -35,10 +40,10 @@ namespace Universe_
 			return (x >> r) | (x << ((32u - r) & 31u)); // no unary minus on unsigned
 		}
 
-		static inline uint64_t rotr64(uint64_t x, unsigned r) {
+		/*static inline uint64_t rotr64(uint64_t x, unsigned r) {
 			r &= 63u;
 			return (x >> r) | (x << ((64u - r) & 63u));
-		}
+		}*/
 
 		// Core PCG32 step: returns 32 random bits
 		inline uint32_t next_u32() {
@@ -105,7 +110,12 @@ namespace Universe_
 
 		void load_last(Program& program)
 		{
-			CameraRecording recording = path.back();
+			if (path.empty())
+			{
+				assert(false);
+			}
+
+			const CameraRecording& recording = path.back();
 
 			program.camera_start.x = recording.x;
 			program.camera_start.y = recording.y;
@@ -168,67 +178,6 @@ namespace Universe_
 
 			path.path.push_back(recording);
 		}
-	}
-
-	void hand_still_camera(CameraPath& path, int number_of_sections)
-	{
-		CameraRecording recording = path.path.back();
-
-		const float x = recording.x;
-		const float y = recording.y;
-		const float z = recording.z;
-		const float fov = recording.fov;
-		const float pitch = recording.pitch;
-		const float yaw = recording.yaw;
-		
-
-		const float fps = 60.0f;
-		
-
-		
-
-		RNG rng(42u, 7u); // deterministic across runs/platforms
-
-		/*std::cout << "five floats [0,1):\n";
-		for (int i = 0; i < 5; ++i)
-			std::cout << rng.next_float() << "\n";
-
-		std::cout << "\nfive doubles [0,1):\n";
-		for (int i = 0; i < 5; ++i)
-			std::cout << rng.next_double() << "\n";
-
-		std::cout << "\nuniform doubles in [10,20):\n";
-		for (int i = 0; i < 5; ++i)
-			std::cout << rng.uniform(10.0, 20.0) << "\n";*/
-		
-
-		int frame_start = std::max(0, recording.end_frame - 1);
-
-
-		for (int i = 0; i < number_of_sections; i++)
-		{
-			float nx = x + rng.uniform(-4.0, 4.0);
-			float ny = y + rng.uniform(-4.0, 4.0);
-			float nz = z + rng.uniform(-4.0, 4.0);
-			float n_pitch = pitch + rng.uniform(-20.0, 20.0);
-			float n_yaw = yaw + rng.uniform(-20.0, 20.0);
-
-			CameraRecording recording_n;
-			recording_n.x = nx;
-			recording_n.y = ny;
-			recording_n.z = nz;
-			recording_n.fov = fov;
-			recording_n.pitch = n_pitch;
-			recording_n.yaw = n_yaw;
-			
-			recording_n.start_frame = frame_start;
-			frame_start += 60 * 4;
-			recording_n.end_frame = frame_start;
-			
-		}
-
-		
-		
 	}
 
 	static inline float wrap_deg(float a) {
@@ -320,7 +269,7 @@ int universe(int argc, char* argv[])
 	std::cout << "universe_2\n";
 	
 
-	const int number_of_section = 4;
+	const int number_of_sections = 4;
 	
 
 	{
@@ -333,8 +282,9 @@ int universe(int argc, char* argv[])
 		// Now render section 0..3 (each 4s)
 		//const int section = 0; // set 0,1,2,3 for each run
 
+		assert(static_cast<int>(path.path.size()) >= number_of_sections + 1);
 
-		for (int i = 0; i < number_of_section; i++)
+		for (int i = 0; i < number_of_sections; i++)
 		{
 			flush_frames();
 
@@ -507,93 +457,14 @@ int universe(int argc, char* argv[])
 
 		}
 
+		flush_frames();
 		
 	}
-
-	
-
-	// configuration
-	{
-		Program program;
-
-		program.le.halfLife = 0.02;
-		// program.le.exposure = 4.0;
-		program.le.brightness = 0.0;
-
-		program.capture.capture = false;
-
-		Universe_::CameraPath path;
-		Universe_::build_path(path);
-
-		path.load_last(program);
-
-		int number_of_sections = 4;
-
-		Universe_::hand_still_camera(path, number_of_sections);
-
-		{
-			
-		}
-
-		//if(false) // 0
-		{
-			// CAPTURED: { pos: [-142.341278, 171.578140, 448.985260] , yaw : 80.639992, pitch : 19.440002, fov : 45.000000 }
-
-
-			// CAPTURED: { pos: [-15.359919, -13.098754, 52.493931] , yaw : 20.400003, pitch : 16.679998, fov : 45.000000 }
-
-			
-		}
-
-		// if (true) // 1
-		{
-			// CAPTURED: { pos: [-142.341278, 171.578140, 448.985260] , yaw : 80.639992, pitch : 19.440002, fov : 45.000000 }
-			// CAPTURED: { pos: [56.266338, -12.129290, -12.411207] , yaw : -103.920052, pitch : 22.559982, fov : 45.000000 }
-
-			
-
-
-
-			// CAPTURED: { pos: [-15.359919, -13.098754, 52.493931] , yaw : 20.400003, pitch : 16.679998, fov : 45.000000 }
-
-			program.camera_start.x = -15.359919f;
-			program.camera_start.y = -13.098754f;
-			program.camera_start.z = 52.493931f;
-			program.camera_start.yaw = 20.400003f;
-			program.camera_start.pitch = 16.679998f;
-			program.camera_start.fov = 45.0f;
-
-			program.camera_end.x = -15.359919f;
-			program.camera_end.y = -13.098754f;
-			program.camera_end.z = 52.493931f;
-			program.camera_end.yaw = 20.400003f;
-			program.camera_end.pitch = 16.679998f;
-			program.camera_end.fov = 45.0f;
-
-			
-			program.render_display.number_of_frames = 240;
-			program.render_display.render_time_start = ((1.0 / 60.0) * 240.0) * section;
-			
-		}
-		
-
-		// program.render_display.number_of_frames = 60 * 4;
-		// program.render_display.render_time_start = 60.0 * 4.0 * float(int(1));
-		
-
-		program.configure(scene);
-	}
-
-
-
-	
-
-
-
 
 	
 
 
 
 	return 0;
+
 }
