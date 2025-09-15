@@ -4,7 +4,7 @@
 
 #include "ShaderWriter.h"
 
-#include "universes/universe_2.h"
+#include "universes/Universe.h"
 
 
 
@@ -25,7 +25,10 @@ int main(int argc, char* argv[])
 		// shader_writer.create_new_shader_from_last();
 
 		// ShaderWriter shader_writer;
-		// shader_writer.create_new_from_shader_index(5);
+		// shader_writer.create_new_from_shader_index(6);
+
+		
+		// shader_writer.create_new_from_shader_index(7);
 
 		return 0;
 	}

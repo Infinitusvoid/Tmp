@@ -34,9 +34,6 @@
     <Filter Include="Source Files\Shaders\GUniverse">
       <UniqueIdentifier>{034d9a6a-fc5a-49af-97b0-d1a0ebd5b921}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Shaders\Universe_2">
-      <UniqueIdentifier>{4451393f-f024-4861-a92e-0d2c0382db4e}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -122,9 +119,6 @@
     <ClInclude Include="GUniverse.h">
       <Filter>Source Files\Shaders\GUniverse</Filter>
     </ClInclude>
-    <ClInclude Include="universes\universe_2.h">
-      <Filter>Source Files\Shaders\Universe_2</Filter>
-    </ClInclude>
     <ClInclude Include="Extension_Folder.h">
       <Filter>Source Files\Resource Files</Filter>
     </ClInclude>
@@ -132,18 +126,6 @@
   <ItemGroup>
     <None Include="CppCommponents\README.md">
       <Filter>Source Files\Resource Files\CppCommponents</Filter>
-    </None>
-    <None Include="shaders\fragment_6.glsl">
-      <Filter>Source Files\Shaders\Universe_2</Filter>
-    </None>
-    <None Include="shaders\fragment_7.glsl">
-      <Filter>Source Files\Shaders\Universe_2</Filter>
-    </None>
-    <None Include="shaders\vertex_6.glsl">
-      <Filter>Source Files\Shaders\Universe_2</Filter>
-    </None>
-    <None Include="shaders\vertex_7.glsl">
-      <Filter>Source Files\Shaders\Universe_2</Filter>
     </None>
   </ItemGroup>
 </Project>

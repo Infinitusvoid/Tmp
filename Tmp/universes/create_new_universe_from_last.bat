@@ -1,54 +1,52 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 
-REM === Paths (relative to this script) ===
-set "ROOT=%~dp0"
-set "UNIVERSES=%ROOT%universes"
+REM -- Work inside the folder where this script lives
+pushd "%~dp0" || (echo [ERROR] Cannot access script folder. & exit /b 1)
 
-if not exist "%UNIVERSES%" (
-  mkdir "%UNIVERSES%" || (echo [ERROR] Could not create "%UNIVERSES%". & exit /b 1)
-)
+REM -- Folder name (just FYI / messages)
+for %%I in ("%CD%") do set "FOLDER=%%~nxI"
 
-REM === Find newest-by-creation-time universe_*.h inside universes ===
+REM -- Find newest CREATED .h file (excluding Universe.h)
 set "SRC="
-for /f "usebackq delims=" %%I in (`
-  powershell -NoProfile -Command ^
-    "$ErrorActionPreference='Stop';" ^
-    "$d = Get-ChildItem -File -LiteralPath '%UNIVERSES%' -Filter 'universe_*.h' |" ^
-    "Sort-Object CreationTime -Descending | Select-Object -First 1;" ^
-    "if($d){$d.FullName}"
-`) do set "SRC=%%I"
-
-REM === Seed if none found ===
-if not defined SRC (
-  echo [WARN] No existing "universe_*.h" in "%UNIVERSES%".
-  echo        Creating a minimal seed header: universe_seed.h
-  set "SRC=%UNIVERSES%\universe_seed.h"
-  (
-    echo #pragma once
-    echo // Seed universe header auto-created
-    echo struct RNGSeed { int dummy; };
-  ) > "%SRC%"
+for /f "delims=" %%F in ('dir /b /a:-d /tc /o:-d *.h 2^>nul') do (
+  if /i not "%%~nxF"=="Universe.h" (
+    set "SRC=%%~fF"
+    goto :found_src
+  )
 )
 
-REM === Timestamp: universe_<day>_<month>_<year>_<hour>_<minutes>.h ===
+REM -- If nothing found, seed a minimal header
+echo [WARN] No .h files found (except Universe.h). Seeding "Universe_seed.h".
+set "SRC=%CD%\Universe_seed.h"
+> "Universe_seed.h" (
+  echo #pragma once
+  echo // Auto-created seed header
+  echo struct Seed { int dummy = 0; };
+)
+
+:found_src
+
+REM -- Timestamp: Universe_<day>_<month>_<year>_<hour>_<minutes>.h
 for /f "usebackq delims=" %%T in (`
   powershell -NoProfile -Command "(Get-Date).ToString('dd_MM_yyyy_HH_mm')"
 `) do set "STAMP=%%T"
 
-set "DST=%UNIVERSES%\universe_%STAMP%.h"
+set "DST=Universe_%STAMP%.h"
 
-REM === Copy the newest file to the timestamped name ===
-copy /Y "%SRC%" "%DST%" >nul || (echo [ERROR] Copy failed. & exit /b 1)
+REM -- Copy newest header to timestamped file (in the same folder)
+copy /Y "%SRC%" "%DST%" >nul || (echo [ERROR] Copy failed. & popd & exit /b 1)
 
-REM === Overwrite univere.h in ROOT to include the fresh file ===
-set "INCLUDE_FILE=%ROOT%univere.h"
-(
-  echo // Auto-generated on %DATE% %TIME%
+REM -- Overwrite Universe.h to include the fresh header (no folder prefix!)
+> "Universe.h" (
+  echo // Auto-generated in "%FOLDER%" on %DATE% %TIME%
   echo #pragma once
-  echo #include "universes/universe_%STAMP%.h"  // Flux from scratch on CPU example
-) > "%INCLUDE_FILE%"
+  echo #include "Universe_%STAMP%.h"
+)
 
-echo [OK] New universe: "%DST%"
-echo [OK] Wrote include: "%INCLUDE_FILE%"
+echo [OK] Source : "%SRC%"
+echo [OK] Created: "%CD%\%DST%"
+echo [OK] Wrote  : "%CD%\Universe.h"
+
+popd
 endlocal
