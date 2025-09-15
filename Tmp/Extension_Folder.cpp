@@ -1,5 +1,11 @@
 #include "Extension_Folder.h"
 
+#include <algorithm>
+#include <array>
+#include <cctype>
+#include <sstream>
+#include <system_error>
+
 namespace Extension_Folder_
 {
 	std::string to_lower(std::string s) {
