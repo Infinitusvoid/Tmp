@@ -311,7 +311,7 @@ int universe(int argc, char* argv[])
 						auto id = sh.create_instance();
 						auto I = sh.instance(id);
 						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(1)
+							.set_drawcalls(32)
 							.set_position_start(0.0f, 0.0f, 0.0f)
 							.set_position_end(0.0f, 0.0f, 0.0f)
 							.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -343,7 +343,7 @@ int universe(int argc, char* argv[])
 						auto id = sh.create_instance();
 						auto I = sh.instance(id);
 						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(1)
+							.set_drawcalls(32)
 							.set_position_start(10.0f, 0.0f, 0.0f)
 							.set_position_end(10.0f, 0.0f, 0.0f)
 							.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -380,7 +380,7 @@ int universe(int argc, char* argv[])
 						auto id = sh.create_instance();
 						auto I = sh.instance(id);
 						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(1)
+							.set_drawcalls(32)
 							.set_position_start(0.0f, 10.0f, 0.0f)
 							.set_position_end(0.0f, 10.0f, 0.0f)
 							.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -412,7 +412,7 @@ int universe(int argc, char* argv[])
 						auto id = sh.create_instance();
 						auto I = sh.instance(id);
 						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(1)
+							.set_drawcalls(32)
 							.set_position_start(10.0f, 10.0f, 10.0f)
 							.set_position_end(10.0f, 10.0f, 10.0f)
 							.set_euler_start(0.0f, 0.0f, 0.0f)
