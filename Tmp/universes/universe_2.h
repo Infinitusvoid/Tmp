@@ -4,8 +4,88 @@
 
 #include "Extension_Folder.h"
 
+#include <cstdint>
+#include <limits>
+
 namespace Universe_
 {
+	
+
+
+	struct RNG {
+		// PCG parameters/state (64-bit state, 64-bit odd increment)
+		uint64_t state;
+		uint64_t inc;
+
+		// Construct with a seed and an optional "stream" selector (sequence id).
+		// Same (seed, stream) => exact same sequence across platforms/compilers.
+		explicit RNG(uint64_t seed = 0x853c49e6748fea9bULL,
+			uint64_t stream = 0xda3e39cb94b95bdbULL) {
+			// Initialization sequence recommended by PCG reference
+			state = 0u;
+			inc = (stream << 1u) | 1u;      // must be odd
+			next_u32();
+			state += seed;
+			next_u32();
+		}
+
+		// Rotate-right for 32-bit
+		static inline uint32_t rotr32(uint32_t x, unsigned r) {
+			r &= 31u;                                  // keep 0..31
+			return (x >> r) | (x << ((32u - r) & 31u)); // no unary minus on unsigned
+		}
+
+		static inline uint64_t rotr64(uint64_t x, unsigned r) {
+			r &= 63u;
+			return (x >> r) | (x << ((64u - r) & 63u));
+		}
+
+		// Core PCG32 step: returns 32 random bits
+		inline uint32_t next_u32() {
+			uint64_t oldstate = state;
+			// LCG state transition
+			state = oldstate * 6364136223846793005ULL + inc;
+			// Output function (XSH RR): xorshift + rotate
+			uint32_t xorshifted = static_cast<uint32_t>(((oldstate >> 18u) ^ oldstate) >> 27u);
+			uint32_t rot = static_cast<uint32_t>(oldstate >> 59u);
+			return rotr32(xorshifted, rot);
+		}
+
+		// 64 random bits (compose two 32-bit outputs)
+		inline uint64_t next_u64() {
+			return (uint64_t(next_u32()) << 32) | uint64_t(next_u32());
+		}
+
+		// Uniform float in [0,1). Uses 24 mantissa bits (float has 24 incl. hidden bit).
+		inline float next_float() {
+			// Take top 24 unbiased bits and scale by 1/2^24
+			constexpr float inv24 = 1.0f / 16777216.0f; // 2^24
+			uint32_t r = next_u32() >> 8;               // keep 24 high bits
+			return r * inv24;                           // in [0,1)
+		}
+
+		// Uniform double in [0,1). Uses 53 mantissa bits.
+		inline double next_double() {
+			// Take top 53 bits and scale by 1/2^53
+			constexpr double inv53 = 1.0 / 9007199254740992.0; // 2^53
+			uint64_t r = next_u64() >> 11;                    // keep 53 high bits
+			return r * inv53;                                  // in [0,1)
+		}
+
+		// Uniform in [a,b) for doubles
+		inline double uniform(double a, double b) {
+			return a + (b - a) * next_double();
+		}
+
+		// Uniform in [a,b) for floats
+		inline float uniform(float a, float b) {
+			return a + (b - a) * next_float();
+		}
+	};
+
+	
+
+
 	struct CameraRecording
 	{
 		float x;
@@ -73,51 +153,6 @@ namespace Universe_
 	void build_path(CameraPath& path)
 	{
 		{
-			CameraRecording recording;
-			recording.x = -142.341278f;
-			recording.y = 171.578140f;
-			recording.z = 448.985260f;
-			recording.yaw = 80.639992f;
-			recording.pitch = 19.440002f;
-			recording.fov = 45.0;
-
-			recording.start_frame = 60 * 4 * 0;
-			recording.end_frame = 60 * 4 * 1;
-
-			path.path.push_back(recording);
-		}
-		
-		{
-			CameraRecording recording;
-			recording.x = -15.359919f;
-			recording.y = -13.098754f;
-			recording.z = 52.493931f;
-			recording.yaw = 20.400003f;
-			recording.pitch = 16.679998f;
-			recording.fov = 45.0f;
-
-			recording.start_frame = 60 * 4 * 1;
-			recording.end_frame = 60 * 4 * 2;
-
-			path.path.push_back(recording);
-		}
-
-		{
-			CameraRecording recording;
-			recording.x = 56.266338;
-			recording.y = -12.129290;
-			recording.z = -12.411207;
-			recording.yaw = -103.920052;
-			recording.pitch = 22.559982;
-			recording.fov = 45.0;
-
-			recording.start_frame = 60 * 4 * 2;
-			recording.end_frame = 60 * 4 * 3;
-
-			path.path.push_back(recording);
-		}
-
-		{
 			//CAPTURED: { pos: [73.614182, -21.104589, 42.984325] , yaw : -50.880009, pitch : 20.279987, fov : 45.000000 }
 
 			CameraRecording recording;
@@ -134,8 +169,39 @@ namespace Universe_
 			path.path.push_back(recording);
 		}
 	}
+
+	void hand_still_camera(CameraPath& path)
+	{
+		CameraRecording recording = path.path.back();
+
+		const float x = recording.x;
+		const float y = recording.y;
+		const float z = recording.z;
+		
+		float start_time = std::max(0, recording.end_frame - 1);
+
+		RNG rng(42u, 7u); // deterministic across runs/platforms
+
+		std::cout << "five floats [0,1):\n";
+		for (int i = 0; i < 5; ++i)
+			std::cout << rng.next_float() << "\n";
+
+		std::cout << "\nfive doubles [0,1):\n";
+		for (int i = 0; i < 5; ++i)
+			std::cout << rng.next_double() << "\n";
+
+		std::cout << "\nuniform doubles in [10,20):\n";
+		for (int i = 0; i < 5; ++i)
+			std::cout << rng.uniform(10.0, 20.0) << "\n";
+		
+
+	}
 }
 
+void flush_frames()
+{
+	Extension_Folder_::move_images_to_subfolder("C:/Users/Cosmos/Desktop/output/tmp/frames/", "C:/Users/Cosmos/Desktop/output/tmp/frames/old_frames/");
+}
 
 // Put your universe 2 content here.
 // This file is safe to include via universes/universe.h
@@ -144,9 +210,18 @@ int universe(int argc, char* argv[])
 	std::cout << "universe_2\n";
 	
 
+	
+
 	Scene_::Scene scene = Scene_::Scene();
 
 	const int section = 7;
+
+	flush_frames();
+	
+
+
+
+	
 
 	// configuration
 	{
@@ -162,6 +237,22 @@ int universe(int argc, char* argv[])
 		Universe_::build_path(path);
 
 		path.load_last(program);
+
+		{
+			Universe_::RNG rng(42u, 7u); // deterministic across runs/platforms
+
+			std::cout << "five floats [0,1):\n";
+			for (int i = 0; i < 5; ++i)
+				std::cout << rng.next_float() << "\n";
+
+			std::cout << "\nfive doubles [0,1):\n";
+			for (int i = 0; i < 5; ++i)
+				std::cout << rng.next_double() << "\n";
+
+			std::cout << "\nuniform doubles in [10,20):\n";
+			for (int i = 0; i < 5; ++i)
+				std::cout << rng.uniform(10.0, 20.0) << "\n";
+		}
 
 		//if(false) // 0
 		{
