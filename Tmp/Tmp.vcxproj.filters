@@ -72,6 +72,9 @@
     <ClCompile Include="Float1024.cpp">
       <Filter>Source Files\Resource Files</Filter>
     </ClCompile>
+    <ClCompile Include="Extension_Folder.cpp">
+      <Filter>Source Files\Resource Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CppCommponents\File.h">
@@ -121,6 +124,9 @@
     </ClInclude>
     <ClInclude Include="universes\universe_2.h">
       <Filter>Source Files\Shaders\Universe_2</Filter>
+    </ClInclude>
+    <ClInclude Include="Extension_Folder.h">
+      <Filter>Source Files\Resource Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

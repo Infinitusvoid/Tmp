@@ -1,6 +1,9 @@
 // universe_2.h — auto-generated stub
 #pragma once
 
+
+#include "Extension_Folder.h"
+
 namespace Universe_
 {
 	struct CameraRecording
@@ -143,6 +146,8 @@ int universe(int argc, char* argv[])
 
 	Scene_::Scene scene = Scene_::Scene();
 
+	const int section = 7;
+
 	// configuration
 	{
 		Program program;
@@ -151,7 +156,7 @@ int universe(int argc, char* argv[])
 		// program.le.exposure = 4.0;
 		program.le.brightness = 0.0;
 
-		program.capture.capture = true;
+		program.capture.capture = false;
 
 		Universe_::CameraPath path;
 		Universe_::build_path(path);
@@ -193,7 +198,7 @@ int universe(int argc, char* argv[])
 			program.camera_end.pitch = 16.679998f;
 			program.camera_end.fov = 45.0f;
 
-			int section = 4;
+			
 			program.render_display.number_of_frames = 240;
 			program.render_display.render_time_start = ((1.0 / 60.0) * 240.0) * section;
 			
@@ -359,7 +364,8 @@ int universe(int argc, char* argv[])
 		save_program(scene, program_name);
 		run_program(program_name);
 
-		Video::generate();
+		std::string name = "output_" + std::to_string(section);
+		// Video::generate(name);
 		
 		
 	}
