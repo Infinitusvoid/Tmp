@@ -451,6 +451,174 @@ namespace Universe_
 
 		}
 	}
+
+	void interactive()
+	{
+		Program program;
+		program.le.halfLife = 0.02f;
+		program.le.brightness = 0.0f;
+		program.capture.capture = false;
+		program.capture.capture_png = false;
+		program.capture.capture_bmp = true;
+
+		Scene_::Scene scene = Scene_::Scene();
+		program.configure(scene);
+
+
+		// shaders
+		{
+			add_shader(scene, 8, [](Program::Shader& sh) {
+
+
+				// Instance 0
+				{
+					auto id = sh.create_instance();
+					auto I = sh.instance(id);
+					I.set_group_size(1000, 1000, 1)
+						.set_drawcalls(1)
+						.set_position_start(0.0f, 0.0f, 0.0f)
+						.set_position_end(0.0f, 0.0f, 0.0f)
+						.set_euler_start(0.0f, 0.0f, 0.0f)
+						.set_euler_end(0.0f, 0.0f, 0.0f)
+						.set_scale_start(1.0f, 1.0f, 1.0f)
+						.set_scale_end(1.0f, 1.0f, 1.0f);
+
+
+					constexpr int kU = 10;
+					for (int u = 0; u < kU; ++u)
+					{
+						float v_start = 0.1f * static_cast<float>(u);
+						float v_end = 1.0f - 0.1f * static_cast<float>(u);
+
+						v_start = 0.0;
+						v_end = 0.0;
+
+						I.set_u_start_end(u, v_start, v_end);
+					}
+
+					I.set_u_start_end(0, 72.29710, 72.29710);
+				}
+
+
+				// Instance 1
+
+				{
+
+					auto id = sh.create_instance();
+					auto I = sh.instance(id);
+					I.set_group_size(1000, 1000, 1)
+						.set_drawcalls(1)
+						.set_position_start(10.0f, 0.0f, 0.0f)
+						.set_position_end(10.0f, 0.0f, 0.0f)
+						.set_euler_start(0.0f, 0.0f, 0.0f)
+						.set_euler_end(0.0f, 0.0f, 0.0f)
+						.set_scale_start(1.0f, 1.0f, 1.0f)
+						.set_scale_end(1.0f, 1.0f, 1.0f);
+
+
+					constexpr int kU = 10;
+					for (int u = 0; u < kU; ++u)
+					{
+						float v_start = 0.1f * static_cast<float>(u);
+						float v_end = 1.0f - 0.1f * static_cast<float>(u);
+
+						v_start = 0.0;
+						v_end = 0.0;
+
+						I.set_u_start_end(u, v_start, v_end);
+					}
+
+					I.set_u_start_end(0, 4.237, 4.237);
+				}
+
+
+				});
+
+
+			add_shader(scene, 9, [](Program::Shader& sh) {
+
+
+				// Instance 0
+
+				{
+					auto id = sh.create_instance();
+					auto I = sh.instance(id);
+					I.set_group_size(1000, 1000, 1)
+						.set_drawcalls(1)
+						.set_position_start(0.0f, 10.0f, 0.0f)
+						.set_position_end(0.0f, 10.0f, 0.0f)
+						.set_euler_start(0.0f, 0.0f, 0.0f)
+						.set_euler_end(0.0f, 0.0f, 0.0f)
+						.set_scale_start(1.0f, 1.0f, 1.0f)
+						.set_scale_end(1.0f, 1.0f, 1.0f);
+
+
+					constexpr int kU = 10;
+					for (int u = 0; u < kU; ++u)
+					{
+						float v_start = 0.1f * static_cast<float>(u);
+						float v_end = 1.0f - 0.1f * static_cast<float>(u);
+
+						v_start = 0.0;
+						v_end = 0.0;
+
+						I.set_u_start_end(u, v_start, v_end);
+					}
+
+					I.set_u_start_end(0, 1.427, 1.427);
+				}
+
+
+				// Instance 1
+
+				{
+
+					auto id = sh.create_instance();
+					auto I = sh.instance(id);
+					I.set_group_size(1000, 1000, 1)
+						.set_drawcalls(1)
+						.set_position_start(10.0f, 10.0f, 10.0f)
+						.set_position_end(10.0f, 10.0f, 10.0f)
+						.set_euler_start(0.0f, 0.0f, 0.0f)
+						.set_euler_end(0.0f, 0.0f, 0.0f)
+						.set_scale_start(1.0f, 1.0f, 1.0f)
+						.set_scale_end(1.0f, 1.0f, 1.0f);
+
+
+					constexpr int kU = 10;
+					for (int u = 0; u < kU; ++u)
+					{
+						float v_start = 0.1f * static_cast<float>(u);
+						float v_end = 1.0f - 0.1f * static_cast<float>(u);
+
+						v_start = 0.0;
+						v_end = 0.0;
+
+						I.set_u_start_end(u, v_start, v_end);
+					}
+
+					I.set_u_start_end(0, 5.497, 5.497);
+
+				}
+
+
+
+				});
+		}
+
+
+		// run program
+		{
+			// scene.print();
+			std::string program_name = NameGenerators_::generate_prefix_timestamp_suffix_name();
+			save_program(scene, program_name);
+			run_program(program_name);
+
+			int i = 0;
+			std::string name = "output_" + std::to_string(i);
+			// Video::generate(name, "bmp");
+		}
+	}
 }
 
 
@@ -463,7 +631,8 @@ int universe(int argc, char* argv[])
 	
 
 	
-	Universe_::rendering();
+	// Universe_::rendering();
+	Universe_::interactive();
 	
 
 
