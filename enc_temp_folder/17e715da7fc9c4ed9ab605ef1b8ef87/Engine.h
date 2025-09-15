@@ -50,7 +50,7 @@ ShadersFilepath shaders;
 
 struct Video
 {
-	static int generate(std::string name = "output")
+	static int generate()
 	{
 		FFmpeg_::FfmpegImageToVideo job;
 		job.input_dir = folder_output_frames; // "C:/renders/shot01";     // folder with frame_000000.png etc.
@@ -62,7 +62,7 @@ struct Video
 		job.crf = 14;
 		job.pix_fmt = "yuv420p";
 		job.faststart = true;
-		job.output_path = folder_output_frames + name + std::string(".mp4"); //"C:/renders/shot01/output.mp4";
+		job.output_path = folder_output_frames + std::string("output.mp4"); //"C:/renders/shot01/output.mp4";
 
 		return job.run();
 	}
