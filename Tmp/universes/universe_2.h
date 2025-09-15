@@ -257,10 +257,7 @@ namespace Universe_
 
 }
 
-void flush_frames()
-{
-	Extension_Folder_::move_images_to_subfolder("C:/Users/Cosmos/Desktop/output/tmp/frames/", "C:/Users/Cosmos/Desktop/output/tmp/frames/old_frames/");
-}
+
 
 // Put your universe 2 content here.
 // This file is safe to include via universes/universe.h
@@ -286,7 +283,7 @@ int universe(int argc, char* argv[])
 
 		for (int i = 0; i < number_of_sections; i++)
 		{
-			flush_frames();
+			engine_flush_frames();
 
 
 
@@ -312,7 +309,7 @@ int universe(int argc, char* argv[])
 						auto id = sh.create_instance();
 						auto I = sh.instance(id);
 						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(1)
+							.set_drawcalls(32)
 							.set_position_start(0.0f, 0.0f, 0.0f)
 							.set_position_end(0.0f, 0.0f, 0.0f)
 							.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -344,7 +341,7 @@ int universe(int argc, char* argv[])
 						auto id = sh.create_instance();
 						auto I = sh.instance(id);
 						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(1)
+							.set_drawcalls(32)
 							.set_position_start(10.0f, 0.0f, 0.0f)
 							.set_position_end(10.0f, 0.0f, 0.0f)
 							.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -381,7 +378,7 @@ int universe(int argc, char* argv[])
 						auto id = sh.create_instance();
 						auto I = sh.instance(id);
 						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(1)
+							.set_drawcalls(32)
 							.set_position_start(0.0f, 10.0f, 0.0f)
 							.set_position_end(0.0f, 10.0f, 0.0f)
 							.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -413,7 +410,7 @@ int universe(int argc, char* argv[])
 						auto id = sh.create_instance();
 						auto I = sh.instance(id);
 						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(1)
+							.set_drawcalls(10)
 							.set_position_start(10.0f, 10.0f, 10.0f)
 							.set_position_end(10.0f, 10.0f, 10.0f)
 							.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -457,7 +454,7 @@ int universe(int argc, char* argv[])
 
 		}
 
-		flush_frames();
+		engine_flush_frames();
 		
 	}
 

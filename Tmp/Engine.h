@@ -27,6 +27,10 @@ void init()
 	Folder::create_folder_if_does_not_exist_already(folder_output_commands);
 }
 
+void engine_flush_frames()
+{
+	Extension_Folder_::move_images_to_subfolder(folder_output_frames, "C:/Users/Cosmos/Desktop/output/tmp/frames/flushed_frames/");
+}
 
 struct ShadersFilepath
 {
