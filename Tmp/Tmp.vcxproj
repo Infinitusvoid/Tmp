@@ -159,11 +159,16 @@
     <ClInclude Include="GUniverse.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="ShaderWriter.h" />
+    <ClInclude Include="universes\Universe_15_09_2025_15_03.h" />
     <ClInclude Include="Utils.h" />
     <ClInclude Include="WinProcess.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="CppCommponents\README.md" />
+    <None Include="shaders\fragment_8.glsl" />
+    <None Include="shaders\fragment_9.glsl" />
+    <None Include="shaders\vertex_8.glsl" />
+    <None Include="shaders\vertex_9.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

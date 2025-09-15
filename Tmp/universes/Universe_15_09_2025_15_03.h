@@ -255,6 +255,202 @@ namespace Universe_
 		return true;
 	}
 
+	void rendering()
+	{
+		const int number_of_sections = 4;
+
+
+		{
+			// Build anchor and append 4 sections
+			Universe_::CameraPath path;
+			Universe_::build_path(path);         // gives you an initial keyframe with end_frame = M_0
+
+			Universe_::append_handheld_sections(path, /*sections*/4, /*frames_per*/60 * 4);
+
+			// Now render section 0..3 (each 4s)
+			//const int section = 0; // set 0,1,2,3 for each run
+
+			assert(static_cast<int>(path.path.size()) >= number_of_sections + 1);
+
+			for (int i = 0; i < number_of_sections; i++)
+			{
+				engine_flush_frames();
+
+
+
+				Program program;
+				program.le.halfLife = 0.02f;
+				program.le.brightness = 0.0f;
+				program.capture.capture = true;
+				program.capture.capture_png = false;
+				program.capture.capture_bmp = true;
+
+				// Fill program precisely for requested section
+				Universe_::fill_program_for_section(path, i, program, /*fps*/60.0f);
+
+				Scene_::Scene scene = Scene_::Scene();
+				program.configure(scene);
+
+
+				// shaders
+				{
+					add_shader(scene, 8, [](Program::Shader& sh) {
+
+
+						// Instance 0
+						{
+							auto id = sh.create_instance();
+							auto I = sh.instance(id);
+							I.set_group_size(1000, 1000, 1)
+								.set_drawcalls(32)
+								.set_position_start(0.0f, 0.0f, 0.0f)
+								.set_position_end(0.0f, 0.0f, 0.0f)
+								.set_euler_start(0.0f, 0.0f, 0.0f)
+								.set_euler_end(0.0f, 0.0f, 0.0f)
+								.set_scale_start(1.0f, 1.0f, 1.0f)
+								.set_scale_end(1.0f, 1.0f, 1.0f);
+
+
+							constexpr int kU = 10;
+							for (int u = 0; u < kU; ++u)
+							{
+								float v_start = 0.1f * static_cast<float>(u);
+								float v_end = 1.0f - 0.1f * static_cast<float>(u);
+
+								v_start = 0.0;
+								v_end = 0.0;
+
+								I.set_u_start_end(u, v_start, v_end);
+							}
+
+							I.set_u_start_end(0, 72.29710, 72.29710);
+						}
+
+
+						// Instance 1
+
+						{
+
+							auto id = sh.create_instance();
+							auto I = sh.instance(id);
+							I.set_group_size(1000, 1000, 1)
+								.set_drawcalls(32)
+								.set_position_start(10.0f, 0.0f, 0.0f)
+								.set_position_end(10.0f, 0.0f, 0.0f)
+								.set_euler_start(0.0f, 0.0f, 0.0f)
+								.set_euler_end(0.0f, 0.0f, 0.0f)
+								.set_scale_start(1.0f, 1.0f, 1.0f)
+								.set_scale_end(1.0f, 1.0f, 1.0f);
+
+
+							constexpr int kU = 10;
+							for (int u = 0; u < kU; ++u)
+							{
+								float v_start = 0.1f * static_cast<float>(u);
+								float v_end = 1.0f - 0.1f * static_cast<float>(u);
+
+								v_start = 0.0;
+								v_end = 0.0;
+
+								I.set_u_start_end(u, v_start, v_end);
+							}
+
+							I.set_u_start_end(0, 4.237, 4.237);
+						}
+
+
+						});
+
+
+					add_shader(scene, 9, [](Program::Shader& sh) {
+
+
+						// Instance 0
+
+						{
+							auto id = sh.create_instance();
+							auto I = sh.instance(id);
+							I.set_group_size(1000, 1000, 1)
+								.set_drawcalls(32)
+								.set_position_start(0.0f, 10.0f, 0.0f)
+								.set_position_end(0.0f, 10.0f, 0.0f)
+								.set_euler_start(0.0f, 0.0f, 0.0f)
+								.set_euler_end(0.0f, 0.0f, 0.0f)
+								.set_scale_start(1.0f, 1.0f, 1.0f)
+								.set_scale_end(1.0f, 1.0f, 1.0f);
+
+
+							constexpr int kU = 10;
+							for (int u = 0; u < kU; ++u)
+							{
+								float v_start = 0.1f * static_cast<float>(u);
+								float v_end = 1.0f - 0.1f * static_cast<float>(u);
+
+								v_start = 0.0;
+								v_end = 0.0;
+
+								I.set_u_start_end(u, v_start, v_end);
+							}
+
+							I.set_u_start_end(0, 1.427, 1.427);
+						}
+
+
+						// Instance 1
+
+						{
+
+							auto id = sh.create_instance();
+							auto I = sh.instance(id);
+							I.set_group_size(1000, 1000, 1)
+								.set_drawcalls(32)
+								.set_position_start(10.0f, 10.0f, 10.0f)
+								.set_position_end(10.0f, 10.0f, 10.0f)
+								.set_euler_start(0.0f, 0.0f, 0.0f)
+								.set_euler_end(0.0f, 0.0f, 0.0f)
+								.set_scale_start(1.0f, 1.0f, 1.0f)
+								.set_scale_end(1.0f, 1.0f, 1.0f);
+
+
+							constexpr int kU = 10;
+							for (int u = 0; u < kU; ++u)
+							{
+								float v_start = 0.1f * static_cast<float>(u);
+								float v_end = 1.0f - 0.1f * static_cast<float>(u);
+
+								v_start = 0.0;
+								v_end = 0.0;
+
+								I.set_u_start_end(u, v_start, v_end);
+							}
+
+							I.set_u_start_end(0, 5.497, 5.497);
+
+						}
+
+
+
+						});
+				}
+
+
+
+				{
+					// scene.print();
+					std::string program_name = NameGenerators_::generate_prefix_timestamp_suffix_name();
+					save_program(scene, program_name);
+					run_program(program_name);
+
+					std::string name = "output_" + std::to_string(i);
+					Video::generate(name, "bmp");
+				}
+
+			}
+
+			engine_flush_frames();
+
+		}
+	}
 }
 
 
@@ -266,200 +462,8 @@ int universe(int argc, char* argv[])
 	std::cout << "universe_2\n";
 	
 
-	const int number_of_sections = 4;
 	
-
-	{
-		// Build anchor and append 4 sections
-		Universe_::CameraPath path;
-		Universe_::build_path(path);         // gives you an initial keyframe with end_frame = M_0
-
-		Universe_::append_handheld_sections(path, /*sections*/4, /*frames_per*/60 * 4);
-
-		// Now render section 0..3 (each 4s)
-		//const int section = 0; // set 0,1,2,3 for each run
-
-		assert(static_cast<int>(path.path.size()) >= number_of_sections + 1);
-
-		for (int i = 0; i < number_of_sections; i++)
-		{
-			engine_flush_frames();
-
-
-
-			Program program;
-			program.le.halfLife = 0.02f;
-			program.le.brightness = 0.0f;
-			program.capture.capture = true;
-			program.capture.capture_png = false;
-			program.capture.capture_bmp = true;
-
-			// Fill program precisely for requested section
-			Universe_::fill_program_for_section(path, i, program, /*fps*/60.0f);
-
-			Scene_::Scene scene = Scene_::Scene();
-			program.configure(scene);
-
-
-			// shaders
-			{
-				add_shader(scene, 6, [](Program::Shader& sh) {
-
-
-					// Instance 0
-					{
-						auto id = sh.create_instance();
-						auto I = sh.instance(id);
-						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(32)
-							.set_position_start(0.0f, 0.0f, 0.0f)
-							.set_position_end(0.0f, 0.0f, 0.0f)
-							.set_euler_start(0.0f, 0.0f, 0.0f)
-							.set_euler_end(0.0f, 0.0f, 0.0f)
-							.set_scale_start(1.0f, 1.0f, 1.0f)
-							.set_scale_end(1.0f, 1.0f, 1.0f);
-
-
-						constexpr int kU = 10;
-						for (int u = 0; u < kU; ++u)
-						{
-							float v_start = 0.1f * static_cast<float>(u);
-							float v_end = 1.0f - 0.1f * static_cast<float>(u);
-
-							v_start = 0.0;
-							v_end = 0.0;
-
-							I.set_u_start_end(u, v_start, v_end);
-						}
-
-						I.set_u_start_end(0, 72.29710, 72.29710);
-					}
-
-
-					// Instance 1
-
-					{
-
-						auto id = sh.create_instance();
-						auto I = sh.instance(id);
-						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(32)
-							.set_position_start(10.0f, 0.0f, 0.0f)
-							.set_position_end(10.0f, 0.0f, 0.0f)
-							.set_euler_start(0.0f, 0.0f, 0.0f)
-							.set_euler_end(0.0f, 0.0f, 0.0f)
-							.set_scale_start(1.0f, 1.0f, 1.0f)
-							.set_scale_end(1.0f, 1.0f, 1.0f);
-
-
-						constexpr int kU = 10;
-						for (int u = 0; u < kU; ++u)
-						{
-							float v_start = 0.1f * static_cast<float>(u);
-							float v_end = 1.0f - 0.1f * static_cast<float>(u);
-
-							v_start = 0.0;
-							v_end = 0.0;
-
-							I.set_u_start_end(u, v_start, v_end);
-						}
-
-						I.set_u_start_end(0, 4.237, 4.237);
-					}
-
-
-					});
-
-
-				add_shader(scene, 7, [](Program::Shader& sh) {
-
-
-					// Instance 0
-
-					{
-						auto id = sh.create_instance();
-						auto I = sh.instance(id);
-						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(32)
-							.set_position_start(0.0f, 10.0f, 0.0f)
-							.set_position_end(0.0f, 10.0f, 0.0f)
-							.set_euler_start(0.0f, 0.0f, 0.0f)
-							.set_euler_end(0.0f, 0.0f, 0.0f)
-							.set_scale_start(1.0f, 1.0f, 1.0f)
-							.set_scale_end(1.0f, 1.0f, 1.0f);
-
-
-						constexpr int kU = 10;
-						for (int u = 0; u < kU; ++u)
-						{
-							float v_start = 0.1f * static_cast<float>(u);
-							float v_end = 1.0f - 0.1f * static_cast<float>(u);
-
-							v_start = 0.0;
-							v_end = 0.0;
-
-							I.set_u_start_end(u, v_start, v_end);
-						}
-
-						I.set_u_start_end(0, 1.427, 1.427);
-					}
-
-
-					// Instance 1
-
-					{
-
-						auto id = sh.create_instance();
-						auto I = sh.instance(id);
-						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(32)
-							.set_position_start(10.0f, 10.0f, 10.0f)
-							.set_position_end(10.0f, 10.0f, 10.0f)
-							.set_euler_start(0.0f, 0.0f, 0.0f)
-							.set_euler_end(0.0f, 0.0f, 0.0f)
-							.set_scale_start(1.0f, 1.0f, 1.0f)
-							.set_scale_end(1.0f, 1.0f, 1.0f);
-
-
-						constexpr int kU = 10;
-						for (int u = 0; u < kU; ++u)
-						{
-							float v_start = 0.1f * static_cast<float>(u);
-							float v_end = 1.0f - 0.1f * static_cast<float>(u);
-
-							v_start = 0.0;
-							v_end = 0.0;
-
-							I.set_u_start_end(u, v_start, v_end);
-						}
-
-						I.set_u_start_end(0, 5.497, 5.497);
-
-					}
-
-
-
-					});
-			}
-
-
-
-			{
-				// scene.print();
-				std::string program_name = NameGenerators_::generate_prefix_timestamp_suffix_name();
-				save_program(scene, program_name);
-				run_program(program_name);
-
-				std::string name = "output_" + std::to_string(i);
-				Video::generate(name, "bmp");
-			}
-
-		}
-
-		engine_flush_frames();
-		
-	}
-
+	Universe_::rendering();
 	
 
 
