@@ -114,50 +114,115 @@ void main()
 
 
     
-    int n_x = 10;
-    float radius = 1.0 + 0.1 * sin(rnd_x * TAU * int(n_x));
+    // int n_x = 2;
+    // int n_y = 10;
+
+    // float offset_x = 0.1;
+    // float offset_y = 0.2 + uTime;
+
+    // float wx_0 = 0.01 * sin(offset_x + rnd_x * TAU * int(n_x));
+    // wx_n
+
+    // float wy_0 = 0.02 * sin(offset_y + rnd_y * TAU * int(n_y));
+    // wy_n
+
+
+    // float cx = 0.5 + 0.2 * sin(uTime);
+    // float cy = 0.5 + 0.2 * cos(uTime);
+
+    // cx min is 0.5 - 0.2
+    // cy min is 0.5 - 0.2
+    
+    // cx max is 0.5 + 0.2
+    // cx max is 0.5 + 0.2
+
+    // if cx is at 0.7
+    // if cy is at 0.7
+    // at what rnd_x is the distance the biggest
+    // well at te distance where rnd_x is as much diffrent from cx
+    // well let's try 
+    // rnd_x equal 0.0 and cx 0.7 distance axial is 0.7
+    // rnd_x equal 1.0 and cx 0.3 distance axial is 0.7
+    
+    // with the other axis is the same
+    // rnd_y equal 0.0 and cy 0.7 distance axial is 0.7
+    // rnd_y equal 1.0 and cy 0.3 distance axial is 0.7
+
+    // sqrt( 0.7 * 0.7 + 0.7 * 0.7)
+    // 1.0 / sqrt( 0.7 * 0.7 + 0.7 * 0.7)
+    
+
+
+    // float inv_sqrt_of_1_1_triangle = 1.0 / sqrt(2.0);
+    // float d0 = sqrt((rnd_x - cx) * (rnd_x - cx) + (rnd_y - cy) * (rnd_y - cy));
+    // d0 *=  1.0 / sqrt(0.7 * 0.7 + 0.7 * 0.7);
+
+    // int wd_d0_n = 10;
+    // float w_d0 = 0.01 * sin(d0 * TAU * int(wd_d0_n));
+
+    // float radius = 0.4 + wx_0 + wy_0 + w_d0;
+
+    // float radius = 0.4 + wx_0 + wy_0;
+       
+
+    /*float cx = 0.5;
+    float cy = 0.5;
+
+    float d0 = sqrt((rnd_x - cx) * (rnd_x - cx) + (rnd_y - cy) * (rnd_y - cy));
+
+    float d0_max = d0;
+
+    d0 *= min(d0_max, 1.0 /(d0 * d0 * 20.0));
+
+    float radius = 0.47 + 0.03 * sin(d0 * TAU * 1000.0 + uTime);*/
+
+    float radius = 0.2;
+
     vec3 sphere_position = spherical01(radius, rnd_x, rnd_y);
     float px = sphere_position.x;
     float py = sphere_position.y;
     float pz = sphere_position.z;
 
-    float color_r = 1.0;
-    float color_g = 1.0;
-    float color_b = 1.0;
+
 
     
+    float color_r = 0.001;// 1.0 * max(0.001, wx_0) * 0.2;
+    float color_g = 0.001;// 1.0 * max(0.001, wy_0) * 0.2;
+    float color_b = 0.001;
 
+    
+    color_r *= 10.0;
+    color_g *= 10.0;
+    color_b *= 10.0;
   
 
 
     
 
-    vec3 color_base_dark = vec3(0.02, 0.08, 0.15);
-    vec3 color_base_bright = vec3(0.10, 0.50, 0.75);
+    // vec3 color_base_dark = vec3(0.02, 0.08, 0.15);
+    // vec3 color_base_bright = vec3(0.10, 0.50, 0.75);
 
 
-    vec3 color_base = vec3(1.0, 1.0, 1.0);
+ 
 
     
 
-    color_r = color_base.r * 0.01;
-    color_g = color_base.g * 0.01;
-    color_b = color_base.b * 0.01;
-
-
-
-
-
-
-
-
-
+    
 
 
 
     
 
-    float scale_cube = 0.01;
+
+
+
+
+
+
+
+    
+
+    float scale_cube = 0.002;
     vec3  pos = vec3(px, pz, py);
     vec3  scale = vec3(scale_cube, scale_cube, scale_cube);
 
@@ -215,15 +280,15 @@ void main()
         float rnd_instance_scale_z = rand01(s0_instance_z_scale);
 
         // Rotation
-        vec3 axis = normalize(vec3(1.0, 1.0, 0.0));
-        float angle = uTime * 0.0;
+        vec3 axis = normalize(vec3(0.0, 0.0, 1.0));
+        float angle = uTime * 0.2;
         mat3 R3 = axisAngleToMat3(axis, angle);
         mat4 R = mat4(vec4(R3[0], 0.0), vec4(R3[1], 0.0), vec4(R3[2], 0.0), vec4(0, 0, 0, 1));
 
         // Translation
         mat4 T = mat4(1.0);
         vec3 offset = vec3(sin(uTime + rnd_instance_0 * 10.0) * 10.0, sin(uTime + rnd_instance_1 * 0.0) * 10.0, 0.0);
-        offset = vec3(0.0, 0.0, 0.0);
+        offset = vec3(0.5, 0.5, 0.5);
         T[3] = vec4(offset, 1.0);
 
 
@@ -240,21 +305,6 @@ void main()
 
 
     pos = new_position.xyz;
-    
-    if (rnd_z > 0.01)
-    {
-        if (rnd_x > 0.5)
-        {
-            pos.z = 1.0;
-        }
-        else
-        {
-            pos.z = 0.0;
-        }
-        pos.x = rnd_x;
-        pos.y = rnd_y;
-        // pos.z = 0.0;
-    }
     
 
 

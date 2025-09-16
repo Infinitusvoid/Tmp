@@ -129,10 +129,10 @@ void main()
     base = vec3(0.0);
     //emissive = vec3(0.0);
 
-    lighting *= 100.0;
+    lighting *= 1.0;
 
-    // lighting = pow(lighting, vec3(4.0));
-    //lighting *= 100.0;
+    lighting = pow(lighting, vec3(4.0));
+    lighting *= 100.0;
 
     //emissive *= vec3(0.0);
 

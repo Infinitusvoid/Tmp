@@ -71,7 +71,24 @@ vec3 localCubeFaceNormal(vec3 p) {
 
 
 
+vec3 snapToNearestEdge(vec3 u)
+{
+    // distance to the nearest face on each axis
+    vec3 dist = min(u, 1.0 - u);         // smaller = closer to face
+    // choose which axis to KEEP (largest dist => farthest from faces)
+    int k = (dist.x > dist.y)
+        ? ((dist.x > dist.z) ? 0 : 2)
+        : ((dist.y > dist.z) ? 1 : 2);
 
+    // decide side (0 or 1) for snapping
+    vec3 side = step(vec3(0.5), u);      // 0 if closer to 0-face, 1 if closer to 1-face
+    vec3 snapped = mix(vec3(0.0), vec3(1.0), side);
+
+    // build the result: keep axis k, snap the other two
+    if (k == 0) return vec3(u.x, snapped.y, snapped.z);
+    if (k == 1) return vec3(snapped.x, u.y, snapped.z);
+    return vec3(snapped.x, snapped.y, u.z);
+}
 
 
 
@@ -80,8 +97,7 @@ vec3 localCubeFaceNormal(vec3 p) {
 void main()
 {
     int id = gl_InstanceID;
-    const int number_per_dimension = 1000;
-    id = id + (number_per_dimension * number_per_dimension) * int(uDrawcallNumber);
+    id = id + (uGrid.x * uGrid.y * uGrid.z) * int(uDrawcallNumber);
 
 
 
@@ -92,6 +108,17 @@ void main()
     float rnd_x = rand01(s0);
     float rnd_y = rand01(s1);
     float rnd_z = rand01(s2);
+
+
+    uint s_rnd_0 = uSeed + uint(id + 1142);
+    float rnd_0 = rand01(s_rnd_0);
+
+    uint s_rnd_1 = uSeed + uint(id + 1147);
+    float rnd_1 = rand01(s_rnd_1);
+
+    uint s_rnd_2 = uSeed + uint(id + 1107);
+    float rnd_2 = rand01(s_rnd_2);
+
 
     uint s0_rot_x = uSeed + uint(id + 2431);
     uint s1_rot_y = uSeed + uint(id + 4412);
@@ -136,15 +163,14 @@ void main()
     vec3 color_base_bright = vec3(0.10, 0.50, 0.75);
 
 
-    vec3 color_base = vec3(1.0, 1.0, 1.0);
+    vec3 color_base = vec3(0.01, 0.01, 0.01);
 
     
 
-    color_r = color_base.r * 0.01;
-    color_g = color_base.g * 0.01;
-    color_b = color_base.b * 0.01;
-
-
+   
+    color_r = 0.02;
+    color_g = 0.02;
+    color_b = 0.02;
 
 
 
@@ -158,7 +184,7 @@ void main()
     
 
     float scale_cube = 0.01;
-    vec3  pos = vec3(px, pz, py);
+    vec3  pos = vec3(px,pz, py);
     vec3  scale = vec3(scale_cube, scale_cube, scale_cube);
 
 
@@ -166,39 +192,63 @@ void main()
 
 
 
-    float x = float(id / 1000);
-    float y = float(id % 1000) * 0.01;
-    float z = float(id) * 0.1;
-
-
-    uint s0n = uSeed + uint(id + 10);
-    uint s1n = uSeed + uint(id + 142);
-    float rnd_xn = rand01(s0n);
-    float rnd_yn = rand01(s1n);
 
 
 
 
-    // pos.x = x * 0.01;
-    // pos.y = 0.0;
-    // pos.z = y;
-    // The output color
-
-   // float factor_radius_offset = pow(max(0.0, radius_offset), 4.0) * 10.0;
 
 
-    //float color_r = px + sin(radius * 10.0);
-    ///float color_g = py + factor_radius_offset * 100.0;
-    // float color_b = pz;
 
-  // color_r *= 0.1;
-  // color_g *= 0.1;
-  // color_b *= 0.1;
+    pos.x = rnd_x; // 0.0 to 1.0
+    pos.y = rnd_y; // 0.0 to 1.0
+    pos.z = rnd_z; // 0.0 to 1.0
 
+
+    {
+        const bool full_cube = false;
+
+        if (full_cube)
+        {
+
+            if
+                (
+                    pos.x > 0.01 &&
+                    pos.y > 0.01 &&
+                    pos.y < 0.99 &&
+                    // pos.z > 0.01 &&
+                    pos.z < 0.99
+                    )
+            {
+
+
+                pos.x = 1.0;
+
+
+            }
+        }
+        else
+        {
+            pos = snapToNearestEdge(pos);
+        }
+    }
+    
 
 
 
     vec4 new_position = vec4(vec3(pos), 1.0);
+
+    vec3 offset_location = vec3(0.0, 0.0, 0.0);
+
+    const int num_cube_size_x = 1;
+    const int num_cube_size_y = 1;
+    const int num_cube_size_z = 1;
+
+
+    float xi = int(rnd_0 * float(num_cube_size_x));
+    float yi = int(rnd_1 * float(num_cube_size_y));
+    float zi = int(rnd_2 * float(num_cube_size_z));
+
+    offset_location = vec3(xi, yi, zi);
 
     if (true) {
 
@@ -222,9 +272,7 @@ void main()
 
         // Translation
         mat4 T = mat4(1.0);
-        vec3 offset = vec3(sin(uTime + rnd_instance_0 * 10.0) * 10.0, sin(uTime + rnd_instance_1 * 0.0) * 10.0, 0.0);
-        offset = vec3(0.0, 0.0, 0.0);
-        T[3] = vec4(offset, 1.0);
+        T[3] = vec4(offset_location, 1.0);
 
 
 
@@ -241,24 +289,10 @@ void main()
 
     pos = new_position.xyz;
     
-    if (rnd_z > 0.01)
-    {
-        if (rnd_x > 0.5)
-        {
-            pos.z = 1.0;
-        }
-        else
-        {
-            pos.z = 0.0;
-        }
-        pos.x = rnd_x;
-        pos.y = rnd_y;
-        // pos.z = 0.0;
-    }
+ 
     
-
-
-
+    
+   
 
 
     
@@ -268,7 +302,7 @@ void main()
     // Build TRS
     mat4 T = mat4(1.0); T[3] = vec4(pos, 1.0);
     vec3 axis = normalize(vec3(rnd_cube_rotation_x, rnd_cube_rotation_y, rnd_cube_rotation_z));
-    float angle = rnd_cube_rotation_angle;//uTime * 0.0;
+    float angle = rnd_cube_rotation_angle * 1000.0 + uTime * 1.0;
     mat3 R3 = axisAngleToMat3(axis, angle);
     mat4 R = mat4(vec4(R3[0], 0.0), vec4(R3[1], 0.0), vec4(R3[2], 0.0), vec4(0, 0, 0, 1));
     mat4 S = mat4(1.0); S[0][0] = scale.x; S[1][1] = scale.y; S[2][2] = scale.z;
