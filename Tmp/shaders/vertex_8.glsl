@@ -121,6 +121,130 @@ float wave(float x, float y, float t)
     return h * heightScale;
 }
 
+// Composite ocean height: three multi-octave bands, deep-water dispersion
+// x,y: horizontal world coords (meters); t: time (seconds)
+float waves_combo(float x, float y, float t)
+{
+    // --------------- shared constants ---------------
+    const float PI = 3.14159265358979323846;
+    const float G = 9.81;                 // gravity
+    const float GOLD = 2.399963229728653;    // golden angle
+    vec2  p = vec2(x, y);
+
+    float h = 0.0;  // final height accumulator
+    float wSum = 0.0;  // weights sum for normalization
+
+    // ===== Group A: long swells (slow, broad) =====
+    {
+        const int OCT = 5;
+        float amp0 = 0.60;                   // base amplitude
+        float lambda0 = 120.0;                  // largest wavelength
+        float lacunarity = 0.55;                   // wavelength shrink per octave
+        float gain = 0.60;                   // amplitude falloff per octave
+        vec2  windDir = normalize(vec2(0.90, 0.25));
+        float dirJitter = 0.40;                   // small spread
+        float timeScale = 0.60;                   // slow motion
+        float peak = 0.15;                   // crest sharpening (0..1)
+        float weight = 1.00;
+
+        float hg = 0.0;
+        for (int i = 0; i < OCT; ++i) {
+            float fi = float(i);
+            float lambda = lambda0 * pow(lacunarity, fi);
+            float k = 2.0 * PI / max(lambda, 1e-5);
+            float omega = sqrt(G * k);
+
+            float ang = fi * GOLD * dirJitter;     // decorrelated directions
+            float c = cos(ang), s = sin(ang);
+            vec2  d = normalize(vec2(c * windDir.x - s * windDir.y,
+                s * windDir.x + c * windDir.y));
+
+            float a = amp0 * pow(gain, fi);
+            float phi = k * dot(d, p) - omega * (timeScale * t) + fi * 1.234567;
+            hg += a * sin(phi);
+        }
+        // peak shaping (sharper crests)
+        hg = sign(hg) * pow(abs(hg), mix(1.0, 0.65, clamp(peak, 0.0, 1.0)));
+
+        h += weight * hg;
+        wSum += weight;
+    }
+
+    // ===== Group B: wind waves (short, lively) =====
+    {
+        const int OCT = 6;
+        float amp0 = 0.25;
+        float lambda0 = 28.0;
+        float lacunarity = 0.50;
+        float gain = 0.70;
+        vec2  windDir = normalize(vec2(0.65, 0.76));
+        float dirJitter = 0.85;                   // wider spread
+        float timeScale = 1.40;                   // faster motion
+        float peak = 0.35;
+        float weight = 1.00;
+
+        float hg = 0.0;
+        for (int i = 0; i < OCT; ++i) {
+            float fi = float(i);
+            float lambda = lambda0 * pow(lacunarity, fi);
+            float k = 2.0 * PI / max(lambda, 1e-5);
+            float omega = sqrt(G * k);
+
+            float ang = fi * GOLD * dirJitter + 1.7;
+            float c = cos(ang), s = sin(ang);
+            vec2  d = normalize(vec2(c * windDir.x - s * windDir.y,
+                s * windDir.x + c * windDir.y));
+
+            float a = amp0 * pow(gain, fi);
+            float phi = k * dot(d, p) - omega * (timeScale * t) + fi * 2.345678;
+            hg += a * sin(phi);
+        }
+        hg = sign(hg) * pow(abs(hg), mix(1.0, 0.60, clamp(peak, 0.0, 1.0)));
+
+        h += weight * hg;
+        wSum += weight;
+    }
+
+    // ===== Group C: cross-sea swells (different bearing) =====
+    {
+        const int OCT = 4;
+        float amp0 = 0.18;
+        float lambda0 = 200.0;
+        float lacunarity = 0.60;
+        float gain = 0.55;
+        vec2  windDir = normalize(vec2(-0.30, 1.00));
+        float dirJitter = 0.20;                   // almost coherent
+        float timeScale = 0.45;
+        float peak = 0.10;
+        float weight = 0.70;
+
+        float hg = 0.0;
+        for (int i = 0; i < OCT; ++i) {
+            float fi = float(i);
+            float lambda = lambda0 * pow(lacunarity, fi);
+            float k = 2.0 * PI / max(lambda, 1e-5);
+            float omega = sqrt(G * k);
+
+            float ang = fi * GOLD * dirJitter + 2.2;
+            float c = cos(ang), s = sin(ang);
+            vec2  d = normalize(vec2(c * windDir.x - s * windDir.y,
+                s * windDir.x + c * windDir.y));
+
+            float a = amp0 * pow(gain, fi);
+            float phi = k * dot(d, p) - omega * (timeScale * t) + 0.5 + 0.8 * fi;
+            hg += a * sin(phi);
+        }
+        hg = sign(hg) * pow(abs(hg), 0.90);
+
+        h += weight * hg;
+        wSum += weight;
+    }
+
+    // Normalize and final global scale if you want a one-knob control
+    float heightScale = 1.0;
+    return (wSum > 0.0 ? h / wSum : 0.0) * heightScale;
+}
+
 void main()
 {
     int id = gl_InstanceID;
@@ -163,15 +287,15 @@ void main()
     float color_g = 1.0;
     float color_b = 1.0;
 
-    pz = wave(px, py, uTime);
-    pz += wave(px * 0.1, py * 0.1, uTime);
-    pz += wave(px * 0.0153541, py * 0.014123, uTime);
-    pz += wave(px * 0.002323, py * 0.002213, uTime);
+    pz = waves_combo(px, py, uTime);
+    // pz += waves_combo(px * 0.1, py * 0.1, uTime);
+    // pz += waves_combo(px * 0.0153541, py * 0.014123, uTime);
+    // pz += waves_combo(px * 0.002323, py * 0.002213, uTime);
 
-    pz += wave(px * 1.23, py * 1.123, uTime) * 0.2;
-    pz += wave(px * 42.23, py * 42.123, uTime) * 0.1;
-    pz += wave(px * 104.13, py * 142.112323, uTime) * 0.02;
-    pz += wave(px * 422.43, py * 42.12323, uTime) * 0.02323;
+    // pz += waves_combo(px * 1.23, py * 1.123, uTime) * 0.2;
+    // pz += waves_combo(px * 42.23, py * 42.123, uTime) * 0.1;
+    // pz += waves_combo(px * 104.13, py * 142.112323, uTime) * 0.02;
+    // pz += waves_combo(px * 422.43, py * 42.12323, uTime) * 0.02323;
 
 
     // Instance transform (tiny cubes, uniform scale)
