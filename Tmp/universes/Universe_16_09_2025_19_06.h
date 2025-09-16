@@ -12,11 +12,9 @@
 #include <string>
 #include <iostream>
 
+// Random generator
 namespace Universe_
 {
-	
-
-
 	struct RNG {
 		// PCG parameters/state (64-bit state, 64-bit odd increment)
 		uint64_t state;
@@ -88,7 +86,10 @@ namespace Universe_
 		}
 	};
 
-	
+}
+
+namespace Universe_
+{
 
 
 	struct CameraRecording
@@ -159,6 +160,8 @@ namespace Universe_
 		}
 	};
 
+	
+	
 	
 	void build_path(CameraPath& path)
 	{
@@ -255,15 +258,15 @@ namespace Universe_
 		return true;
 	}
 
-	void rendering()
+	void interactive()
 	{
-		engine_flush_frames();
+		// engine_flush_frames();
 
 		Program program;
 		program.le.halfLife = 0.02f;
 		program.le.brightness = 0.0f;
 		program.le.exposure = 10.0;
-		program.capture.capture = true;
+		program.capture.capture = false;
 		program.capture.capture_png = false;
 		program.capture.capture_bmp = true;
 
@@ -283,7 +286,7 @@ namespace Universe_
 		program.camera_end.x = 5.515966;
 		program.camera_end.y = 4.796353;
 		program.camera_end.z = 4.887476;
-					   
+
 		program.camera_end.yaw = 128.639969;
 		program.camera_end.pitch = -8.880000;
 		program.camera_end.fov = 45.0;
@@ -291,14 +294,14 @@ namespace Universe_
 		Scene_::Scene scene = Scene_::Scene();
 		program.configure(scene);
 
-		bool enable_shader_8 = true;
-		
-		
+		bool enable_shader_9 = true;
+
+
 
 		// shaders
-		if(enable_shader_8)
+		if (enable_shader_9)
 		{
-			add_shader(scene, 8, [](Program::Shader& sh) {
+			add_shader(scene, 9, [](Program::Shader& sh) {
 
 
 				// Instance 0
@@ -306,7 +309,7 @@ namespace Universe_
 					auto id = sh.create_instance();
 					auto I = sh.instance(id);
 					I.set_group_size(1000, 1000, 1)
-						.set_drawcalls(200)
+						.set_drawcalls(1)
 						.set_position_start(0.0f, 0.0f, 0.0f)
 						.set_position_end(0.0f, 0.0f, 0.0f)
 						.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -333,7 +336,7 @@ namespace Universe_
 
 				});
 
-			
+
 		}
 
 
@@ -346,34 +349,45 @@ namespace Universe_
 
 			int i = 0;
 			std::string name = "output_" + std::to_string(i);
-			Video::generate(name, "bmp");
+			// Video::generate(name, "bmp");
 
-			
+
 		}
 
 		{
-			engine_flush_frames();
-			engine_delete_flush_frames();
+			// engine_flush_frames();
+			// engine_delete_flush_frames();
 		}
 	}
+	
 }
 
 
 
-// Put your universe 2 content here.
-// This file is safe to include via universes/universe.h
+
+
 int universe(int argc, char* argv[])
 {
 	std::cout << "universe_2\n";
 	
+	
 
-	
-	
-	Universe_::rendering();
-	
+	Universe_::interactive();
 
 
 
 	return 0;
 
 }
+
+// ---------------------------------------
+// Goals
+// Unit cube voxel way ( we will build worlds ) 
+// Try on spheres parameter traveling  ( the spheres may be placed in that kind of world ) 
+// Well I can try first building spheres and than go and build the voxels 
+// Well yea let's think well there is a need to change the mindset 
+// Usually I rush thru the code build something and than 
+// Well just le it be like that 
+// What we need is to build something with joy and passion not rushing to get something done 
+// 
+// ---------------------------------------
