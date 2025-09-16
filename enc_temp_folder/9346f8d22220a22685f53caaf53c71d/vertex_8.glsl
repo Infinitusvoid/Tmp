@@ -99,130 +99,6 @@ float f_0(float x, float y, float factor)
 }
 
 
-// wave pattern
-
-const float G = 9.81;              // gravity (world units per sec^2)
-const float TIME_SCALE = 1.0;       // speed multiplier
-
-// ---- Wave set (edit these or convert them to uniforms) ----------------------
-const int  WAVES = 6;               // up to ~16 is fine before it gets heavy
-
-// directions (will be normalized)
-const vec2 W_DIR[WAVES] = vec2[](
-    vec2(1.0, 0.20),
-    vec2(0.8, 0.60),
-    vec2(-0.6, 0.80),
-    vec2(1.0, -0.30),
-    vec2(0.2, 1.00),
-    vec2(-1.0, 0.10)
-    );
-
-// wavelengths (world units) — set a spread from small ripples to swells
-const float W_LAMBDA[WAVES] = float[](48.0, 24.0, 16.0, 64.0, 96.0, 32.0);
-
-// vertical amplitudes (same units as Y). keep a_i << lambda_i to avoid self-intersection
-const float W_AMP[WAVES] = float[](0.35, 0.20, 0.12, 0.30, 0.40, 0.18);
-
-// steepness/choppiness in [0..1]; higher = sharper crests. 
-// Rule of thumb: steepness * a * k <= 1 for all waves
-const float W_STEEP[WAVES] = float[](0.85, 0.75, 0.65, 0.80, 0.55, 0.70);
-
-// per-wave phase offsets to de-sync patterns (radians)
-const float W_PHASE0[WAVES] = float[](0.0, 1.3, 2.7, 0.7, 4.2, 3.5);
-
-
-// Evaluate a multi-Gerstner ocean at horizontal position xz and time t.
-// Returns displaced world-space position, unit normal, and a foam hint in [0..1].
-void oceanGerstner(in vec2 xz, in float t,
-    out vec3 pos, out vec3 normal, out float foamHint)
-{
-    // Base (flat) surface at y = 0
-    pos = vec3(xz.x, 0.0, xz.y);
-
-    // Accumulators
-    vec3 disp = vec3(0.0);
-    // Tangents for analytic normal
-    vec3 Tx = vec3(1.0, 0.0, 0.0);
-    vec3 Tz = vec3(0.0, 0.0, 1.0);
-
-    // Optional slope length for a quick foam proxy
-    vec2 slope = vec2(0.0);
-
-    float time = t * TIME_SCALE;
-
-    for (int i = 0; i < WAVES; ++i) {
-        // Normalize direction
-        vec2 d = normalize(W_DIR[i]);
-
-        // Wavenumber and dispersion
-        float k = 2.0 * PI / W_LAMBDA[i];      // |k|
-        float w = sqrt(G * k);                 // deep-water dispersion: omega = sqrt(g*k)
-
-        // Phase: k * (dx) - w*t + phi0
-        float phi = k * dot(d, xz) - w * time + W_PHASE0[i];
-
-        float a = W_AMP[i];
-        float s = W_STEEP[i];
-
-        // Qi packs steepness * amplitude * k (common Gerstner notation)
-        float Qi = s * a * k;
-
-        float cosP = cos(phi);
-        float sinP = sin(phi);
-
-        // Horizontal "chop" displacement (x,z) and vertical (y)
-        disp.x += d.x * (Qi * cosP);
-        disp.y += a * (sinP);
-        disp.z += d.y * (Qi * cosP);
-
-        // Analytic tangents (partials wrt x and z)
-        // Tx = d/dx of position; Tz = d/dz of position
-        // Using standard Gerstner derivatives with Q = s*a*k
-        float kdx = k * d.x;
-        float kdz = k * d.y;
-
-        Tx.x += -(Qi * d.x * d.x) * sinP;          // 1 - (Q d.x^2 sin)
-        Tx.y += (a * kdx) * cosP;         // (a k d.x cos)
-        Tx.z += -(Qi * d.x * d.y) * sinP;          // -(Q d.x d.y sin)
-
-        Tz.x += -(Qi * d.x * d.y) * sinP;
-        Tz.y += (a * kdz) * cosP;
-        Tz.z += -(Qi * d.y * d.y) * sinP;          // 1 - (Q d.y^2 sin) is added to 1 below
-        // NOTE: we initialized Tx=(1,0,0), Tz=(0,0,1), so the "1 +" parts are already present.
-
-        // Heightfield slope (not used for the true normal, just a foam hint)
-        slope += a * k * vec2(d.x, d.y) * cosP;
-    }
-
-    // Final displaced position
-    pos += disp;
-
-    // Finalize Tz.z (we added only the  term above; the "1 +" is already in the initializer)
-    // (No action needed; we started Tz as (0,0,1), so it already has the "1" term.)
-
-    // Unit normal via analytic tangents
-    normal = normalize(cross(Tz, Tx));  // order gives upward normal
-
-    // Simple foam proxy: more slope & sharper crests -> more foam.
-    // Tweak the gains to taste or replace with your own breaker metric.
-    float slopeLen = length(slope);
-    foamHint = saturate(slopeLen * 0.6);            // 0.6 is a taste factor
-}
-
-// Convenience wrapper without foam if you don’t need it
-vec3 oceanNormal(vec2 xz, float t) {
-    vec3 p, n; float f;
-    oceanGerstner(xz, t, p, n, f);
-    return n;
-}
-
-float oceanHeight(vec2 xz, float t) {
-    vec3 p, n; float f;
-    oceanGerstner(xz, t, p, n, f);
-    return p.y;
-}
-
-//
 
 void main()
 {
@@ -274,22 +150,18 @@ void main()
         color_factor.g = 1.0;
         color_factor.b = 1.0;
 
-        // float v0 = f_0(px, py, 10.0) * 0.5;
-        // float v1 = f_0(px, py, 2.0) * 0.5;
+        float v0 = f_0(px, py, 10.0) * 0.5;
+        float v1 = f_0(px, py, 2.0) * 0.5;
 
-        // color_factor.r = v0 * 2.0 * v1;
-        // pz += v0 * v1;
+        color_factor.r = v0 * 2.0 * v1;
+        pz += v0 * v1;
 
-        // color_factor = min(vec3(1.0), abs(color_factor));
+        color_factor = min(vec3(1.0), abs(color_factor));
     }
 
-    pz = oceanHeight(vec2(px, py), uTime) * 10.0;
+    
 
-    vec3 normal_ocean = oceanNormal(vec2(px, py), uTime) * 10.0;
 
-    color_factor.r = normal_ocean.r;
-    color_factor.g = normal_ocean.g;
-    color_factor.b = normal_ocean.b;
 
 
     // px += 0.2 * sin(uTime * 10000.4 + rnd_x * 140.4 + px * 100.0);
@@ -305,7 +177,7 @@ void main()
     py *= 4.0;
 
     // Instance transform (tiny cubes, uniform scale)
-    float scale_cube = 0.04 * 2.7;
+    float scale_cube = 0.04;
     vec3  pos = vec3(px, pz, py);
     vec3  scale = vec3(scale_cube);
 

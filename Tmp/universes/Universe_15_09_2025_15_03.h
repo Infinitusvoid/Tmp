@@ -455,7 +455,7 @@ namespace Universe_
 	void interactive()
 	{
 		Program program;
-		program.le.halfLife = 0.07f;
+		program.le.halfLife = 0.02f;
 		program.le.brightness = 0.0f;
 		program.le.exposure = 10.0;
 		program.capture.capture = false;
@@ -477,7 +477,7 @@ namespace Universe_
 					auto id = sh.create_instance();
 					auto I = sh.instance(id);
 					I.set_group_size(1000, 1000, 1)
-						.set_drawcalls(1)
+						.set_drawcalls(10)
 						.set_position_start(0.0f, 0.0f, 0.0f)
 						.set_position_end(0.0f, 0.0f, 0.0f)
 						.set_euler_start(0.0f, 0.0f, 0.0f)
