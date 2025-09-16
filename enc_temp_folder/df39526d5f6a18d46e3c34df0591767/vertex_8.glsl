@@ -150,26 +150,31 @@ void main()
 
 
 
-    // float radius_offset = 0.2 * sin(rnd_x * TAU * 10.0) + 0.02 * sin(rnd_y * 20 * TAU + uTime * 1.0);
+    float radius_offset = 0.2 * sin(rnd_x * TAU * 10.0) + 0.02 * sin(rnd_y * 20 * TAU + uTime * 1.0);
 
 
-    // float radius = 4.0 + radius_offset;
-   //  vec3 sphere_position = spherical01(radius, rnd_x, rnd_y);
-    float px = rnd_y * 100.0;// sphere_position.x;
-    float py = rnd_x * 100.0;// sphere_position.y;
-    float pz = 0.0;//sphere_position.z;
+    float radius = 4.0 + radius_offset;
+    vec3 sphere_position = spherical01(radius, rnd_x, rnd_y);
+    float px = sphere_position.x;
+    float py = sphere_position.y;
+    float pz = sphere_position.z;
 
-    float color_r = 1.0;
-    float color_g = 1.0;
-    float color_b = 1.0;
+    if (false)
+    {
+        float nx = py;
+        float ny = px;
 
-    
+        float factor = fract(rnd_cube_rotation_x * 10.2);
+        float inv_factor = 1.0f - factor;
+        px = nx * factor + px * inv_factor;
+        py = ny * factor + py * inv_factor;
+    }
 
 
 
 
     // Instance transform (tiny cubes, uniform scale)
-    float scale_cube = 0.01 * 0.7 * 2.0 * 2.0 * 2.0 * 0.4 * 0.27;
+    float scale_cube = 0.01 * 0.7 * 2.0 * 2.0 * 2.0 * 0.4 * 0.27 + 0.1 * radius_offset;
     vec3  pos = vec3(px, pz, py);
     vec3  scale = vec3(scale_cube);
 
@@ -196,23 +201,23 @@ void main()
     // pos.z = y;
     // The output color
 
-   // float factor_radius_offset = pow(max(0.0, radius_offset), 4.0) * 10.0;
+    float factor_radius_offset = pow(max(0.0, radius_offset), 4.0) * 10.0;
 
 
-    //float color_r = px + sin(radius * 10.0);
-    ///float color_g = py + factor_radius_offset * 100.0;
-    // float color_b = pz;
+    float color_r = px + sin(radius * 10.0);
+    float color_g = py + factor_radius_offset * 100.0;
+    float color_b = pz;
 
-  // color_r *= 0.1;
-  // color_g *= 0.1;
-  // color_b *= 0.1;
-  
+    color_r *= 0.1;
+    color_g *= 0.1;
+    color_b *= 0.1;
+
 
 
 
     vec4 new_position = vec4(vec3(pos), 1.0);
 
-    if(false){
+    {
 
         uint s0_instance_0 = uSeed + uint(uint(u0 * 1000.0f));
         uint s0_instance_1 = uSeed + uint(uint(u0 * 1421.0f));
