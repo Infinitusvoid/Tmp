@@ -474,99 +474,6 @@ float waves_combo_3(float x, float y, float t)
     return (wSum > 0.0 ? h / wSum : 0.0);
 }
 
-
-
-// --- lightweight 2D value noise + fBM for color variation -------------------
-// fast hash -> 0..1 (IQ-style)
-float hash12(vec2 p) {
-    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.x + p3.y) * p3.z);
-}
-
-// smooth value noise 2D
-float noise2(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    vec2 u = f * f * (3.0 - 2.0 * f);
-
-    float a = hash12(i + vec2(0.0, 0.0));
-    float b = hash12(i + vec2(1.0, 0.0));
-    float c = hash12(i + vec2(0.0, 1.0));
-    float d = hash12(i + vec2(1.0, 1.0));
-
-    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
-}
-
-// fBM with small animation drift (cheap: 4 octaves by default)
-float fbm2(vec2 p, float t, int octaves) {
-    float sum = 0.0;
-    float amp = 0.5;
-    float freq = 1.0;
-
-    // tiny movement so the tint breathes with time
-    vec2 flow = vec2(0.6, 0.25) * t;
-
-    for (int i = 0; i < octaves; ++i) {
-        sum += amp * noise2(p * freq + flow);
-        freq *= 2.0;
-        amp *= 0.5;
-    }
-    return sum; // ~[0..1] if octaves not huge
-}
-
-// final mask tuned for ocean color variation (includes mild domain warp)
-float oceanColorMask(vec2 xz, float t) {
-    // base scale (bigger => broader patches)
-    float baseScale = 0.08;             // tweak: 0.04 (large) .. 0.2 (small)
-    vec2 p = xz * baseScale;
-
-    // mild domain warp (cheap)
-    float w1 = noise2(p + vec2(5.2, 1.3) + 0.15 * t);
-    float w2 = noise2(p + vec2(1.7, 9.2) - 0.10 * t);
-    p += 0.35 * vec2(w1, w2);
-
-    // two-layer fBM for richer range
-    float n = 0.65 * fbm2(p, t * 0.5, 4) + 0.35 * fbm2(p * 2.3, -t * 0.7, 3);
-
-    // curve -> more contrast but keep it gentle
-    n = smoothstep(0.35, 0.75, n);      // 0..1
-    return n;
-}
-
-// Combine your four combos exactly like your wave_offset (reuse everywhere)
-float oceanHeightCombined(vec2 p, float t) {
-    float h = 0.0;
-    h += waves_combo_0(p.x, p.y, -t) * 0.2;
-    h += waves_combo_1(p.x, p.y, -t * 1.234) * 0.1;
-    h += waves_combo_2(p.x, p.y, -t * 1.234);
-    h += waves_combo_3(p.x, p.y, -t * 1.234);
-    return h;
-}
-
-// Slope-based foam mask using two forward differences (fast)
-// Tunables are inside for convenience.
-float foamMaskFromHeight(vec2 p, float t, float h0) {
-    // ---- tunables ----
-    float epsWorld = 0.75;  // sampling step in world units (raise if too noisy)
-    float slopeMin = 0.8;   // slope where foam starts
-    float slopeMax = 2.2;   // slope where foam saturates
-    float crestBoost = 0.25;  // extra boost on crests (0..1)
-    // -------------------
-
-    // finite differences (reuse h0 to avoid one call)
-    float hx = oceanHeightCombined(p + vec2(epsWorld, 0.0), t) - h0;
-    float hy = oceanHeightCombined(p + vec2(0.0, epsWorld), t) - h0;
-    float slope = length(vec2(hx, hy)) / max(epsWorld, 1e-4);
-
-    // bias foam toward crests a bit (positive height)
-    float crest = smoothstep(0.0, 0.6, h0);
-    float foam = smoothstep(slopeMin, slopeMax, slope);
-    foam = clamp(mix(foam, foam * 1.5, crestBoost * crest), 0.0, 1.0);
-    return foam;
-}
-
-
 void main()
 {
     int id = gl_InstanceID;
@@ -629,126 +536,33 @@ void main()
 
     vec3 color_base = mix(color_base_dark, color_base_bright, min(max(0.0, wave_offset), 1.0));
 
-    {
-        // --- Per-instance color jitter (stable; zero-mean-ish) ----------------------
-        uint sJ = (uSeed ^ uint(id)) * 2654435761u;   // golden-ratio hash
-        float j0 = rand01(sJ);                        // hue-ish
-        float j1 = rand01(sJ);                        // direction mix
-        float j2 = rand01(sJ);                        // value (brightness)
 
-        // two chroma directions roughly orthogonal to gray axis
-        vec3 b1 = normalize(vec3(1.0, -1.0, 0.0));
-        vec3 b2 = normalize(vec3(1.0, 1.0, -2.0));
-        vec3 jitterDir = normalize(mix(b1, b2, j1));
-
-        // small tint swing ±0.12 in “hue-ish” direction
-        float hueSwing = (j0 - 0.5) * 0.24;
-        vec3  jitterTint = hueSwing * jitterDir;
-
-        // small value swing ±9%, gated by foam so crests stay clean
-        float valSwing = (j2 - 0.5) * 0.18;
-        float foamGate = 1.0; // replace with `mix(1.0, 0.6, foam)` once foam is computed
-
-        color_base = clamp((color_base + jitterTint * foamGate) * (1.0 + valSwing * foamGate),0.0, 1.0);
-        
-    }
-
-    //// Perlin/fBM mask in world space (matches your px,py domain)
-    //float nMask = oceanColorMask(vec2(px, py), -uTime);
-
-    //// Subtle hue/brightness modulation (no new uniforms)
-    //vec3 coolTint = vec3(0.00, 0.03, 0.05);  // deeper, cooler pockets
-    //vec3 warmTint = vec3(0.06, 0.07, 0.02);  // sunlit greenish-cyan flecks
-
-    //// apply tints and a tiny contrast kick; keep it conservative for albedo
-    //color_base += mix(coolTint, warmTint, nMask) * 0.6;   // tint shift
-    //color_base *= (0.92 + 0.16 * nMask);                  // micro-contrast
-
-    //// safety: clamp albedo
-    //color_base = clamp(color_base, 0.0, 1.0);
-
-    // foam from slope of the combined height field
-    float foam = foamMaskFromHeight(vec2(px, py), uTime, wave_offset);
-
-    
-
-    // (optional) keep the noise tint you added earlier
-    // float nMask = oceanColorMask(vec2(px,py), uTime);
-    // color_base += mix(vec3(0.00,0.03,0.05), vec3(0.06,0.07,0.02), nMask) * 0.6;
-    // color_base *= (0.92 + 0.16 * nMask * 1.0);
-    {
-        // --- Foam-aware, zero-mean tint with gentle S-curve -----------------
-        float n = oceanColorMask(vec2(px, py), uTime);   // 0..1
-        float m = (n - 0.5) * 2.0;                      // -> [-1..1]
-        m *= (1.0 + 0.25 * m * m);                       // push extremes a bit (S-curve)
-
-        // Optional foam gating (keeps white crests clean); if you have foam:
-        float foam = foamMaskFromHeight(vec2(px, py), uTime, wave_offset);
-        float gate = mix(1.0, 0.4, foam);                // 0.4 = reduce tint on foam
-
-        // cool vs warm tint directions (keep small!)
-        vec3 cool = vec3(0.00, 0.03, 0.06);              // bluish deep pockets
-        vec3 warm = vec3(0.06, 0.07, 0.02);              // greenish-cyan flecks
-
-        float strength = 0.35 * gate;                    // overall tint amount
-
-        // add tint symmetrically: warm for m>0, cool for m<0 (zero-mean)
-        color_base += (warm * max(m, 0.0)
-            - cool * max(-m, 0.0)) * strength;
-
-        // tiny contrast around 1.0 that won’t bias average brightness
-        color_base *= (1.0 + 0.10 * m);
-
-        // safety
-        color_base = clamp(color_base, 0.0, 1.0);
-    }
-
-     // foam-aware whitening (albedo-safe)
-    color_base = mix(color_base, vec3(1.0), foam * 0.85);
-
-    // safety
-    color_base = clamp(color_base, 0.0, 1.0);
-
-    {
-        // --- High-frequency details (world-anchored) --------------------------------
-        // tiny animated fBM modulation (uses your noise2/fbm2 helpers)
-        float hf = fbm2(vec2(px, py) * 2.0 + vec2(0.20 * uTime, -0.17 * uTime), 0.0, 3);
-        hf = (hf - 0.5);                              // [-0.5..0.5] -> symmetric
-        color_base *= (1.0 + 0.10 * hf * (1.0 - 0.7 * foam)); // less on foam
-
-        // rare speckles (grid-quantized -> stable, less shimmer)
-        float cellScale = 6.0;                         // higher = smaller cells, more specks
-        vec2 cell = floor(vec2(px, py) * cellScale);
-        float spex = hash12(cell + vec2(13.37 * float(id), 7.91 * float(id)));
-        float speck = step(0.992, spex);               // ~0.8% of cells hit
-        color_base = mix(color_base, vec3(1.0), speck * 0.12 * (1.0 - foam)); // avoid on foam
-    }
-
-    // your existing write-out
-    color_r = color_base.r * 4.0;
-    color_g = color_base.g * 4.0;
-    color_b = color_base.b * 4.0;
-
-
-
-
-   
+    color_r = color_base.r * 2.0;
+    color_g = color_base.g * 2.0;
+    color_b = color_base.b * 2.0;
 
     
     
 
-    
+    // pz += waves_combo(px * 0.1, py * 0.1, uTime);
+    // pz += waves_combo(px * 0.0153541, py * 0.014123, uTime);
+    // pz += waves_combo(px * 0.002323, py * 0.002213, uTime);
+
+    // pz += waves_combo(px * 1.23, py * 1.123, uTime) * 0.2;
+    // pz += waves_combo(px * 42.23, py * 42.123, uTime) * 0.1;
+    // pz += waves_combo(px * 104.13, py * 142.112323, uTime) * 0.02;
+    // pz += waves_combo(px * 422.43, py * 42.12323, uTime) * 0.02323;
 
 
     // Instance transform (tiny cubes, uniform scale)
-    float scale_cube = 0.01 * 0.7 * 2.0 * 2.0 * 2.0 * 0.4 * 0.1 * 2.0 * 1.0;
+    float scale_cube = 0.01 * 0.7 * 2.0 * 2.0 * 2.0 * 0.4 * 0.1 * 2.0;
     vec3  pos = vec3(px, pz, py);
     vec3  scale = vec3(scale_cube);
 
-    
-    
 
-    
+
+
+
 
     float x = float(id / 1000);
     float y = float(id % 1000) * 0.01;
