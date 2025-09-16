@@ -267,7 +267,7 @@ namespace Universe_
 		program.capture.capture_png = false;
 		program.capture.capture_bmp = true;
 
-		program.render_display.number_of_frames = 10;
+		program.render_display.number_of_frames = 60 * 16;
 		program.render_display.render_time_start = 0.0;
 
 		// CAPTURED: { pos: [5.515966, 4.796353, 4.887476] , yaw : 128.639969, pitch : -8.880000, fov : 45.000000 }
@@ -306,7 +306,7 @@ namespace Universe_
 					auto id = sh.create_instance();
 					auto I = sh.instance(id);
 					I.set_group_size(1000, 1000, 1)
-						.set_drawcalls(1)
+						.set_drawcalls(200)
 						.set_position_start(0.0f, 0.0f, 0.0f)
 						.set_position_end(0.0f, 0.0f, 0.0f)
 						.set_euler_start(0.0f, 0.0f, 0.0f)
