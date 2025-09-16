@@ -741,7 +741,10 @@ void main()
 
 
     // Instance transform (tiny cubes, uniform scale)
-    float scale_cube = 0.01 * 0.7 * 2.0 * 2.0 * 2.0 * 0.4 * 0.1 * 2.0 * 1.0;
+    float interactive = 1.0;
+    float rendering = 0.2;
+
+    float scale_cube = 0.01 * 0.7 * 2.0 * 2.0 * 2.0 * 0.4 * 0.1 * 2.0 * 1.0 * rendering;
     vec3  pos = vec3(px, pz, py);
     vec3  scale = vec3(scale_cube);
 

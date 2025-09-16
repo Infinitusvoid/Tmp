@@ -458,7 +458,7 @@ namespace Universe_
 		program.le.halfLife = 0.02f;
 		program.le.brightness = 0.0f;
 		program.le.exposure = 10.0;
-		program.capture.capture = false;
+		program.capture.capture = true;
 		program.capture.capture_png = false;
 		program.capture.capture_bmp = true;
 
@@ -470,6 +470,15 @@ namespace Universe_
 		program.camera_start.yaw = 128.639969;
 		program.camera_start.pitch = -8.880000;
 		program.camera_start.fov = 45.0;
+
+
+		program.camera_end.x = 5.515966;
+		program.camera_end.y = 4.796353;
+		program.camera_end.z = 4.887476;
+					   
+		program.camera_end.yaw = 128.639969;
+		program.camera_end.pitch = -8.880000;
+		program.camera_end.fov = 45.0;
 
 		Scene_::Scene scene = Scene_::Scene();
 		program.configure(scene);
@@ -489,7 +498,7 @@ namespace Universe_
 					auto id = sh.create_instance();
 					auto I = sh.instance(id);
 					I.set_group_size(1000, 1000, 1)
-						.set_drawcalls(10)
+						.set_drawcalls(20)
 						.set_position_start(0.0f, 0.0f, 0.0f)
 						.set_position_end(0.0f, 0.0f, 0.0f)
 						.set_euler_start(0.0f, 0.0f, 0.0f)
