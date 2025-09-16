@@ -649,8 +649,7 @@ void main()
         float valSwing = (j2 - 0.5) * 0.18;
         float foamGate = 1.0; // replace with `mix(1.0, 0.6, foam)` once foam is computed
 
-        vec3 color_per_instance = clamp((color_base + jitterTint * foamGate) * (1.0 + valSwing * foamGate),0.0, 1.0);
-        color_base = color_base + 1.0 * (color_base * abs(sin(color_per_instance * color_base + vec3(uTime + rnd_x * 100.0 * rnd_y* 100.0 + wave_offset * 100.00))));
+        color_base = clamp((color_base + jitterTint * foamGate) * (1.0 + valSwing * foamGate),0.0, 1.0);
         
     }
 
@@ -726,9 +725,9 @@ void main()
     }
 
     // your existing write-out
-    color_r = color_base.r * 2.0;
-    color_g = color_base.g * 2.0;
-    color_b = color_base.b * 2.0;
+    color_r = color_base.r * 4.0;
+    color_g = color_base.g * 4.0;
+    color_b = color_base.b * 4.0;
 
 
 

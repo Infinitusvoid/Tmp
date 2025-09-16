@@ -458,7 +458,7 @@ namespace Universe_
 		program.le.halfLife = 0.02f;
 		program.le.brightness = 0.0f;
 		program.le.exposure = 10.0;
-		program.capture.capture = true;
+		program.capture.capture = false;
 		program.capture.capture_png = false;
 		program.capture.capture_bmp = true;
 
