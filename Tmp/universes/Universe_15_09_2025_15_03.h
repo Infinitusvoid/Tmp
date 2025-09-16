@@ -462,12 +462,24 @@ namespace Universe_
 		program.capture.capture_png = false;
 		program.capture.capture_bmp = true;
 
+		// CAPTURED: { pos: [5.515966, 4.796353, 4.887476] , yaw : 128.639969, pitch : -8.880000, fov : 45.000000 }
+		program.camera_start.x = 5.515966;
+		program.camera_start.y = 4.796353;
+		program.camera_start.z = 4.887476;
+
+		program.camera_start.yaw = 128.639969;
+		program.camera_start.pitch = -8.880000;
+		program.camera_start.fov = 45.0;
+
 		Scene_::Scene scene = Scene_::Scene();
 		program.configure(scene);
 
+		bool enable_shader_8 = true;
 		bool enable_shader_9 = false;
+		
 
 		// shaders
+		if(enable_shader_8)
 		{
 			add_shader(scene, 8, [](Program::Shader& sh) {
 
