@@ -23,6 +23,10 @@ namespace Extension_Folder_
 	// Creates the whole subfolder path if needed.
 	// Returns a report with counts and error details.
 	MoveReport move_images_to_subfolder(const fs::path& folder, const fs::path& subfolder);
+
+    bool delete_folder_dangerous_skips_trash(const fs::path& dir);
+    
+
 }
 
 

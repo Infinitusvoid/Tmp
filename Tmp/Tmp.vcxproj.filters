@@ -136,13 +136,7 @@
     <None Include="shaders\fragment_8.glsl">
       <Filter>Source Files\Universe_15_09_2025_15_0</Filter>
     </None>
-    <None Include="shaders\fragment_9.glsl">
-      <Filter>Source Files\Universe_15_09_2025_15_0</Filter>
-    </None>
     <None Include="shaders\vertex_8.glsl">
-      <Filter>Source Files\Universe_15_09_2025_15_0</Filter>
-    </None>
-    <None Include="shaders\vertex_9.glsl">
       <Filter>Source Files\Universe_15_09_2025_15_0</Filter>
     </None>
   </ItemGroup>

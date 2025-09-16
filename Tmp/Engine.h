@@ -17,6 +17,7 @@ const std::string folder_output = "C:/Users/Cosmos/Desktop/output/tmp/";
 const std::string folder_output_shaders = folder_output + "shaders/";
 const std::string folder_output_frames = folder_output + "frames/";
 const std::string folder_output_commands = folder_output + "commands/";
+const std::string folder_output_fushed_frames = folder_output_frames + "flushed_frames/";
 
 void init()
 {
@@ -29,7 +30,13 @@ void init()
 
 void engine_flush_frames()
 {
-	Extension_Folder_::move_images_to_subfolder(folder_output_frames, "C:/Users/Cosmos/Desktop/output/tmp/frames/flushed_frames/");
+	
+	Extension_Folder_::move_images_to_subfolder(folder_output_frames, folder_output_fushed_frames);
+}
+
+void engine_delete_flush_frames()
+{
+	Extension_Folder_::delete_folder_dangerous_skips_trash(folder_output_fushed_frames);
 }
 
 struct ShadersFilepath

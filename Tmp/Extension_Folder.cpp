@@ -5,6 +5,7 @@
 #include <cctype>
 #include <sstream>
 #include <system_error>
+#include <iostream>
 
 namespace Extension_Folder_
 {
@@ -113,6 +114,21 @@ namespace Extension_Folder_
 		}
 
 		return report;
+	}
+
+	bool delete_folder_dangerous_skips_trash(const fs::path& dir)
+	{
+		std::error_code ec;
+
+		if (fs::exists(dir, ec)) {
+			fs::remove_all(dir, ec);
+			if (ec) {
+				std::cerr << "[delete_folder_no_prompt] remove_all failed for " << dir<< ": " << ec.message() << "\n";
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 }
