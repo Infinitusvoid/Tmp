@@ -163,9 +163,15 @@ void main()
     float color_g = 1.0;
     float color_b = 1.0;
 
-    
+    pz = wave(px, py, uTime);
+    pz += wave(px * 0.1, py * 0.1, uTime);
+    pz += wave(px * 0.0153541, py * 0.014123, uTime);
+    pz += wave(px * 0.002323, py * 0.002213, uTime);
 
-
+    pz += wave(px * 1.23, py * 1.123, uTime) * 0.2;
+    pz += wave(px * 42.23, py * 42.123, uTime) * 0.1;
+    pz += wave(px * 104.13, py * 142.112323, uTime) * 0.02;
+    pz += wave(px * 422.43, py * 42.12323, uTime) * 0.02323;
 
 
     // Instance transform (tiny cubes, uniform scale)
