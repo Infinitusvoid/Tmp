@@ -472,7 +472,7 @@ void main()
 				for (int i = 0; i < num; i++)
 				{
 					Wave wave;
-					wave.frequency_index = Random::random_int(1, 20);
+					wave.frequency_index = Random::random_int(1, 10);
 					wave.offset = Random::generate_random_float_minus_one_to_plus_one() * 10.0f;
 					wave.amplitude = Random::generate_random_float_minus_one_to_plus_one() * 0.2f;
 					wave.time_multiplier = Random::generate_random_float_minus_one_to_plus_one() * 0.01f;
@@ -563,7 +563,7 @@ void main()
 		{
 			std::vector<Wave> waves;
 
-			Wave::generate_waves(waves, 10);
+			Wave::generate_waves(waves, 100);
 			Wave::normalize_amplitude(waves);
 
 			Wave::write(w, waves, name_0);
