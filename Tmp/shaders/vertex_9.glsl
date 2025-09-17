@@ -69,19 +69,22 @@ vec3 localCubeFaceNormal(vec3 p) {
 }
 
 
+float f_periodic_0(float x)
+{
+    return 2.0 * abs(fract(x + 0.5) - 0.5);
+}
 
-
-
-
-
-
+float f_adjust_to_two_pi(float x)
+{
+    return x * (1.0 / TAU);
+}
 
 
 void main()
 {
     int id = gl_InstanceID;
-    const int number_per_dimension = 1000;
-    id = id + (number_per_dimension * number_per_dimension) * int(uDrawcallNumber);
+    
+    id = id + (uGrid.x * uGrid.y * uGrid.z) * int(uDrawcallNumber);
 
 
 
@@ -93,175 +96,73 @@ void main()
     float rnd_y = rand01(s1);
     float rnd_z = rand01(s2);
 
+    // The instancd cube rotation randomization
     uint s0_rot_x = uSeed + uint(id + 2431);
     uint s1_rot_y = uSeed + uint(id + 4412);
     uint s2_rot_y = uSeed + uint(id + 1234);
     uint s3_rot_angle = uSeed + uint(id + 2332);
-
     float rnd_cube_rotation_x = rand01(s0_rot_x);
     float rnd_cube_rotation_y = rand01(s1_rot_y);
     float rnd_cube_rotation_z = rand01(s2_rot_y);
     float rnd_cube_rotation_angle = rand01(s3_rot_angle);
 
-
-    // Position on sphere
-
+    // RND per instance
+    // uint s0_rnd_0 = uSeed + uint(id + 0);
+    // uint s1_rnd_1 = uSeed + uint(id + 42);
+    // uint s2_rnd_2 = uSeed + uint(id + 442);
+    // uint s3_rnd_3 = uSeed + uint(id + 742);
+    // float rnd_0 = rand01(s0_rnd_0);
+    // float rnd_1 = rand01(s1_rnd_1);
+    // float rnd_2 = rand01(s2_rnd_2);
+    // float rnd_3 = rand01(s3_rnd_3);
 
     
 
-
-    float radius_offset = 0.2 * sin(rnd_x * TAU * 10.0) + 0.02 * sin(rnd_y * 20 * TAU + uTime * 1.0);
-
+    // Sphere radius offset
+    
+    int n_x = 10;
+    float n_x_offset = 0.1;
+    float n_x_amplitude = 0.02;
+    float n_x_t = uTime * 0.1;
 
     
-    // int n_x = 2;
-    // int n_y = 10;
-
-    // float offset_x = 0.1;
-    // float offset_y = 0.2 + uTime;
-
-    // float wx_0 = 0.01 * sin(offset_x + rnd_x * TAU * int(n_x));
-    // wx_n
-
-    // float wy_0 = 0.02 * sin(offset_y + rnd_y * TAU * int(n_y));
-    // wy_n
-
-
-    // float cx = 0.5 + 0.2 * sin(uTime);
-    // float cy = 0.5 + 0.2 * cos(uTime);
-
-    // cx min is 0.5 - 0.2
-    // cy min is 0.5 - 0.2
-    
-    // cx max is 0.5 + 0.2
-    // cx max is 0.5 + 0.2
-
-    // if cx is at 0.7
-    // if cy is at 0.7
-    // at what rnd_x is the distance the biggest
-    // well at te distance where rnd_x is as much diffrent from cx
-    // well let's try 
-    // rnd_x equal 0.0 and cx 0.7 distance axial is 0.7
-    // rnd_x equal 1.0 and cx 0.3 distance axial is 0.7
-    
-    // with the other axis is the same
-    // rnd_y equal 0.0 and cy 0.7 distance axial is 0.7
-    // rnd_y equal 1.0 and cy 0.3 distance axial is 0.7
-
-    // sqrt( 0.7 * 0.7 + 0.7 * 0.7)
-    // 1.0 / sqrt( 0.7 * 0.7 + 0.7 * 0.7)
+    int n_y = 2;
+    float n_y_offset = 0.1;
+    float n_y_amplitude = 0.02;
+    float n_y_t = uTime * 1.0;
     
 
+    float radius = 0.45 +
+        n_x_amplitude * f_periodic_0(f_adjust_to_two_pi(n_x_offset + rnd_x * TAU * n_x + n_x_t)) +
+        n_y_amplitude * sin(n_y_offset + rnd_y * TAU * n_y + n_y_t);
 
-    // float inv_sqrt_of_1_1_triangle = 1.0 / sqrt(2.0);
-    // float d0 = sqrt((rnd_x - cx) * (rnd_x - cx) + (rnd_y - cy) * (rnd_y - cy));
-    // d0 *=  1.0 / sqrt(0.7 * 0.7 + 0.7 * 0.7);
 
-    // int wd_d0_n = 10;
-    // float w_d0 = 0.01 * sin(d0 * TAU * int(wd_d0_n));
-
-    // float radius = 0.4 + wx_0 + wy_0 + w_d0;
-
-    // float radius = 0.4 + wx_0 + wy_0;
-       
-
-    /*float cx = 0.5;
-    float cy = 0.5;
-
-    float d0 = sqrt((rnd_x - cx) * (rnd_x - cx) + (rnd_y - cy) * (rnd_y - cy));
-
-    float d0_max = d0;
-
-    d0 *= min(d0_max, 1.0 /(d0 * d0 * 20.0));
-
-    float radius = 0.47 + 0.03 * sin(d0 * TAU * 1000.0 + uTime);*/
-
-    float radius = 0.2;
-
+    // Sphere
     vec3 sphere_position = spherical01(radius, rnd_x, rnd_y);
     float px = sphere_position.x;
     float py = sphere_position.y;
     float pz = sphere_position.z;
 
-
-
-    
-    float color_r = 0.001;// 1.0 * max(0.001, wx_0) * 0.2;
-    float color_g = 0.001;// 1.0 * max(0.001, wy_0) * 0.2;
-    float color_b = 0.001;
+    float color_r = 0.01;
+    float color_g = 0.01;
+    float color_b = 0.01;
 
     
-    color_r *= 10.0;
-    color_g *= 10.0;
-    color_b *= 10.0;
-  
-
-
-    
-
-    // vec3 color_base_dark = vec3(0.02, 0.08, 0.15);
-    // vec3 color_base_bright = vec3(0.10, 0.50, 0.75);
-
-
- 
-
-    
-
-    
-
-
-
-    
-
-
-
-
-
-
-
-
-    
-
-    float scale_cube = 0.002;
+    // Instances Cube Scale
+    float scale_cube = 0.001;
     vec3  pos = vec3(px, pz, py);
     vec3  scale = vec3(scale_cube, scale_cube, scale_cube);
 
 
+    // Whole object rotation
 
+    vec3 rotation_axis = vec3(0.0, 1.0, 0.0);
+    float rotation_angle = uTime; // using uTime will not be wise after we will be interpolating between two values
 
+    // Whole object scale
+    vec3 scale_object = vec3(1.0, 1.0, 1.0);
 
-
-    float x = float(id / 1000);
-    float y = float(id % 1000) * 0.01;
-    float z = float(id) * 0.1;
-
-
-    uint s0n = uSeed + uint(id + 10);
-    uint s1n = uSeed + uint(id + 142);
-    float rnd_xn = rand01(s0n);
-    float rnd_yn = rand01(s1n);
-
-
-
-
-    // pos.x = x * 0.01;
-    // pos.y = 0.0;
-    // pos.z = y;
-    // The output color
-
-   // float factor_radius_offset = pow(max(0.0, radius_offset), 4.0) * 10.0;
-
-
-    //float color_r = px + sin(radius * 10.0);
-    ///float color_g = py + factor_radius_offset * 100.0;
-    // float color_b = pz;
-
-  // color_r *= 0.1;
-  // color_g *= 0.1;
-  // color_b *= 0.1;
-
-
-
+    
 
     vec4 new_position = vec4(vec3(pos), 1.0);
 
@@ -280,8 +181,10 @@ void main()
         float rnd_instance_scale_z = rand01(s0_instance_z_scale);
 
         // Rotation
-        vec3 axis = normalize(vec3(0.0, 0.0, 1.0));
-        float angle = uTime * 0.2;
+        // vec3 axis = normalize(vec3(0.0, 1.0, 1.0));
+        vec3 axis = normalize(rotation_axis);
+        // float angle = uTime;
+        float angle = rotation_angle;
         mat3 R3 = axisAngleToMat3(axis, angle);
         mat4 R = mat4(vec4(R3[0], 0.0), vec4(R3[1], 0.0), vec4(R3[2], 0.0), vec4(0, 0, 0, 1));
 
@@ -295,9 +198,9 @@ void main()
 
         // Scale
         mat4 S = mat4(1.0);
-        S[0][0] = 1.0;
-        S[1][1] = 1.0;
-        S[2][2] = 1.0;
+        S[0][0] = scale_object.x;
+        S[1][1] = scale_object.y;
+        S[2][2] = scale_object.z;
 
         new_position = T * R * S * new_position;
     }
@@ -348,7 +251,7 @@ void main()
     // float world_x = wp.x;
     // float world_y = wp.y;
     // float world_z = wp.z;
-    // color_vs = vec3(sin(world_x * 10.0), sin(world_y * 10.0), sin(world_z * 10.0));
+    // color_vs = vec3(sin(world_x * 10.0), sin(world_y * 10.0), sin(world_z * 10.0)) * vec3(0.01, 0.01, 0.01);
 }
 
 

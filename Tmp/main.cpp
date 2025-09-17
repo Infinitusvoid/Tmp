@@ -18,8 +18,9 @@ int main(int argc, char* argv[])
 {
 	std::cout << "Tmp\n";
 
-	ShaderGeneration_::run();
+	// ShaderGeneration_::run();
 
+	// return 0;
 	
 	if(false)
 	{

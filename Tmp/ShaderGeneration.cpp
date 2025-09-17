@@ -1,36 +1,12 @@
-
-#include <string>
-#include <vector>
-#include <unordered_map>
-#include <unordered_set>
 #include <iostream>
-#include <sstream>
-#include <filesystem>
-
-#include <unordered_map>
-#include <unordered_set>
-#include <filesystem>
-#include <fstream>
-#include <iostream>
-
-#include <fstream>
 #include <string>
 #include <vector>
 #include <filesystem>
-#include <sstream>
-#include <algorithm>
 
 #include "Writer.h"
 
-
 namespace ShaderGeneration_
 {
-	
-
-
-	
-
-
 	// -------------- Example generation --------------
 	static void generate_vertex_shader(const std::filesystem::path& outPath) {
 		Writer_::Writer w;
@@ -109,10 +85,6 @@ namespace ShaderGeneration_
 
 		w.save(outPath);
 	}
-
-    
-
-
 
     // Writes the provided vertex shader to `outPath`.
     // Uses Writer_::Writer features: line(), blank(), comment(), lines(), open()/close() where it helps readability.
@@ -411,33 +383,47 @@ void main()
     
 
 
+    
+
 	void run()
 	{
 		std::cout << "ShaderGeneration_";
 
-		Writer_::Writer w;
-		w.line("#version 450 core");
-		w.line("layout(location = 0) in vec3 aPos;");
-		w.line("layout(location = 1) in vec2 aTexCoord;");
+		//Writer_::Writer w;
+		//w.line("#version 450 core");
+		//w.line("layout(location = 0) in vec3 aPos;");
+		//w.line("layout(location = 1) in vec2 aTexCoord;");
 
-		{
-			const std::filesystem::path outDir = std::filesystem::path("C:/Users/Cosmos/Desktop/output/tmp/shaders/");
-			const std::filesystem::path vsPath = outDir / "generated_vertex.glsl";
-			const std::filesystem::path fsPath = outDir / "generated_fragment.glsl";
+		//{
+		//	const std::filesystem::path outDir = std::filesystem::path("C:/Users/Cosmos/Desktop/output/tmp/shaders/");
+		//	const std::filesystem::path vsPath = outDir / "generated_vertex.glsl";
+		//	const std::filesystem::path fsPath = outDir / "generated_fragment.glsl";
 
-			// Produce minimal, valid shaders. Flip toggles here to include/exclude sections.
-			const bool USE_TINT = true;
-			const bool USE_TIME_SINE = true;
+		//	// Produce minimal, valid shaders. Flip toggles here to include/exclude sections.
+		//	const bool USE_TINT = true;
+		//	const bool USE_TIME_SINE = true;
 
-			generate_vertex_shader(vsPath);
-			generate_fragment_shader(fsPath, USE_TINT, USE_TIME_SINE);
-            write_vertex_shader_edge_snap(vsPath);
+		//	generate_vertex_shader(vsPath);
+		//	generate_fragment_shader(fsPath, USE_TINT, USE_TIME_SINE);
+  //          write_vertex_shader_edge_snap(vsPath);
 
-			std::cout << "Generated:\n  " << vsPath.string()
-				<< "\n  " << fsPath.string() << "\n";
-			std::cout << "ShaderGeneration_ done\n";
-		}
+		//	std::cout << "Generated:\n  " << vsPath.string()
+		//		<< "\n  " << fsPath.string() << "\n";
+		//	std::cout << "ShaderGeneration_ done\n";
+		//}
+
+        Writer_::Writer w;
+
+        
 
 
+        const std::filesystem::path outDir = std::filesystem::path("C:/Users/Cosmos/Desktop/output/tmp/shaders/");
+        const std::filesystem::path vsPath = outDir / "generated_vertex.glsl";
+        // const std::filesystem::path fsPath = outDir / "generated_fragment.glsl";
+
+
+        
+
+        w.save(vsPath);
 	}
 }
