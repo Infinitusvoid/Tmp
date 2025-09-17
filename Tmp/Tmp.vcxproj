@@ -144,6 +144,7 @@
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="ShaderGeneration.cpp" />
     <ClCompile Include="ShaderWriter.cpp" />
+    <ClCompile Include="Writer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CppCommponents\File.h" />
@@ -164,6 +165,7 @@
     <ClInclude Include="universes\Universe_16_09_2025_19_06.h" />
     <ClInclude Include="Utils.h" />
     <ClInclude Include="WinProcess.h" />
+    <ClInclude Include="Writer.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="CppCommponents\README.md" />

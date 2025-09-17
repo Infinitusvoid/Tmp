@@ -20,6 +20,9 @@
 #include <sstream>
 #include <algorithm>
 
+#include "Writer.h"
+
+
 namespace ShaderGeneration_
 {
 	// template based you replace some value 
@@ -319,11 +322,12 @@ const float TAU = 6.2831853071795864769252867665590;
 
     
 
-	namespace fs = std::filesystem;
+
+	
 
 
 	// -------------- Example generation --------------
-	static void generate_vertex_shader(const fs::path& outPath) {
+	static void generate_vertex_shader(const std::filesystem::path& outPath) {
 		Writer w;
 
 
@@ -385,7 +389,7 @@ const float TAU = 6.2831853071795864769252867665590;
 		w.save(outPath);
 	}
 
-	static void generate_fragment_shader(const fs::path& outPath, bool useTint, bool useTimeSine)
+	static void generate_fragment_shader(const std::filesystem::path& outPath, bool useTint, bool useTimeSine)
 	{
 		Writer w;
 		
@@ -412,9 +416,9 @@ const float TAU = 6.2831853071795864769252867665590;
 		w.line("layout(location = 1) in vec2 aTexCoord;");
 
 		{
-			const fs::path outDir = fs::path("C:/Users/Cosmos/Desktop/output/tmp/shaders/");
-			const fs::path vsPath = outDir / "generated_vertex.glsl";
-			const fs::path fsPath = outDir / "generated_fragment.glsl";
+			const std::filesystem::path outDir = std::filesystem::path("C:/Users/Cosmos/Desktop/output/tmp/shaders/");
+			const std::filesystem::path vsPath = outDir / "generated_vertex.glsl";
+			const std::filesystem::path fsPath = outDir / "generated_fragment.glsl";
 
 			// Produce minimal, valid shaders. Flip toggles here to include/exclude sections.
 			const bool USE_TINT = true;
