@@ -505,7 +505,7 @@ void main()
 				wave.frequency_index = 4;
 				wave.offset = 0.3f;
 				wave.amplitude = 0.12f;
-				wave.time_multiplier = 4.007f;
+				wave.time_multiplier = 0.207f;
 				wave.function_to_use = 7;
 
 				wave.direction = Wave::Direction::Y;
@@ -517,7 +517,7 @@ void main()
 				wave.frequency_index = 24;
 				wave.offset = 0.43f;
 				wave.amplitude = 0.412f;
-				wave.time_multiplier = 47.007f;
+				wave.time_multiplier = 0.407f;
 				wave.function_to_use = 10;
 
 				wave.direction = Wave::Direction::Y;
