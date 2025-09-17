@@ -142,6 +142,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MaybeUsfullInFuture.cpp" />
     <ClCompile Include="Scene.cpp" />
+    <ClCompile Include="ShaderGeneration.cpp" />
     <ClCompile Include="ShaderWriter.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -158,6 +159,7 @@
     <ClInclude Include="Extension_Folder.h" />
     <ClInclude Include="GUniverse.h" />
     <ClInclude Include="Scene.h" />
+    <ClInclude Include="ShaderGeneration.h" />
     <ClInclude Include="ShaderWriter.h" />
     <ClInclude Include="universes\Universe_16_09_2025_19_06.h" />
     <ClInclude Include="Utils.h" />

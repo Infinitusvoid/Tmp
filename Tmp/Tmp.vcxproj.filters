@@ -75,6 +75,9 @@
     <ClCompile Include="Extension_Folder.cpp">
       <Filter>Source Files\Resource Files</Filter>
     </ClCompile>
+    <ClCompile Include="ShaderGeneration.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CppCommponents\File.h">
@@ -127,6 +130,9 @@
     </ClInclude>
     <ClInclude Include="universes\Universe_16_09_2025_19_06.h">
       <Filter>Source Files\Universe_16_09_2025_19_06</Filter>
+    </ClInclude>
+    <ClInclude Include="ShaderGeneration.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

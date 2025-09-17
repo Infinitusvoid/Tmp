@@ -19,6 +19,7 @@ const std::string folder_output_frames = folder_output + "frames/";
 const std::string folder_output_commands = folder_output + "commands/";
 const std::string folder_output_fushed_frames = folder_output_frames + "flushed_frames/";
 
+
 void init()
 {
 	// Init
