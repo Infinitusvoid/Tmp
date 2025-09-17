@@ -1,14 +1,25 @@
 #include "Writer.h"
 
-namespace Writer_
-{
-	void Writer::append_raw(const std::string& line) { lines_.push_back(line); }
-	void Writer::append(const std::string& line) { lines_.push_back(indent_prefix() + line); }
-	void Writer::line(const std::string& s) { append(s); }
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <algorithm>
 
-    // Single-line with placeholder replacement
+namespace Writer_ {
 
-     bool Writer::line(const std::string& tmpl, const Vars& vars, ReplaceStats* outStats, bool require_any)
+    // ctor
+    Writer::Writer(std::string indentUnit)
+        : indentUnit_(std::move(indentUnit)) {
+    }
+
+    // primitives
+    void Writer::append_raw(const std::string& line) { lines_.push_back(line); }
+    void Writer::append(const std::string& line) { lines_.push_back(indent_prefix() + line); }
+    void Writer::line(const std::string& s) { append(s); }
+
+    // single-line with replacement
+    bool Writer::line(const std::string& tmpl, const Vars& vars,
+        ReplaceStats* outStats, bool require_any)
     {
         ReplaceStats st;
         std::string replaced = replace_placeholders(tmpl, vars, st);
@@ -21,21 +32,18 @@ namespace Writer_
         return true;
     }
 
-    // Blank line(s)
-
+    // blank lines
     void Writer::blank(size_t n) {
         while (n--) lines_.push_back("");
     }
 
-    // Simple single-line comment (no replacement)
-
+    // comments
     void Writer::comment(const std::string& s) {
         append("// " + s);
     }
 
-    // Single-line comment with ${PLACEHOLDER} replacement + stats
-
-    bool Writer::comment(const std::string& tmpl, const Vars& vars, ReplaceStats* outStats, bool require_any)
+    bool Writer::comment(const std::string& tmpl, const Vars& vars,
+        ReplaceStats* outStats, bool require_any)
     {
         ReplaceStats st;
         std::string replaced = replace_placeholders(tmpl, vars, st);
@@ -48,9 +56,8 @@ namespace Writer_
         return true;
     }
 
-    // Multi-line comment block with ${PLACEHOLDER} replacement + stats (CR/LF safe)
-
-    bool Writer::comments(const std::string& tmplMultiline, const Vars& vars, ReplaceStats* outStats, bool require_any)
+    bool Writer::comments(const std::string& tmplMultiline, const Vars& vars,
+        ReplaceStats* outStats, bool require_any)
     {
         ReplaceStats agg;
         std::string cur; cur.reserve(tmplMultiline.size());
@@ -68,23 +75,18 @@ namespace Writer_
 
         for (size_t i = 0; i < tmplMultiline.size(); ++i) {
             char c = tmplMultiline[i];
-            if (c == '\r') {
-                if (i + 1 < tmplMultiline.size() && tmplMultiline[i + 1] == '\n') continue; // swallow CR in CRLF
-            }
-            if (c == '\n') {
-                flush_line(cur);
-                cur.clear();
-            }
-            else {
-                cur.push_back(c);
-            }
+            if (c == '\r') { if (i + 1 < tmplMultiline.size() && tmplMultiline[i + 1] == '\n') continue; }
+            if (c == '\n') { flush_line(cur); cur.clear(); }
+            else { cur.push_back(c); }
         }
         if (!cur.empty()) flush_line(cur);
 
-        // Compute unused keys across the whole template
         std::unordered_set<std::string> used;
         collect_used_placeholders(tmplMultiline, used);
         for (const auto& kv : vars) if (!used.count(kv.first)) agg.unused_keys.push_back(kv.first);
+
+        dedupe_sort(agg.missing_placeholders);
+        dedupe_sort(agg.unused_keys);
 
         if (outStats) *outStats = agg;
         if (!agg.ok(require_any)) {
@@ -94,13 +96,12 @@ namespace Writer_
         return true;
     }
 
-    // Multi-line (splits on '\n', handles CRLF too)
-
-    bool Writer::lines(const std::string& tmplMultiline, const Vars& vars, ReplaceStats* outStats, bool require_any)
+    // multi-line content with replacement
+    bool Writer::lines(const std::string& tmplMultiline, const Vars& vars,
+        ReplaceStats* outStats, bool require_any)
     {
         ReplaceStats agg;
-        std::string cur;
-        cur.reserve(tmplMultiline.size());
+        std::string cur; cur.reserve(tmplMultiline.size());
 
         auto flush_line = [&](std::string& s) {
             ReplaceStats st;
@@ -115,30 +116,18 @@ namespace Writer_
 
         for (size_t i = 0; i < tmplMultiline.size(); ++i) {
             char c = tmplMultiline[i];
-            if (c == '\r') {
-                // skip CR, handle CRLF gracefully
-                if (i + 1 < tmplMultiline.size() && tmplMultiline[i + 1] == '\n') continue;
-            }
-            if (c == '\n') {
-                flush_line(cur);
-                cur.clear();
-            }
-            else {
-                cur.push_back(c);
-            }
+            if (c == '\r') { if (i + 1 < tmplMultiline.size() && tmplMultiline[i + 1] == '\n') continue; }
+            if (c == '\n') { flush_line(cur); cur.clear(); }
+            else { cur.push_back(c); }
         }
         if (!cur.empty()) flush_line(cur);
 
-        // Compute unused keys once from all replaced lines
-        {
-            // Re-scan template to see what was actually used
-            // (We already counted replaced occurrences; to get unused, collect used names.)
-            std::unordered_set<std::string> used;
-            collect_used_placeholders(tmplMultiline, used);
-            for (const auto& kv : vars) {
-                if (!used.count(kv.first)) agg.unused_keys.push_back(kv.first);
-            }
-        }
+        std::unordered_set<std::string> used;
+        collect_used_placeholders(tmplMultiline, used);
+        for (const auto& kv : vars) if (!used.count(kv.first)) agg.unused_keys.push_back(kv.first);
+
+        dedupe_sort(agg.missing_placeholders);
+        dedupe_sort(agg.unused_keys);
 
         if (outStats) *outStats = agg;
         if (!agg.ok(require_any)) {
@@ -148,14 +137,17 @@ namespace Writer_
         return true;
     }
 
-    // (Optional) indentation helpers
-
+    // indentation helpers
     void Writer::open(const std::string& lineWithBrace) { line(lineWithBrace); ++indentLevel_; }
     void Writer::close(const std::string& closingBrace) { if (indentLevel_ > 0) --indentLevel_; line(closingBrace); }
 
-    // Print / save
+    // io / utils
+    void Writer::print() const { write_to(std::cout); }
 
-    void Writer::print() const { for (const auto& l : lines_) std::cout << l << '\n'; }
+    void Writer::write_to(std::ostream& os) const {
+        for (const auto& l : lines_) os << l << '\n';
+    }
+
     void Writer::save(const std::filesystem::path& filepath) const {
         namespace fs = std::filesystem;
         if (filepath.has_parent_path()) fs::create_directories(filepath.parent_path());
@@ -163,8 +155,18 @@ namespace Writer_
         for (const auto& l : lines_) out << l << '\n';
     }
 
-    // Replace ${NAME} with vars.at(NAME). Track stats.
+    void Writer::clear() {
+        lines_.clear();
+        indentLevel_ = 0;
+    }
 
+    std::string Writer::str() const {
+        std::ostringstream oss;
+        for (const auto& l : lines_) oss << l << '\n';
+        return oss.str();
+    }
+
+    // internals
     std::string Writer::replace_placeholders(const std::string& s, const Vars& vars, ReplaceStats& st) {
         std::string out; out.reserve(s.size());
         for (size_t i = 0; i < s.size(); ) {
@@ -179,7 +181,7 @@ namespace Writer_
                         ++st.replacements_done;
                     }
                     else {
-                        // Keep the original token to make the problem visible in output
+                        // Keep visible in output for easier debugging
                         out += "${"; out += key; out += "}";
                         st.missing_placeholders.push_back(key);
                     }
@@ -205,7 +207,8 @@ namespace Writer_
         }
     }
 
-    void Writer::report_replace_issue(const char* fn, const std::string& src, const ReplaceStats& st, bool require_any)
+    void Writer::report_replace_issue(const char* fn, const std::string& /*src*/,
+        const ReplaceStats& st, bool require_any)
     {
         std::cerr << "[Writer] " << fn << " replacement check FAILED\n";
         std::cerr << "  placeholders_found: " << st.placeholders_found << "\n";
@@ -223,12 +226,17 @@ namespace Writer_
             for (auto& k : st.unused_keys) std::cerr << k << " ";
             std::cerr << "\n";
         }
-        (void)src; // keep around if you later want to dump context
     }
-    
+
+    void Writer::dedupe_sort(std::vector<std::string>& v) {
+        std::sort(v.begin(), v.end());
+        v.erase(std::unique(v.begin(), v.end()), v.end());
+    }
+
     std::string Writer::indent_prefix() const {
         std::string p; p.reserve(indentLevel_ * indentUnit_.size());
         for (int i = 0; i < indentLevel_; ++i) p += indentUnit_;
         return p;
     }
-}
+
+} // namespace Writer_
