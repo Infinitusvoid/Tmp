@@ -448,7 +448,7 @@ void main()
 			int frequency_index = 1;
 			float offset = 0.0f;
 			float amplitude = 1.0f;
-			float time_multiplier = 1.13214f;
+			float time_multiplier = 0.0;
 			int function_to_use = 0;
 
 			void write(Writer_::Writer& w, int index, std::string name)
@@ -472,10 +472,10 @@ void main()
 				for (int i = 0; i < num; i++)
 				{
 					Wave wave;
-					wave.frequency_index = Random::random_int(1, 100);
-					wave.offset = Random::generate_random_float_minus_one_to_plus_one() * 0.4f;
+					wave.frequency_index = Random::random_int(1, 20);
+					wave.offset = Random::generate_random_float_minus_one_to_plus_one() * 10.0f;
 					wave.amplitude = Random::generate_random_float_minus_one_to_plus_one() * 0.2f;
-					wave.time_multiplier = Random::generate_random_float_minus_one_to_plus_one() * 0.1f;
+					wave.time_multiplier = Random::generate_random_float_minus_one_to_plus_one() * 0.01f;
 					wave.function_to_use = Random::random_int(0, 10);
 
 					if (Random::generate_random_float_0_to_1() > 0.5f)
@@ -531,16 +531,17 @@ void main()
 					{
 						int function_to_use = waves[i].function_to_use;
 
-
+						
 
 						w.line
 						(
-							"${NAME} += ${NAME}_${INDEX}_${DIRECTION}_amplitude * f_periodic_${PERIODIC_FUNCTION}(f_adjust_to_two_pi(${NAME}_${INDEX}_${DIRECTION}_offset + rnd_x * TAU * ${NAME}_${INDEX}_${DIRECTION}_frequency + ${NAME}_${INDEX}_${DIRECTION}_t * uTime));",
+							"${NAME} += ${NAME}_${INDEX}_${DIRECTION}_amplitude * f_periodic_${PERIODIC_FUNCTION}(f_adjust_to_two_pi(${NAME}_${INDEX}_${DIRECTION}_offset + ${X_OR_Y} * TAU * ${NAME}_${INDEX}_${DIRECTION}_frequency + ${NAME}_${INDEX}_${DIRECTION}_t * uTime));",
 							{
 								{"NAME", name},
 								{"INDEX", std::to_string(i)},
 								{"DIRECTION", ((waves[i].direction == Wave::Direction::X) ? "x" : "y")},
 								{"PERIODIC_FUNCTION", std::to_string(function_to_use)},
+								{"X_OR_Y", ((waves[i].direction == Wave::Direction::X) ? "rnd_x" : "rnd_y")  }
 							}
 							);
 					}

@@ -170,37 +170,15 @@ void main()
     float rnd_cube_rotation_z = rand01(s2_rot_y);
     float rnd_cube_rotation_angle = rand01(s3_rot_angle);
 
-    // RND per instance
-    // uint s0_rnd_0 = uSeed + uint(id + 0);
-    // uint s1_rnd_1 = uSeed + uint(id + 42);
-    // uint s2_rnd_2 = uSeed + uint(id + 442);
-    // uint s3_rnd_3 = uSeed + uint(id + 742);
-    // float rnd_0 = rand01(s0_rnd_0);
-    // float rnd_1 = rand01(s1_rnd_1);
-    // float rnd_2 = rand01(s2_rnd_2);
-    // float rnd_3 = rand01(s3_rnd_3);
-
-    
-
-    // Sphere radius offset
-    
-    
-    
-
     int n_x = 2;
     float n_x_offset = 0.1;
     float n_x_amplitude = 0.02;
     float n_x_t = 0.0;
 
-    
     int n_y = 2;
     float n_y_offset = 0.1;
     float n_y_amplitude = 0.02;
     float n_y_t = 0.0;
-    
-
-
-
 
     float wave_first = n_x_amplitude * f_periodic_0(f_adjust_to_two_pi(n_x_offset + rnd_x * TAU * n_x + n_x_t * uTime)) +
                         n_y_amplitude * f_periodic_0(f_adjust_to_two_pi(n_y_offset + rnd_y * TAU * n_y + n_y_t * uTime));
