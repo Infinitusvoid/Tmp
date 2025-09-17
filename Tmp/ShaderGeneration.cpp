@@ -13,7 +13,7 @@ namespace ShaderGeneration_
 
 
 		w.line("#version 450 core");
-        w.blank();
+		w.blank();
 
 		w.comment("Auto-generated vertex shader");
 		w.line("layout(location = 0) in vec3 aPos;");
@@ -48,23 +48,23 @@ namespace ShaderGeneration_
 
 		w.line("uniform uint uDrawcallNumber;");
 		w.line("uniform vec3 uCameraPos;");
-		w.line("uniform float u0, u1, u2, u3, u4, u5, u6, u7, u8, u9;"); 
+		w.line("uniform float u0, u1, u2, u3, u4, u5, u6, u7, u8, u9;");
 		w.blank();
 
 
-		
+
 
 		w.comment("----------Constants & tiny helpers----------");
 		w.line("const float PI = ${PI};", { {"PI","3.1415926535897932384626433832795"} });
 		w.line("const float TAU = ${TAU};", { {"TAU","6.2831853071795864769252867665590"} });
 		w.blank();
 
-		
+
 
 		w.line("void main()");
 		w.open();
-			w.line("vTex = aTexCoord;");
-			w.line("gl_Position = projection * view * model * vec4(aPos, 1.0);");
+		w.line("vTex = aTexCoord;");
+		w.line("gl_Position = projection * view * model * vec4(aPos, 1.0);");
 		w.close();
 
 		w.save(outPath);
@@ -73,7 +73,7 @@ namespace ShaderGeneration_
 	static void generate_fragment_shader(const std::filesystem::path& outPath, bool useTint, bool useTimeSine)
 	{
 		Writer_::Writer w;
-		
+
 
 		w.line("#version 450 core");
 		w.blank();
@@ -86,69 +86,69 @@ namespace ShaderGeneration_
 		w.save(outPath);
 	}
 
-    // Writes the provided vertex shader to `outPath`.
-    // Uses Writer_::Writer features: line(), blank(), comment(), lines(), open()/close() where it helps readability.
-    inline void write_vertex_shader_edge_snap(const std::filesystem::path& outPath)
-    {
-        Writer_::Writer w;
+	// Writes the provided vertex shader to `outPath`.
+	// Uses Writer_::Writer features: line(), blank(), comment(), lines(), open()/close() where it helps readability.
+	inline void write_vertex_shader_edge_snap(const std::filesystem::path& outPath)
+	{
+		Writer_::Writer w;
 
-        // Header + I/O
-        w.line("#version 450 core");
-        w.line("layout(location = 0) in vec3 aPos;");
-        w.line("layout(location = 1) in vec2 aTexCoord;");
-        w.blank();
-        w.line("out vec2 TexCoord;");
-        w.line("out vec3 color_vs;");
-        w.blank();
-        w.comment("NEW: feed the FS");
-        w.line("out vec3 vWorldPos;");
-        w.line("out vec3 vNormal;");
-        w.blank();
+		// Header + I/O
+		w.line("#version 450 core");
+		w.line("layout(location = 0) in vec3 aPos;");
+		w.line("layout(location = 1) in vec2 aTexCoord;");
+		w.blank();
+		w.line("out vec2 TexCoord;");
+		w.line("out vec3 color_vs;");
+		w.blank();
+		w.comment("NEW: feed the FS");
+		w.line("out vec3 vWorldPos;");
+		w.line("out vec3 vNormal;");
+		w.blank();
 
-        // Matrices
-        w.line("uniform mat4 model;       // can be identity");
-        w.line("uniform mat4 view;");
-        w.line("uniform mat4 projection;");
-        w.blank();
+		// Matrices
+		w.line("uniform mat4 model;       // can be identity");
+		w.line("uniform mat4 view;");
+		w.line("uniform mat4 projection;");
+		w.blank();
 
-        // Controls
-        w.comment("-------- Controls (few scalars only) --------");
-        w.line("uniform ivec3 uGrid;      // number of instances along X,Y,Z (instanceCount = X*Y*Z)");
-        w.line("uniform float uSpacing;   // distance between grid cells");
-        w.line("uniform vec3  uOrigin;    // base world offset");
-        w.line("uniform vec3  uScaleMin;  // min scale per axis");
-        w.line("uniform vec3  uScaleMax;  // max scale per axis");
-        w.line("uniform float uTime;      // time (seconds)");
-        w.line("uniform float uRotSpeed;  // radians/sec");
-        w.line("uniform uint  uSeed;      // global random seed");
-        w.blank();
-        w.line("uniform uint uDrawcallNumber;");
-        w.line("uniform vec3 uCameraPos;");
-        w.line("uniform float u0, u1, u2, u3, u4, u5, u6, u7, u8, u9;");
-        w.blank();
+		// Controls
+		w.comment("-------- Controls (few scalars only) --------");
+		w.line("uniform ivec3 uGrid;      // number of instances along X,Y,Z (instanceCount = X*Y*Z)");
+		w.line("uniform float uSpacing;   // distance between grid cells");
+		w.line("uniform vec3  uOrigin;    // base world offset");
+		w.line("uniform vec3  uScaleMin;  // min scale per axis");
+		w.line("uniform vec3  uScaleMax;  // max scale per axis");
+		w.line("uniform float uTime;      // time (seconds)");
+		w.line("uniform float uRotSpeed;  // radians/sec");
+		w.line("uniform uint  uSeed;      // global random seed");
+		w.blank();
+		w.line("uniform uint uDrawcallNumber;");
+		w.line("uniform vec3 uCameraPos;");
+		w.line("uniform float u0, u1, u2, u3, u4, u5, u6, u7, u8, u9;");
+		w.blank();
 
-        // Constants & helpers
-        w.comment("---------- Constants & tiny helpers ----------");
-        w.line("const float PI = 3.1415926535897932384626433832795;");
-        w.line("const float TAU = 6.2831853071795864769252867665590;");
-        w.blank();
+		// Constants & helpers
+		w.comment("---------- Constants & tiny helpers ----------");
+		w.line("const float PI = 3.1415926535897932384626433832795;");
+		w.line("const float TAU = 6.2831853071795864769252867665590;");
+		w.blank();
 
-        w.line("float saturate(float x) { return clamp(x, 0.0, 1.0); }");
-        w.blank();
+		w.line("float saturate(float x) { return clamp(x, 0.0, 1.0); }");
+		w.blank();
 
-        // pcg_hash + rand01
-        w.line("uint pcg_hash(uint x)");
-        w.open("{");
-        w.line("x = x * 747796405u + 2891336453u;");
-        w.line("x = ((x >> ((x >> 28u) + 4u)) ^ x) * 277803737u;");
-        w.line("x = (x >> 22u) ^ x;");
-        w.line("return x;");
-        w.close();
-        w.line("float rand01(inout uint s) { s = pcg_hash(s); return float(s) * (1.0 / 4294967295.0); }");
-        w.blank();
+		// pcg_hash + rand01
+		w.line("uint pcg_hash(uint x)");
+		w.open("{");
+		w.line("x = x * 747796405u + 2891336453u;");
+		w.line("x = ((x >> ((x >> 28u) + 4u)) ^ x) * 277803737u;");
+		w.line("x = (x >> 22u) ^ x;");
+		w.line("return x;");
+		w.close();
+		w.line("float rand01(inout uint s) { s = pcg_hash(s); return float(s) * (1.0 / 4294967295.0); }");
+		w.blank();
 
-        // spherical01
-        w.lines(R"GLSL(
+		// spherical01
+		w.lines(R"GLSL(
 vec3 spherical01(float r, float theta01, float phi01) {
     float theta = theta01 * TAU; // azimuth
     float phi = phi01 * PI;      // polar
@@ -156,10 +156,10 @@ vec3 spherical01(float r, float theta01, float phi01) {
     return vec3(r * sphi * cos(theta), r * cos(phi), r * sphi * sin(theta));
 }
 )GLSL", {});
-        w.blank();
+		w.blank();
 
-        // axisAngleToMat3
-        w.lines(R"GLSL(
+		// axisAngleToMat3
+		w.lines(R"GLSL(
 mat3 axisAngleToMat3(vec3 axis, float a) {
     float c = cos(a), s = sin(a);
     vec3 t = (1.0 - c) * axis;
@@ -170,10 +170,10 @@ mat3 axisAngleToMat3(vec3 axis, float a) {
     );
 }
 )GLSL", {});
-        w.blank();
+		w.blank();
 
-        // localCubeFaceNormal
-        w.lines(R"GLSL(
+		// localCubeFaceNormal
+		w.lines(R"GLSL(
 vec3 localCubeFaceNormal(vec3 p) {
     vec3 ap = abs(p);
     if (ap.x >= ap.y && ap.x >= ap.z) return vec3(sign(p.x), 0.0, 0.0);
@@ -181,10 +181,10 @@ vec3 localCubeFaceNormal(vec3 p) {
     return vec3(0.0, 0.0, sign(p.z));
 }
 )GLSL", {});
-        w.blank();
+		w.blank();
 
-        // snapToNearestEdge
-        w.lines(R"GLSL(
+		// snapToNearestEdge
+		w.lines(R"GLSL(
 vec3 snapToNearestEdge(vec3 u)
 {
     // distance to the nearest face on each axis
@@ -204,10 +204,10 @@ vec3 snapToNearestEdge(vec3 u)
     return vec3(snapped.x, snapped.y, u.z);
 }
 )GLSL", {});
-        w.blank();
+		w.blank();
 
-        // main()
-        w.lines(R"GLSL(
+		// main()
+		w.lines(R"GLSL(
 void main()
 {
     int id = gl_InstanceID;
@@ -376,14 +376,14 @@ void main()
 }
 )GLSL", {});
 
-        // Finally, save
-        w.save(outPath);
-    }
-    
-    
+		// Finally, save
+		w.save(outPath);
+	}
 
 
-    
+
+
+
 
 	void run()
 	{
@@ -412,18 +412,185 @@ void main()
 		//	std::cout << "ShaderGeneration_ done\n";
 		//}
 
-        Writer_::Writer w;
-
-        
+		Writer_::Writer w;
 
 
-        const std::filesystem::path outDir = std::filesystem::path("C:/Users/Cosmos/Desktop/output/tmp/shaders/");
-        const std::filesystem::path vsPath = outDir / "generated_vertex.glsl";
-        // const std::filesystem::path fsPath = outDir / "generated_fragment.glsl";
 
 
-        
+		const std::filesystem::path outDir = std::filesystem::path("C:/Users/Cosmos/Desktop/output/tmp/shaders/");
+		const std::filesystem::path vsPath = outDir / "generated_vertex.glsl";
+		// const std::filesystem::path fsPath = outDir / "generated_fragment.glsl";
 
-        w.save(vsPath);
+
+		/*
+		int n_x = 10;
+		float n_x_offset = 0.1;
+		float n_x_amplitude = 0.02;
+		float n_x_t = uTime * 0.1;
+
+		*/
+
+		
+
+		class Wave
+		{
+		public:
+			enum class Direction
+			{
+				X,
+				Y 
+			};
+
+			Direction direction = Direction::X;
+			
+			int frequency_index = 1;
+			float offset = 0.0f;
+			float amplitude = 1.0f;
+			float time_multiplier = 1.13214f;
+			int function_to_use = 0;
+
+			void write(Writer_::Writer& w, int index)
+			{
+				std::string direction_txt = "x";
+				if (direction == Direction::Y)
+				{
+					direction_txt = "y";
+				}
+
+				w.comment("${NAME} ${DIRECTION} ${INDEX} ", { {"NAME", name}, {"DIRECTION", direction_txt}, {"INDEX", std::to_string(index)}});
+				w.linef("int {}_{}_{}_frequency = int({});", name, index, direction_txt, frequency_index);
+				w.linef("float {}_{}_{}_offset = float({});", name, index, direction_txt, offset);
+				w.linef("float {}_{}_{}_amplitude = float({});", name, index, direction_txt, amplitude);
+				w.linef("float {}_{}_{}_t = uTime * float({});", name, index, direction_txt,float( this->time_multiplier));
+				w.blank();
+			}
+
+			const std::string name = "wave";
+		};
+
+		std::vector<Wave> waves_x;
+		
+		{
+			{
+				Wave wave;
+				wave.frequency_index = 10;
+				wave.offset = 0.4f;
+				wave.amplitude = 0.22f;
+				wave.time_multiplier = 1.007f;
+				wave.function_to_use = 0;
+
+				wave.direction = Wave::Direction::X;
+				waves_x.push_back(wave);
+			}
+
+			{
+				Wave wave;
+				wave.frequency_index = 4;
+				wave.offset = 0.1f;
+				wave.amplitude = 0.72f;
+				wave.time_multiplier = 0.407f;
+				wave.function_to_use = 4;
+
+				wave.direction = Wave::Direction::X;
+				waves_x.push_back(wave);
+			}
+			
+		}
+
+		std::vector<Wave> waves_y;
+		
+		{
+			{
+				Wave wave;
+				wave.frequency_index = 4;
+				wave.offset = 0.3f;
+				wave.amplitude = 0.12f;
+				wave.time_multiplier = 4.007f;
+				wave.function_to_use = 7;
+
+				wave.direction = Wave::Direction::Y;
+				waves_y.push_back(wave);
+			}
+			
+			{
+				Wave wave;
+				wave.frequency_index = 24;
+				wave.offset = 0.43f;
+				wave.amplitude = 0.412f;
+				wave.time_multiplier = 47.007f;
+				wave.function_to_use = 10;
+
+				wave.direction = Wave::Direction::Y;
+				waves_y.push_back(wave);
+			}
+		}
+
+		
+		{
+			for (int i = 0; i < waves_x.size(); i++)
+			{
+				waves_x[i].write(w, i);
+			}
+
+			for (int i = 0; i < waves_y.size(); i++)
+			{
+				waves_y[i].write(w, i);
+			}
+		}
+
+		{
+			w.blank();
+			w.line("float wave_first = 0.0f;");
+
+
+			
+			for (int i = 0; i < waves_x.size(); i++)
+			{
+				int function_to_use = waves_x[i].function_to_use;
+
+				w.line
+				(
+					"wave_first += wave_${INDEX}_${DIRECTION}_amplitude * f_periodic_${PERIODIC_FUNCTION}(f_adjust_to_two_pi(wave_${INDEX}_${DIRECTION}_offset + rnd_x * TAU * wave_${INDEX}_${DIRECTION}_frequency + wave_${INDEX}_${DIRECTION}_t * uTime));",
+					{
+						{"INDEX", std::to_string(i)},
+						{"DIRECTION", "x"},
+						{"PERIODIC_FUNCTION", std::to_string(function_to_use)},
+					}
+				);
+			}
+
+			for (int i = 0; i < waves_y.size(); i++)
+			{
+				int function_to_use = waves_y[i].function_to_use;;
+
+				w.line
+				(
+					"wave_first += wave_${INDEX}_${DIRECTION}_amplitude * f_periodic_${PERIODIC_FUNCTION}(f_adjust_to_two_pi(wave_${INDEX}_${DIRECTION}_offset + rnd_x * TAU * wave_${INDEX}_${DIRECTION}_frequency + wave_${INDEX}_${DIRECTION}_t * uTime));",
+					{
+						{"INDEX", std::to_string(i)},
+						{"DIRECTION", "y"},
+						{"PERIODIC_FUNCTION", std::to_string(function_to_use)},
+					}
+				);
+			}
+
+			
+		}
+		
+
+		
+		/*
+		float wave_first = n_x_amplitude * f_periodic_0(f_adjust_to_two_pi(n_x_offset + rnd_x * TAU * n_x + n_x_t * uTime)) +
+                       n_y_amplitude * f_periodic_0(f_adjust_to_two_pi(n_y_offset + rnd_y * TAU * n_y + n_y_t * uTime));
+
+    float wave_second = n_x_amplitude * f_periodic_4(f_adjust_to_two_pi(n_x_offset + rnd_x * TAU * n_x + n_x_t * uTime)) +
+                        n_y_amplitude * f_periodic_2(f_adjust_to_two_pi(n_y_offset + rnd_y * TAU * n_y + n_y_t * uTime));
+
+		*/
+
+		
+
+
+		w.save(vsPath);
 	}
 }

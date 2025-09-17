@@ -68,16 +68,80 @@ vec3 localCubeFaceNormal(vec3 p) {
     return vec3(0.0, 0.0, sign(p.z));
 }
 
-
+// 0 to 1
 float f_periodic_0(float x)
 {
     return 2.0 * abs(fract(x + 0.5) - 0.5);
+}
+
+// Square Wave 
+float f_periodic_1(float x)
+{
+    return  floor(x) - floor(x - 0.5);
+}
+
+// The Bouncing Ball (Parabolic Arches)
+float f_periodic_2(float x)
+{
+    return 4 * fract(x) * (1 - fract(x));
+}
+
+float f_periodic_3(float x)
+{
+    return exp(-30 * ((fract(x + 0.5) - 0.5) * (fract(x + 0.5) - 0.5)));
+}
+
+float f_periodic_4(float x)
+{
+    return abs(0.7 * cos(2 * PI * x) + 0.3 * cos(6 * PI * x)) * (-1.0) + 1.0;
+}
+
+float f_periodic_5(float x)
+{ 
+    return 1.0 - abs(round(10 * fract(x)) / 10 - 0.5) * 2.0;
+}
+
+float f_periodic_6(float x)
+{
+    return sqrt(4 * fract(x) * (1 - fract(x)));
+}
+
+float f_periodic_7(float x)
+{
+    return sin(5 * PI * fract(x)) * (1 - fract(x));
+}
+
+// 1) Raised-cosine (Hann) arch — smooth & band-limited-ish
+float f_periodic_8(float x)
+{
+    return 0.5 - 0.5 * cos(TAU * x);               // 0 at integers, 1 at half-integers
+}
+
+float f_periodic_9(float x)
+{
+    return pow(2.0 * abs(fract(x + 0.5) - 0.5), 1.5);
+}
+
+float f_periodic_10(float x)
+{
+    return (abs(1.0 / (1.0 + exp(-6.0 * sin(TAU * x))) - 0.5)) * 2.0 * 2.0 * abs(fract(x + 0.5) - 0.5);
+}
+
+float f_periodic_11(float x)
+{
+    return fract(x) * fract(x) * (3.0 - 2.0 * fract(x)) * 2.0 * abs(fract(x + 0.5) - 0.5) * 1.9;
 }
 
 float f_adjust_to_two_pi(float x)
 {
     return x * (1.0 / TAU);
 }
+
+
+
+// 0 to TAU
+
+
 
 
 void main()
@@ -120,21 +184,38 @@ void main()
 
     // Sphere radius offset
     
-    int n_x = 10;
+    
+    
+
+    int n_x = 2;
     float n_x_offset = 0.1;
     float n_x_amplitude = 0.02;
-    float n_x_t = uTime * 0.1;
+    float n_x_t = 0.0;
 
     
     int n_y = 2;
     float n_y_offset = 0.1;
     float n_y_amplitude = 0.02;
-    float n_y_t = uTime * 1.0;
+    float n_y_t = 0.0;
     
 
-    float radius = 0.45 +
-        n_x_amplitude * f_periodic_0(f_adjust_to_two_pi(n_x_offset + rnd_x * TAU * n_x + n_x_t)) +
-        n_y_amplitude * sin(n_y_offset + rnd_y * TAU * n_y + n_y_t);
+
+
+
+    float wave_first = n_x_amplitude * f_periodic_0(f_adjust_to_two_pi(n_x_offset + rnd_x * TAU * n_x + n_x_t * uTime)) +
+                        n_y_amplitude * f_periodic_0(f_adjust_to_two_pi(n_y_offset + rnd_y * TAU * n_y + n_y_t * uTime));
+
+    float wave_second = n_x_amplitude * f_periodic_4(f_adjust_to_two_pi(n_x_offset + rnd_x * TAU * n_x + n_x_t * uTime)) +
+                        n_y_amplitude * f_periodic_2(f_adjust_to_two_pi(n_y_offset + rnd_y * TAU * n_y + n_y_t * uTime));
+
+
+    float f_0 = fract(uTime * 0.1);
+    float f_1 = 1.0 - f_0;
+
+    float w = f_1 * wave_first + f_0 * wave_second;
+
+    float radius = 0.2 + w;
+        
 
 
     // Sphere
