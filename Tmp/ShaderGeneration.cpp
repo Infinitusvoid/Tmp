@@ -5,6 +5,8 @@
 
 #include "Writer.h"
 
+#include "CppCommponents/Random.h"
+
 namespace ShaderGeneration_
 {
 	// -------------- Example generation --------------
@@ -449,7 +451,7 @@ void main()
 			float time_multiplier = 1.13214f;
 			int function_to_use = 0;
 
-			void write(Writer_::Writer& w, int index)
+			void write(Writer_::Writer& w, int index, std::string name)
 			{
 				std::string direction_txt = "x";
 				if (direction == Direction::Y)
@@ -465,117 +467,133 @@ void main()
 				w.blank();
 			}
 
-			const std::string name = "wave";
+			static void generate_waves(std::vector<Wave>& waves, int num)
+			{
+				for (int i = 0; i < num; i++)
+				{
+					Wave wave;
+					wave.frequency_index = Random::random_int(1, 100);
+					wave.offset = Random::generate_random_float_minus_one_to_plus_one() * 0.4f;
+					wave.amplitude = Random::generate_random_float_minus_one_to_plus_one() * 0.2f;
+					wave.time_multiplier = Random::generate_random_float_minus_one_to_plus_one() * 0.1f;
+					wave.function_to_use = Random::random_int(0, 10);
+
+					if (Random::generate_random_float_0_to_1() > 0.5f)
+					{
+						wave.direction = Wave::Direction::X;
+					}
+					else
+					{
+						wave.direction = Wave::Direction::Y;
+					}
+
+					waves.push_back(wave);
+				}
+			}
+
+			static void normalize_amplitude(std::vector<Wave>& waves)
+			{
+				float total_amplitude = 0.0;
+				for (int i = 0; i < waves.size(); i++)
+				{
+					total_amplitude += waves[i].amplitude;
+				}
+
+				float factor = 1.0 / total_amplitude;
+
+				if (std::abs(total_amplitude) > 1.0)
+				{
+					for (int i = 0; i < waves.size(); i++)
+					{
+						waves[i].amplitude = factor * waves[i].amplitude;
+					}
+				}
+			}
+
+
+			static void write(Writer_::Writer& w, std::vector<Wave>& waves, std::string name)
+			{
+				{
+					for (int i = 0; i < waves.size(); i++)
+					{
+						waves[i].write(w, i, name);
+					}
+
+				}
+
+				{
+					w.blank();
+					w.line("float ${NAME} = 0.0f;", { {"NAME", name}});
+
+
+
+					for (int i = 0; i < waves.size(); i++)
+					{
+						int function_to_use = waves[i].function_to_use;
+
+
+
+						w.line
+						(
+							"${NAME} += ${NAME}_${INDEX}_${DIRECTION}_amplitude * f_periodic_${PERIODIC_FUNCTION}(f_adjust_to_two_pi(${NAME}_${INDEX}_${DIRECTION}_offset + rnd_x * TAU * ${NAME}_${INDEX}_${DIRECTION}_frequency + ${NAME}_${INDEX}_${DIRECTION}_t * uTime));",
+							{
+								{"NAME", name},
+								{"INDEX", std::to_string(i)},
+								{"DIRECTION", ((waves[i].direction == Wave::Direction::X) ? "x" : "y")},
+								{"PERIODIC_FUNCTION", std::to_string(function_to_use)},
+							}
+							);
+					}
+
+
+					w.blank();
+					w.linef("{} *= float({});", name, 0.2f);
+
+				}
+			}
 		};
 
-		std::vector<Wave> waves_x;
-		
-		{
-			{
-				Wave wave;
-				wave.frequency_index = 10;
-				wave.offset = 0.4f;
-				wave.amplitude = 0.22f;
-				wave.time_multiplier = 1.007f;
-				wave.function_to_use = 0;
 
-				wave.direction = Wave::Direction::X;
-				waves_x.push_back(wave);
-			}
 
-			{
-				Wave wave;
-				wave.frequency_index = 4;
-				wave.offset = 0.1f;
-				wave.amplitude = 0.72f;
-				wave.time_multiplier = 0.407f;
-				wave.function_to_use = 4;
+		std::string name_0 = "first_wave";
+		std::string name_1 = "second_wave";
 
-				wave.direction = Wave::Direction::X;
-				waves_x.push_back(wave);
-			}
-			
-		}
-
-		std::vector<Wave> waves_y;
-		
-		{
-			{
-				Wave wave;
-				wave.frequency_index = 4;
-				wave.offset = 0.3f;
-				wave.amplitude = 0.12f;
-				wave.time_multiplier = 0.207f;
-				wave.function_to_use = 7;
-
-				wave.direction = Wave::Direction::Y;
-				waves_y.push_back(wave);
-			}
-			
-			{
-				Wave wave;
-				wave.frequency_index = 24;
-				wave.offset = 0.43f;
-				wave.amplitude = 0.412f;
-				wave.time_multiplier = 0.407f;
-				wave.function_to_use = 10;
-
-				wave.direction = Wave::Direction::Y;
-				waves_y.push_back(wave);
-			}
-		}
-
-		
-		{
-			for (int i = 0; i < waves_x.size(); i++)
-			{
-				waves_x[i].write(w, i);
-			}
-
-			for (int i = 0; i < waves_y.size(); i++)
-			{
-				waves_y[i].write(w, i);
-			}
-		}
 
 		{
+			std::vector<Wave> waves;
+
+			Wave::generate_waves(waves, 10);
+			Wave::normalize_amplitude(waves);
+
+			Wave::write(w, waves, name_0);
+
 			w.blank();
-			w.line("float wave_first = 0.0f;");
+		}
+		
 
+		{
+			std::vector<Wave> waves;
 
-			
-			for (int i = 0; i < waves_x.size(); i++)
-			{
-				int function_to_use = waves_x[i].function_to_use;
+			Wave::generate_waves(waves, 10);
+			Wave::normalize_amplitude(waves);
 
-				w.line
-				(
-					"wave_first += wave_${INDEX}_${DIRECTION}_amplitude * f_periodic_${PERIODIC_FUNCTION}(f_adjust_to_two_pi(wave_${INDEX}_${DIRECTION}_offset + rnd_x * TAU * wave_${INDEX}_${DIRECTION}_frequency + wave_${INDEX}_${DIRECTION}_t * uTime));",
-					{
-						{"INDEX", std::to_string(i)},
-						{"DIRECTION", "x"},
-						{"PERIODIC_FUNCTION", std::to_string(function_to_use)},
-					}
-				);
-			}
+			Wave::write(w, waves, name_1);
 
-			for (int i = 0; i < waves_y.size(); i++)
-			{
-				int function_to_use = waves_y[i].function_to_use;;
+			w.blank();
 
-				w.line
-				(
-					"wave_first += wave_${INDEX}_${DIRECTION}_amplitude * f_periodic_${PERIODIC_FUNCTION}(f_adjust_to_two_pi(wave_${INDEX}_${DIRECTION}_offset + rnd_x * TAU * wave_${INDEX}_${DIRECTION}_frequency + wave_${INDEX}_${DIRECTION}_t * uTime));",
-					{
-						{"INDEX", std::to_string(i)},
-						{"DIRECTION", "y"},
-						{"PERIODIC_FUNCTION", std::to_string(function_to_use)},
-					}
-				);
-			}
+		}
+		
+
+		{
+			w.line("float f_0 = fract(uTime * 0.1);");
+			w.line("float f_1 = 1.0 - f_0;");
+			w.blank();
+			w.line("float w = f_1 * ${NAME_0} + f_0 * ${NAME_1};", { {"NAME_0", name_0} , {"NAME_1", name_1} });
 
 			
 		}
+		
+		
 		
 
 		
