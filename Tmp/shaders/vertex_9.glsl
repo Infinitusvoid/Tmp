@@ -141,7 +141,10 @@ float f_adjust_to_two_pi(float x)
 
 // 0 to TAU
 
-
+vec3 wave_0(float x, float y, float t)
+{
+    return vec3(0.0, 0.0, 0.0);
+}
 
 
 void main()
