@@ -630,9 +630,128 @@ float f_adjust_to_two_pi(float x)
 			public:
 				bool first = true;
 
+				struct Wave
+				{
+					float amplitude;
+					int frequency;
+					float offset;
+					float time_multiplier;
+
+					float color_r;
+					float color_g;
+					float color_b;
+
+					void init(int number_frequencys = 100)
+					{
+						amplitude = Random::generate_random_float_0_to_1();
+						frequency = Random::random_int(1, number_frequencys);
+						offset = Random::generate_random_float_0_to_1();
+						time_multiplier = 0.1 * Random::generate_random_float_minus_one_to_plus_one();
+
+						color_r = Random::generate_random_float_0_to_1() * 0.2;
+						color_g = Random::generate_random_float_0_to_1() * 0.2;
+						color_b = Random::generate_random_float_0_to_1() * 0.2;
+					}
+
+					static void normalize(std::vector<Wave>& waves)
+					{
+						int num = waves.size();
+
+						float amplitude_sum = 0.0;
+						float color_r_sum = 0.0;
+						float color_g_sum = 0.0;
+						float color_b_sum = 0.0;
+
+						for (int i = 0; i < num; i++)
+						{
+							const Wave& wave = waves.at(i);
+							amplitude_sum += wave.amplitude;
+							color_r_sum += wave.color_r;
+							color_g_sum += wave.color_g;
+							color_b_sum += wave.color_b;
+						}
+
+						float factor_amplitude = 1.0;
+
+						if (amplitude_sum > 1.0)
+						{
+							factor_amplitude = 1.0 / amplitude_sum;
+						}
+
+						float factor_color_r = 1.0;
+
+						if (color_r_sum > 1.0)
+						{
+							factor_color_r = 1.0 / color_r_sum;
+						}
+
+						float factor_color_g = 1.0;
+
+						if (color_g_sum > 1.0)
+						{
+							factor_color_g = 1.0 / color_g_sum;
+						}
+
+						float factor_color_b = 1.0;
+
+						if (color_b_sum > 1.0)
+						{
+							factor_color_b = 1.0 / color_b_sum;
+						}
+
+						for (int i = 0; i < waves.size(); i++)
+						{
+							Wave& wave = waves.at(i);
+							wave.amplitude *= factor_amplitude;
+							wave.color_r *= factor_color_r;
+							wave.color_g *= factor_color_g;
+							wave.color_b *= factor_color_b;
+						}
+					}
+
+				};
+
+				std::vector<Wave> waves_x;
+				std::vector<Wave> waves_y;
+
 				CreateWave_N0()
 				{
 
+				}
+
+				void init()
+				{
+					
+					{
+						waves_x.clear();
+						waves_y.clear();
+
+						// generate
+
+						for (int i = 0; i < 10; i++)
+						{
+							{
+								Wave wave;
+
+
+								wave.init(Random::random_int(2, 100));
+								waves_x.push_back(std::move(wave));
+							}
+
+							{
+								Wave wave;
+								wave.init(Random::random_int(2, 100));
+								waves_y.push_back(std::move(wave));
+							}
+						}
+
+						// normalize
+
+						Wave::normalize(waves_x);
+						Wave::normalize(waves_y);
+
+
+					}
 				}
 
 				void write(Writer_::Writer& w)
@@ -650,117 +769,7 @@ float f_adjust_to_two_pi(float x)
 					w.line("float wave_color_b = 0.0;");
 
 					{
-						struct Wave
-						{
-							float amplitude;
-							int frequency;
-							float offset;
-							float time_multiplier;
-
-							float color_r;
-							float color_g;
-							float color_b;
-
-							void init(int number_frequencys = 100)
-							{
-								amplitude = Random::generate_random_float_0_to_1();
-								frequency = Random::random_int(1, number_frequencys);
-								offset = Random::generate_random_float_0_to_1();
-								time_multiplier = 0.1 * Random::generate_random_float_minus_one_to_plus_one();
-
-								color_r = Random::generate_random_float_0_to_1() * 0.2;
-								color_g = Random::generate_random_float_0_to_1() * 0.2;
-								color_b = Random::generate_random_float_0_to_1() * 0.2;
-							}
-
-							static void normalize(std::vector<Wave>& waves)
-							{
-								int num = waves.size();
-
-								float amplitude_sum = 0.0;
-								float color_r_sum = 0.0;
-								float color_g_sum = 0.0;
-								float color_b_sum = 0.0;
-
-								for (int i = 0; i < num; i++)
-								{
-									const Wave& wave = waves.at(i);
-									amplitude_sum += wave.amplitude;
-									color_r_sum += wave.color_r;
-									color_g_sum += wave.color_g;
-									color_b_sum += wave.color_b;
-								}
-
-								float factor_amplitude = 1.0;
-
-								if (amplitude_sum > 1.0)
-								{
-									factor_amplitude = 1.0 / amplitude_sum;
-								}
-
-								float factor_color_r = 1.0;
-
-								if (color_r_sum > 1.0)
-								{
-									factor_color_r = 1.0 / color_r_sum;
-								}
-
-								float factor_color_g = 1.0;
-
-								if (color_g_sum > 1.0)
-								{
-									factor_color_g = 1.0 / color_g_sum;
-								}
-
-								float factor_color_b = 1.0;
-
-								if (color_b_sum > 1.0)
-								{
-									factor_color_b = 1.0 / color_b_sum;
-								}
-
-								for (int i = 0; i < waves.size(); i++)
-								{
-									Wave& wave = waves.at(i);
-									wave.amplitude *= factor_amplitude;
-									wave.color_r *= factor_color_r;
-									wave.color_g *= factor_color_g;
-									wave.color_b *= factor_color_b;
-								}
-							}
-
-						};
-
-						std::vector<Wave> waves_x;
-						std::vector<Wave> waves_y;
-
-						{
-							// generate
-
-							for (int i = 0; i < 10; i++)
-							{
-								{
-									Wave wave;
-
-
-									wave.init(Random::random_int(2, 100));
-									waves_x.push_back(std::move(wave));
-								}
-
-								{
-									Wave wave;
-									wave.init(Random::random_int(2, 100));
-									waves_y.push_back(std::move(wave));
-								}
-							}
-
-							// normalize
-
-							Wave::normalize(waves_x);
-							Wave::normalize(waves_y);
-
-
-						}
+						
 
 						// write x
 						for (int i = 0; i < waves_x.size(); i++)
@@ -809,18 +818,51 @@ float f_adjust_to_two_pi(float x)
 				}
 			};
 
+			static bool first_time = true;
+
 			{
-				CreateWave_N0 wave;
-				wave.first = true;
+				static CreateWave_N0 wave;
+
+				if (first_time)
+				{
+					wave.first = true;
+				}
+				else
+				{
+					wave.first = !wave.first;
+				}
+
+				
+				if ((wave.first && first_time) || (wave.first == false) || first_time)
+				{
+					wave.init();
+				}
 				wave.write(w);
 			}
 
 			{
-				CreateWave_N0 wave;
-				wave.first = false;
+				static CreateWave_N0 wave;
+				
+				if (first_time)
+				{
+					wave.first = false;
+				}
+				else
+				{
+					wave.first = !wave.first;
+				}
+
+				if ((wave.first && first_time) || (wave.first == false) || first_time)
+				{
+					wave.init();
+				}
 				wave.write(w);
 			}
 
+			if (first_time)
+			{
+				first_time = false;
+			}
 
 		}
 
@@ -857,7 +899,7 @@ float f_adjust_to_two_pi(float x)
 
 
 		{
-			w.line("float f_0 = abs(sin(uTime * 0.7)); //fract(uTime * 1.0);");
+			w.line("float f_0 = fract(uTime * (1.0/4.0));");
 			w.line("float f_1 = 1.0 - f_0;");
 			w.blank();
 
@@ -885,14 +927,14 @@ float py = sphere_position.y;
 float pz = sphere_position.z;
 
 // Instances Cube Scale
-float scale_cube = 0.0007;
+float scale_cube = 0.0001;
 vec3  pos = vec3(px, pz, py);
 vec3  scale = vec3(scale_cube, scale_cube, scale_cube);
 
 
 // Whole object rotation
 vec3 rotation_axis = vec3(0.0, 1.0, 0.0);
-float rotation_angle = uTime; // using uTime will not be wise after we will be interpolating between two values
+float rotation_angle = sin(uTime * TAU * (1.0 / 4.0)); // using uTime will not be wise after we will be interpolating between two values
 
 // Whole object scale
 vec3 scale_object = vec3(1.0, 1.0, 1.0);
@@ -1010,10 +1052,12 @@ namespace Universe_
 			engine_delete_flush_frames();
 
 			Program program;
-			program.le.halfLife = 0.02f;
+			program.le.halfLife = 0.01f;
 			program.le.brightness = 0.0f;
 			program.le.exposure = 100.0;
-			program.capture.capture = false;
+			program.le.msaaSamples = 10;
+
+			program.capture.capture = true;
 			program.capture.capture_png = false;
 			program.capture.capture_bmp = true;
 
@@ -1056,7 +1100,7 @@ namespace Universe_
 						auto id = sh.create_instance();
 						auto I = sh.instance(id);
 						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(1)
+							.set_drawcalls(100)
 							.set_position_start(0.0f, 0.0f, 0.0f)
 							.set_position_end(0.0f, 0.0f, 0.0f)
 							.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -1130,7 +1174,7 @@ namespace Universe_
 				save_program(scene, program_name);
 				run_program(program_name);
 
-				int i = 0;
+				int i = clip_number;
 				std::string name = "output_" + std::to_string(i);
 				Video::generate(name, "bmp");
 
@@ -1138,25 +1182,39 @@ namespace Universe_
 			}
 
 			{
+				std::cout << "engine_flush_frames \n";
 				engine_flush_frames();
 				engine_delete_flush_frames();
 			}
+
+			clip_number += 1;
 		}
+
+
+		int clip_number = 0;
 
 
 		const int clip_fps = 60;
 		const int clip_length_seconds = 4;
 
-		const bool enable_shader_10_unit_cube = true;
+		const bool enable_shader_10_unit_cube = false;
 		const bool enable_shader_9 = true;
+
 	};
+
 
 	void generate()
 	{
 		Clip clip;
 
-		clip.generate();
+		for(int i = 0; i < 30; i++)
+		{
+			std::cout << "clip : " << clip.clip_number << "\n";
 
+			clip.generate();
+		}
+		
+		
 		
 
 		
