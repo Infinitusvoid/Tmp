@@ -273,23 +273,23 @@ namespace Universe_
 		program.render_display.number_of_frames = 60 * 16;
 		program.render_display.render_time_start = 0.0;
 
-		// CAPTURED: { pos: [5.515966, 4.796353, 4.887476] , yaw : 128.639969, pitch : -8.880000, fov : 45.000000 }
-		program.camera_start.x = 0.0;
-		program.camera_start.y = 0.0;
-		program.camera_start.z = 0.0;
+		// CAPTURED: { pos:[-0.253910,0.518504,0.281625], yaw:103.439995, pitch:-1.920018, fov:45.000000 }
+		program.camera_start.x = -0.253910;
+		program.camera_start.y = 0.518504;
+		program.camera_start.z = 0.281625;
 
-		program.camera_start.yaw = 0.0;
-		program.camera_start.pitch = 0.0;
+		program.camera_start.yaw = 103.439995;
+		program.camera_start.pitch = -1.920018;
 		program.camera_start.fov = 45.0;
 
 
-		program.camera_end.x = 0.0;
-		program.camera_end.y = 0.0;
-		program.camera_end.z = 0.0;
+		program.camera_end.x = program.camera_start.x;
+		program.camera_end.y = program.camera_start.y;
+		program.camera_end.z = program.camera_start.z;
 
-		program.camera_end.yaw = 0.0;
-		program.camera_end.pitch = 0.0;
-		program.camera_end.fov = 45.0;
+		program.camera_end.yaw = program.camera_start.yaw;
+		program.camera_end.pitch = program.camera_start.pitch;
+		program.camera_end.fov = program.camera_start.fov;
 
 		Scene_::Scene scene = Scene_::Scene();
 		program.configure(scene);
