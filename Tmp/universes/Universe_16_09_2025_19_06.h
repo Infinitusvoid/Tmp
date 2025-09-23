@@ -1057,7 +1057,7 @@ namespace Universe_
 			program.le.exposure = 100.0;
 			program.le.msaaSamples = 10;
 
-			program.capture.capture = true;
+			program.capture.capture = false;
 			program.capture.capture_png = false;
 			program.capture.capture_bmp = true;
 
@@ -1100,7 +1100,7 @@ namespace Universe_
 						auto id = sh.create_instance();
 						auto I = sh.instance(id);
 						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(100)
+							.set_drawcalls(2)
 							.set_position_start(0.0f, 0.0f, 0.0f)
 							.set_position_end(0.0f, 0.0f, 0.0f)
 							.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -1207,7 +1207,7 @@ namespace Universe_
 	{
 		Clip clip;
 
-		for(int i = 0; i < 30; i++)
+		// for(int i = 0; i < 30; i++)
 		{
 			std::cout << "clip : " << clip.clip_number << "\n";
 
