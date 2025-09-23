@@ -1040,6 +1040,8 @@ namespace Universe_
 		bool enable_shader_10_unit_cube = true;
 
 
+		generate_shader();
+
 		// shaders
 		if (enable_shader_9)
 		{
