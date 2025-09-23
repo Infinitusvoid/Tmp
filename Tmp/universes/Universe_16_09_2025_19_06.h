@@ -90,8 +90,6 @@ namespace Universe_
 
 namespace Universe_
 {
-
-
 	struct CameraRecording
 	{
 		float x;
@@ -160,9 +158,6 @@ namespace Universe_
 		}
 	};
 
-	
-	
-	
 	void build_path(CameraPath& path)
 	{
 		{
@@ -191,8 +186,7 @@ namespace Universe_
 	static inline float clampf(float v, float lo, float hi) {
 		return std::max(lo, std::min(hi, v));
 	}
-
-
+	
 	inline void append_handheld_sections(
 		CameraPath& path,
 		int   sections = 4,

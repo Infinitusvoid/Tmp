@@ -6,7 +6,7 @@
 
 #include "universes/Universe.h"
 
-#include "ShaderGeneration.h"
+
 
 
 
@@ -18,7 +18,7 @@ int main(int argc, char* argv[])
 {
 	std::cout << "Tmp\n";
 
-	ShaderGeneration_::run();
+
 
 	// return 0;
 	
