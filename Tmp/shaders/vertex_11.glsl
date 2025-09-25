@@ -379,11 +379,27 @@ vec4 wave_1(float x, float y, float t)
 
 vec4 wave(float x, float y, float t)
 {
-    float f_0 = fract(t * (1.0 / 4.0));
+    float f_0 = (0.5 + 0.5 * sin(t * 2.0 + y * 10.0));
     float f_1 = 1.0 - f_0;
-    vec4 value_wave_0 = wave_0(x, y, uTime);
-    vec4 value_wave_1 = wave_1(x, y, uTime);
-    float w = f_1 * value_wave_0.w + f_0 * value_wave_1.w;
+    vec4 value_wave_0_0 = wave_0(x, y, uTime);
+    vec4 value_wave_0_1 = wave_1(x, y, uTime);
+    float w0 = f_1 * value_wave_0_0.w + f_0 * value_wave_0_1.w;
+
+    vec4 value_wave_1_0 = wave_0(x * 14.72, y * 42.42, t);
+    vec4 value_wave_1_1 = wave_1(x * 70.43, y * 32.0, t);
+    float w1 = f_1 * value_wave_1_0.w + f_0 * value_wave_1_1.w;
+
+    float w = (w0 * w1) + pow(sin(w0 / w1), 4.0) * (0.002 + 0.002 * sin(t + x * y * 10.0));
+
+    vec4 value_wave_0 = value_wave_0_0 + value_wave_1_0;
+    vec4 value_wave_1 = value_wave_0_1 + value_wave_1_1;
+    
+    value_wave_0 *= vec4(0.4 + abs(sin(x * 100.0 + w)));
+    value_wave_1 *= vec4(0.4 + abs(sin(y * 100.0 + w)));
+    
+
+
+    w = pow(w, 0.2) * 0.4;
 
     float color_r = value_wave_0.r * f_1 + value_wave_1.r * f_0;
     float color_g = value_wave_0.g * f_1 + value_wave_1.g * f_0;
