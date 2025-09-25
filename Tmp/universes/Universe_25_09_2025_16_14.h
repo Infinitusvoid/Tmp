@@ -48,7 +48,7 @@ namespace Universe_
 			program.le.exposure = 100.0;
 			program.le.msaaSamples = 10;
 
-			program.capture.capture = true;
+			program.capture.capture = false;
 			program.capture.capture_png = false;
 			program.capture.capture_bmp = true;
 
@@ -78,9 +78,9 @@ namespace Universe_
 			program.configure(scene);
 
 			// shaders
-			if (enable_shader_11)
+			if (enable_shader_12)
 			{
-				add_shader(scene, 11, [](Program::Shader& sh) {
+				add_shader(scene, 12, [](Program::Shader& sh) {
 
 
 					// Instance 0
@@ -88,7 +88,7 @@ namespace Universe_
 						auto id = sh.create_instance();
 						auto I = sh.instance(id);
 						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(400)
+							.set_drawcalls(4)
 							.set_position_start(0.0f, 0.0f, 0.0f)
 							.set_position_end(0.0f, 0.0f, 0.0f)
 							.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -186,7 +186,7 @@ namespace Universe_
 		const int clip_length_seconds = 16;
 
 		const bool enable_shader_10_unit_cube = false;
-		const bool enable_shader_11 = true;
+		const bool enable_shader_12 = true;
 
 	};
 
