@@ -89,7 +89,7 @@ namespace Universe_
 						auto id = sh.create_instance();
 						auto I = sh.instance(id);
 						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(10)
+							.set_drawcalls(400)
 							.set_position_start(0.0f, 0.0f, 0.0f)
 							.set_position_end(0.0f, 0.0f, 0.0f)
 							.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -184,7 +184,7 @@ namespace Universe_
 
 
 		const int clip_fps = 60;
-		const int clip_length_seconds = 4;
+		const int clip_length_seconds = 120;
 
 		const bool enable_shader_10_unit_cube = false;
 		const bool enable_shader_11 = true;

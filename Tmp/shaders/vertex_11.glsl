@@ -436,6 +436,13 @@ void main()
         float rnd_x = rand01(s0);
         float rnd_y = rand01(s1);
         float rnd_z = rand01(s2);
+
+        uint s0r = uSeed + uint(id + 140);
+        uint s1g = uSeed + uint(id + 2742);
+        uint s2b = uSeed + uint(id + 32142);
+        float rnd_r = rand01(s0r);
+        float rnd_g = rand01(s1g);
+        float rnd_b = rand01(s2b);
     
         // The instancd cube rotation randomization
         uint s0_rot_x = uSeed + uint(id + 2431);
@@ -462,9 +469,9 @@ void main()
 
     float radius = 0.2 + wave.w;
 
-    float color_r = wave.r;
-    float color_g = wave.g;
-    float color_b = wave.b;
+    float color_r = wave.r + rnd_r * 0.002;
+    float color_g = wave.g + rnd_g * 0.002;
+    float color_b = wave.b + rnd_b * 0.002;
 
     
     // Sphere
@@ -474,7 +481,7 @@ void main()
     float pz = sphere_position.z;
     
     // Instances Cube Scale
-    float scale_cube = 0.0002;
+    float scale_cube = 0.0002 * 0.7;
     vec3  pos = vec3(px, pz, py);
     vec3  scale = vec3(scale_cube, scale_cube, scale_cube);
     
