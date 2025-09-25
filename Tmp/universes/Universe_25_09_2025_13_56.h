@@ -79,7 +79,7 @@ namespace Universe_
 			program.configure(scene);
 
 			// shaders
-			if (enable_shader_9)
+			if (enable_shader_11)
 			{
 				add_shader(scene, 11, [](Program::Shader& sh) {
 
@@ -89,7 +89,7 @@ namespace Universe_
 						auto id = sh.create_instance();
 						auto I = sh.instance(id);
 						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(2)
+							.set_drawcalls(10)
 							.set_position_start(0.0f, 0.0f, 0.0f)
 							.set_position_end(0.0f, 0.0f, 0.0f)
 							.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -187,7 +187,7 @@ namespace Universe_
 		const int clip_length_seconds = 4;
 
 		const bool enable_shader_10_unit_cube = false;
-		const bool enable_shader_9 = true;
+		const bool enable_shader_11 = true;
 
 	};
 

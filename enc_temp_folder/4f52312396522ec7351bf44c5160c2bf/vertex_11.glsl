@@ -407,18 +407,6 @@ vec4 wave(float x, float y, float t)
     float color_g = value_wave_0.g * f_1 + value_wave_1.g * f_0;
     float color_b = value_wave_0.b * f_1 + value_wave_1.b * f_0;
 
-    color_r += pow(max(0.0, sin(w + color_r)), 6.0) * 100000.0;
-
-    // color_r *= 0.0;
-
-    color_g = min(1.0, max(0.0, pow(w0 + w1 + 0.04, 7.0))) * 10000.0;// sin(w0 * w1 * 1000.0 + t * sin(x / y)) * 0.01;
-    color_b = 
-        abs(value_wave_0.r + value_wave_0.g + value_wave_0.b) +
-        abs(value_wave_1.r + value_wave_1.g + value_wave_1.b)
-        ;
-
-    
-
     return vec4(color_r, color_g, color_b, w);
 }
 
@@ -463,7 +451,7 @@ void main()
     float radius = 0.2 + wave.w;
 
     float color_r = wave.r;
-    float color_g = wave.g;
+    float color_g = wave.b;
     float color_b = wave.b;
 
     
@@ -474,7 +462,7 @@ void main()
     float pz = sphere_position.z;
     
     // Instances Cube Scale
-    float scale_cube = 0.0002;
+    float scale_cube = 0.001;
     vec3  pos = vec3(px, pz, py);
     vec3  scale = vec3(scale_cube, scale_cube, scale_cube);
     
