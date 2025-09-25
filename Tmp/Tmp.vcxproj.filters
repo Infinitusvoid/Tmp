@@ -34,8 +34,8 @@
     <Filter Include="Source Files\Shaders\GUniverse">
       <UniqueIdentifier>{034d9a6a-fc5a-49af-97b0-d1a0ebd5b921}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Universe_25_09_2025_16_14">
-      <UniqueIdentifier>{97e320c3-dc63-42b8-bc1c-3ad8a74d5c73}</UniqueIdentifier>
+    <Filter Include="Source Files\Resource Files\Universe_25_09_2025_19_34">
+      <UniqueIdentifier>{e4e02812-818b-4004-accf-0557a18dc663}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -125,19 +125,19 @@
     <ClInclude Include="Extension_Folder.h">
       <Filter>Source Files\Resource Files</Filter>
     </ClInclude>
-    <ClInclude Include="universes\Universe_25_09_2025_16_14.h">
-      <Filter>Source Files\Universe_25_09_2025_16_14</Filter>
+    <ClInclude Include="universes\Universe_25_09_2025_19_34.h">
+      <Filter>Source Files\Resource Files\Universe_25_09_2025_19_34</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="CppCommponents\README.md">
       <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </None>
-    <None Include="shaders\fragment_12.glsl">
-      <Filter>Source Files\Universe_25_09_2025_16_14</Filter>
+    <None Include="shaders\fragment_13.glsl">
+      <Filter>Source Files\Resource Files\Universe_25_09_2025_19_34</Filter>
     </None>
-    <None Include="shaders\vertex_12.glsl">
-      <Filter>Source Files\Universe_25_09_2025_16_14</Filter>
+    <None Include="shaders\vertex_13.glsl">
+      <Filter>Source Files\Resource Files\Universe_25_09_2025_19_34</Filter>
     </None>
   </ItemGroup>
 </Project>
