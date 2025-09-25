@@ -30,6 +30,8 @@
 
 #include "../CppCommponents/Random.h"
 
+#include "Universe_25_09_2025_13_56_utils.h"
+
 // Random generator
 namespace Universe_
 {
@@ -1205,7 +1207,6 @@ namespace Universe_
 
 	void generate()
 	{
-		
 		Clip clip;
 
 		// for(int i = 0; i < 30; i++)
@@ -1234,8 +1235,8 @@ namespace Universe_
 
 int universe(int argc, char* argv[])
 {
-	std::cout << "Universe_16_09_2025_19_06\n";
-	
+	std::cout << "Universe_25_09_2025_13_56\n";
+	return 0;
 	
 
 	Universe_::generate();
