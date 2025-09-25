@@ -418,10 +418,10 @@ vec4 wave(float x, float y, float t)
 
     w = 0.4 + 0.2 * sin(rnd_xy_0 + t);
     
-    w += wt * 100.0;
+    w += wt * 1000.0;
 
 
-
+    
 
     vec4 value_wave_0 = value_wave_0_0 + value_wave_1_0;
     vec4 value_wave_1 = value_wave_0_1 + value_wave_1_1;
@@ -429,11 +429,11 @@ vec4 wave(float x, float y, float t)
     value_wave_0 *= vec4(pow((0.4 + 0.4 * sin(x * 100.0 + w)), 4.0) * 2.0);
     value_wave_1 *= vec4(pow((0.4 + 0.4 * sin(y * 100.0 + w)), 4.0) * 2.0);
     
+    w *= 0.1;
 
-
-    w = pow(w, 0.2) * 0.47;
-    w += (f_periodic_0(w * 100.0) * 0.2 + f_periodic_1(w * 200.0) * 0.1) * 0.2;
-    w += (f_periodic_2(w * 10.4) * 0.2 + f_periodic_3(w * 20.7) * 0.1) * 0.2;
+    // w = pow(w, 0.2) * 0.47;
+    // w += (f_periodic_0(w * 100.0) * 0.2 + f_periodic_1(w * 200.0) * 0.1) * 0.2;
+    // w += (f_periodic_2(w * 10.4) * 0.2 + f_periodic_3(w * 20.7) * 0.1) * 0.2;
     
     
 
@@ -441,9 +441,9 @@ vec4 wave(float x, float y, float t)
     float color_g = value_wave_0.g * f_1 + value_wave_1.g * f_0;
     float color_b = value_wave_0.b * f_1 + value_wave_1.b * f_0;
 
-    color_r = 0.02 * rnd_xy_1;
-    color_g = 0.02 * rnd_xy_2;
-    color_b = 0.02 * rnd_xy_3;
+    color_r = 0.02 * rnd_xy_1 + min(2.0, max(0.0, pow(sin(x * y * w * 100.0 + t * 20.0) * 0.1, 10.0) * 10000000000.0 * 0.4));
+    color_g = 0.02 * rnd_xy_2 + cos(w * 100.0 + x * TAU * 10.0 + t * 100.0) * 0.1;
+    color_b = 0.02 * rnd_xy_3 + sin(w * 100.0 + y * TAU * 10.0 + t * 100.0) * 0.1;
 
     // color_r += pow(max(0.0, sin(w + color_r)), 6.0) * 100000.0;
 
@@ -519,7 +519,7 @@ void main()
     float pz = sphere_position.z;
     
     // Instances Cube Scale
-    float scale_cube = 0.0002 * 0.7 * 0.2 * 0.2 * 2.0;
+    float scale_cube = 0.0002 * 0.2 * 0.2 * 0.2;
     vec3  pos = vec3(px, pz - 0.01, py);
     vec3  scale = vec3(scale_cube, scale_cube, scale_cube);
     
