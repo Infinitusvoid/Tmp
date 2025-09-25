@@ -379,10 +379,12 @@ vec4 wave_1(float x, float y, float t)
 
 vec4 wave(float x, float y, float t)
 {
+    t *= 0.1;
+
     float f_0 = (0.5 + 0.5 * sin(t * 2.0 + y * 10.0));
     float f_1 = 1.0 - f_0;
-    vec4 value_wave_0_0 = wave_0(x, y, uTime);
-    vec4 value_wave_0_1 = wave_1(x, y, uTime);
+    vec4 value_wave_0_0 = wave_0(x, y, t);
+    vec4 value_wave_0_1 = wave_1(x, y, t);
     float w0 = f_1 * value_wave_0_0.w + f_0 * value_wave_0_1.w;
 
     vec4 value_wave_1_0 = wave_0(x * 14.72, y * 42.42, t);
@@ -429,8 +431,10 @@ vec4 wave(float x, float y, float t)
     
 
 
-    w = pow(w, 0.2) * 0.2;
-
+    w = pow(w, 0.2) * 0.47;
+    w += (f_periodic_0(w * 100.0) * 0.2 + f_periodic_1(w * 200.0) * 0.1) * 0.2;
+    w += (f_periodic_2(w * 10.4) * 0.2 + f_periodic_3(w * 20.7) * 0.1) * 0.2;
+    
     
 
     float color_r = value_wave_0.r * f_1 + value_wave_1.r * f_0;
