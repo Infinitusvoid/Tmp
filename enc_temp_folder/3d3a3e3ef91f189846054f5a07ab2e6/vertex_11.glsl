@@ -377,21 +377,6 @@ vec4 wave_1(float x, float y, float t)
     return vec4(color_r, color_g, color_b, offset);
 }
 
-vec4 wave(float x, float y, float t)
-{
-    float f_0 = fract(t * (1.0 / 4.0));
-    float f_1 = 1.0 - f_0;
-    vec4 value_wave_0 = wave_0(x, y, uTime);
-    vec4 value_wave_1 = wave_1(x, y, uTime);
-    float w = f_1 * value_wave_0.w + f_0 * value_wave_1.w;
-
-    float color_r = value_wave_0.r * f_1 + value_wave_1.r * f_0;
-    float color_g = value_wave_0.g * f_1 + value_wave_1.g * f_0;
-    float color_b = value_wave_0.b * f_1 + value_wave_1.b * f_0;
-
-    return vec4(color_r, color_g, color_b, w);
-}
-
 void main()
 {
     int id = gl_InstanceID;
@@ -417,9 +402,10 @@ void main()
         float rnd_cube_rotation_z = rand01(s2_rot_y);
         float rnd_cube_rotation_angle = rand01(s3_rot_angle);
 
-    /*
     float f_0 = fract(uTime * (1.0/4.0));
     float f_1 = 1.0 - f_0;
+
+
     vec4 value_wave_0 = wave_0(rnd_x, rnd_y, uTime);
     vec4 value_wave_1 = wave_1(rnd_x, rnd_y, uTime);
     float w = f_1 * value_wave_0.w + f_0 * value_wave_1.w;
@@ -427,15 +413,8 @@ void main()
     float color_r = value_wave_0.r * f_1 + value_wave_1.r * f_0;
     float color_g = value_wave_0.g * f_1 + value_wave_1.g * f_0;
     float color_b = value_wave_0.b * f_1 + value_wave_1.b * f_0;
-    */
-    vec4 wave = wave(rnd_x, rnd_y, uTime);
 
-    float radius = 0.2 + wave.w;
-
-    float color_r = wave.r;
-    float color_g = wave.b;
-    float color_b = wave.b;
-
+    float radius = 0.2 + w;
     
     // Sphere
     vec3 sphere_position = spherical01(radius, rnd_x, rnd_y);
@@ -444,7 +423,7 @@ void main()
     float pz = sphere_position.z;
     
     // Instances Cube Scale
-    float scale_cube = 0.001;
+    float scale_cube = 0.0001;
     vec3  pos = vec3(px, pz, py);
     vec3  scale = vec3(scale_cube, scale_cube, scale_cube);
     
