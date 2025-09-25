@@ -391,6 +391,36 @@ vec4 wave(float x, float y, float t)
 
     float w = (w0 * w1) + pow(sin(w0 / w1), 4.0) * (0.002 + 0.002 * sin(t + x * y * 10.0));
 
+    // w = f_periodic_0(w * 100.0) * 0.02;
+    float wt = w;
+
+    const int nx = 10;
+    const float nx_inv = 1.0 / float(nx);
+    int wix = int(x * float(nx));
+    float wx = float(wix) * nx_inv;
+
+    const int ny = 10;
+    const float ny_inv = 1.0 / float(ny);
+    int wiy = int(y * float(ny));
+    float wy = float(wiy) * ny_inv;
+
+    int id = wix + wiy * nx;
+    uint s0 = uSeed + uint(id + 0);
+    uint s1 = uSeed + uint(id + 21314512);
+    uint s2 = uSeed + uint(id + 4242512);
+    uint s3 = uSeed + uint(id + 7234512);
+    float rnd_xy_0 = rand01(s0);
+    float rnd_xy_1 = rand01(s1);
+    float rnd_xy_2 = rand01(s2);
+    float rnd_xy_3 = rand01(s3);
+
+    w = 0.4 + 0.2 * sin(rnd_xy_0 + t);
+    
+    w += wt * 100.0;
+
+
+
+
     vec4 value_wave_0 = value_wave_0_0 + value_wave_1_0;
     vec4 value_wave_1 = value_wave_0_1 + value_wave_1_1;
     
@@ -407,15 +437,19 @@ vec4 wave(float x, float y, float t)
     float color_g = value_wave_0.g * f_1 + value_wave_1.g * f_0;
     float color_b = value_wave_0.b * f_1 + value_wave_1.b * f_0;
 
-    color_r += pow(max(0.0, sin(w + color_r)), 6.0) * 100000.0;
+    color_r = 0.02 * rnd_xy_1;
+    color_g = 0.02 * rnd_xy_2;
+    color_b = 0.02 * rnd_xy_3;
+
+    // color_r += pow(max(0.0, sin(w + color_r)), 6.0) * 100000.0;
 
     // color_r *= 0.0;
 
-    color_g = min(1.0, max(0.0, pow(w0 + w1 + 0.04, 7.0))) * 10000.0;// sin(w0 * w1 * 1000.0 + t * sin(x / y)) * 0.01;
-    color_b = 
-        abs(value_wave_0.r + value_wave_0.g + value_wave_0.b) +
-        abs(value_wave_1.r + value_wave_1.g + value_wave_1.b)
-        ;
+    // color_g = min(1.0, max(0.0, pow(w0 + w1 + 0.04, 7.0))) * 10000.0;// sin(w0 * w1 * 1000.0 + t * sin(x / y)) * 0.01;
+    // color_b = 
+    //    abs(value_wave_0.r + value_wave_0.g + value_wave_0.b) +
+    //    abs(value_wave_1.r + value_wave_1.g + value_wave_1.b)
+    //    ;
 
     
 
@@ -467,7 +501,7 @@ void main()
     */
     vec4 wave = wave(rnd_x, rnd_y, uTime);
 
-    float radius = 0.2 + wave.w;
+    float radius = 0.1 + wave.w;
 
     float color_r = wave.r + rnd_r * 0.002;
     float color_g = wave.g + rnd_g * 0.002;
@@ -481,14 +515,14 @@ void main()
     float pz = sphere_position.z;
     
     // Instances Cube Scale
-    float scale_cube = 0.0002 * 0.7;
-    vec3  pos = vec3(px, pz, py);
+    float scale_cube = 0.0002 * 0.7 * 0.2 * 0.2 * 2.0;
+    vec3  pos = vec3(px, pz - 0.01, py);
     vec3  scale = vec3(scale_cube, scale_cube, scale_cube);
     
     
     // Whole object rotation
     vec3 rotation_axis = vec3(0.0, 1.0, 0.0);
-    float rotation_angle = uTime + sin((rnd_x * rnd_y * 10.0) + uTime * 0.2); // using uTime will not be wise after we will be interpolating between two values
+    float rotation_angle = uTime; // using uTime will not be wise after we will be interpolating between two values
     
     // Whole object scale
     vec3 scale_object = vec3(1.0, 1.0, 1.0);
