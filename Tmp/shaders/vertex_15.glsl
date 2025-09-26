@@ -503,13 +503,13 @@ void main()
     float color_g = value_wave_0.g * f_1 + value_wave_1.g * f_0;
     float color_b = value_wave_0.b * f_1 + value_wave_1.b * f_0;
     */
-    vec4 wave = wave(rnd_x, rnd_y, uTime);
+    vec4 wave = wave(rnd_x * 0.002, rnd_y * 0.002, uTime);
 
-    float radius = 0.1 + wave.w;
+    float radius = 0.1 + wave.w * 0.7;
 
-    float color_r = wave.r + rnd_r * 0.002;
-    float color_g = wave.g + rnd_g * 0.002;
-    float color_b = wave.b + rnd_b * 0.002;
+    float color_r = wave.r;
+    float color_g = wave.g;
+    float color_b = wave.b;
 
     
     // Sphere
