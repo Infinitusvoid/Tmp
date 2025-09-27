@@ -29,6 +29,8 @@ uniform float u0, u1, u2, u3, u4, u5, u6, u7, u8, u9;
 const float PI = 3.1415926535897932384626433832795;
 const float TAU = 6.2831853071795864769252867665590;
 
+const vec2 kViewportPx = vec2(3840.0, 2160.0); // UHD-4K
+
 float saturate(float x) { return clamp(x, 0.0, 1.0); }
 
 
@@ -39,8 +41,37 @@ uint pcg_hash(uint x) {
     return x;
 }
 
-float rand01(inout uint s) { s = pcg_hash(s); return float(s) * (1.0 / 4294967295.0); }
 
+// float rand01(inout uint s) { s = pcg_hash(s); return float(s) * (1.0 / 4294967295.0); }
+
+float rand01(inout uint s) {
+    s += 0x9E3779B9u;               // Weyl step
+    uint z = s;                     // splitmix32 finalizer
+    z ^= z >> 16; z *= 0x7FEB352Du;
+    z ^= z >> 15; z *= 0x846CA68Bu;
+    z ^= z >> 16;
+    return float(z >> 8) * (1.0 / 16777216.0);
+}
+
+// Drop-in replacement: same signature
+/*
+float rand01(inout uint s)
+{
+    // 1) Weyl sequence step to decorrelate nearby seeds
+    s += 0x9E3779B9u;
+
+    // 2) splitmix32 finalizer (strong 32-bit mixer)
+    uint z = s;
+    z ^= z >> 16;
+    z *= 0x7FEB352Du;
+    z ^= z >> 15;
+    z *= 0x846CA68Bu;
+    z ^= z >> 16;
+
+    // 3) Map top 24 bits to [0,1) to avoid float-mantissa bias
+    return float(z >> 8) * (1.0 / 16777216.0);
+}
+*/
 
 vec3 spherical01(float r, float theta01, float phi01) {
     float theta = theta01 * TAU; // azimuth
@@ -380,7 +411,12 @@ vec4 wave_1(float x, float y, float t)
 vec4 wave(float x, float y, float t)
 {
     
-    t *= 0.1;
+    // x = fract(x + t * 0.23);
+    // y = fract(y + t * 0.23);
+
+    t *= 0.01;
+
+    t *= sin(x * y * TAU * 10.0) * 0.02;
 
     float f_0 = (0.5 + 0.5 * sin(t * 2.0 + y * 10.0));
     float f_1 = 1.0 - f_0;
@@ -420,7 +456,7 @@ vec4 wave(float x, float y, float t)
     w = 0.4 + 0.2 * sin(rnd_xy_0 + t);
     
     w += wt * (100.0 + 40.0 * sin(t * 100.0 + x * 10.0 + y * 10.0));
-
+    
 
     
 
@@ -446,6 +482,14 @@ vec4 wave(float x, float y, float t)
     color_g = 0.02 * rnd_xy_2 + cos(w * 100.0 + x * TAU * 10.0 + t * 100.0) * 0.1;
     color_b = 0.02 * rnd_xy_3 + sin(w * 100.0 + y * TAU * 10.0 + t * 100.0) * 0.1;
 
+    w += color_r * 10.0;
+
+    w = pow(w, 0.4);
+    w *= sin(color_g * 10.0 * 10.0 + t + x * TAU * 10.0) * 2.0;
+    w *= sin(x * 10.0 * TAU) * cos(y * 10.0 * TAU);
+
+
+    
     // color_r += pow(max(0.0, sin(w + color_r)), 6.0) * 100000.0;
 
     // color_r *= 0.0;
@@ -469,12 +513,19 @@ void main()
 
     
     // Per-instance randomness
-        uint s0 = uSeed + uint(id + 0);
-        uint s1 = uSeed + uint(id + 42);
-        uint s2 = uSeed + uint(id + 142);
+        // uint s0 = uSeed + uint(id + 23);
+        // uint s1 = uSeed + uint(id + 42);
+        // uint s2 = uSeed + uint(id + 142);
+
+        uint s0 = (id ^ (uSeed * 0xA511E9B3u)) + 0x9E3779B9u;
+        uint s1 = (id ^ (uSeed * 0xC2B2AE35u)) + 0x85EBCA6Bu;
+        uint s2 = (id ^ (uSeed * 0x27D4EB2Du)) + 0x165667B1u;
+
         float rnd_x = rand01(s0);
         float rnd_y = rand01(s1);
         float rnd_z = rand01(s2);
+
+        
 
         uint s0r = uSeed + uint(id + 140);
         uint s1g = uSeed + uint(id + 2742);
@@ -508,19 +559,24 @@ void main()
 
     float radius = 0.1 + wave.w * 0.1;
 
-    float color_r = wave.r;
-    float color_g = wave.g;
-    float color_b = wave.b;
+    float color_r = wave.r * wave.r * 10.0;
+    float color_g = wave.g * wave.g * 20.0;
+    float color_b = wave.b * wave.b * 20.0;
+
+    color_r = min(0.2, color_r);
+    color_g = min(0.2, color_g);
+    color_b = min(0.2, color_b);
+
 
     
     // Sphere
     vec3 sphere_position = spherical01(radius, rnd_x, rnd_y);
-    float px = sphere_position.x;
-    float py = sphere_position.y;
-    float pz = sphere_position.z;
+    float px = sphere_position.x + sin(rnd_z * TAU * 10.0 + uTime) * 0.2;
+    float py = sphere_position.y + rnd_z;
+    float pz = sphere_position.z + cos(rnd_z * TAU * 10.0+ uTime) * 0.2;
     
     // Instances Cube Scale
-    float scale_cube = 0.00002 * 0.2;
+    float scale_cube = 0.001 * 0.04 * 0.7 * 2.0 * 2.0 * 0.2;
     vec3  pos = vec3(px, pz - 0.01, py);
     vec3  scale = vec3(scale_cube, scale_cube, scale_cube);
     
@@ -611,7 +667,29 @@ void main()
         vNormal = normalize(mat3(model) * (R3 * nLocal)); // uniform-scale assumption
     
         // Clip-space position and UV
-        gl_Position = projection * view * wp;
+        // gl_Position = projection * view * wp;
+        // ... after you compute wp (world pos) and BEFORE gl_Position:
+        vec4 clip = projection * view * wp;
+
+        // per-instance deterministic jitter in pixels (apporximitly +-0.5 px)
+        uint j0 = pcg_hash(uint(gl_InstanceID) ^ (uDrawcallNumber * 0x85EBCA6Bu) ^ uSeed);
+        uint j1 = pcg_hash(j0 ^ 0xB5297A4Du);
+        vec2 jitterPx = vec2(float(j0 >> 8), float(j1 >> 8)) * (1.0 / 16777216.0) - 0.5;
+
+        // scale if you want (0.0-1.0 px is typical)
+        jitterPx *= 0.75 * 2.0;
+
+        // convert pixel jitter -> clip-space: delta clip = (2 px / viewport) * w
+        clip.xy += jitterPx * (2.0 / kViewportPx) * clip.w;
+
+        // add this:
+        uint jz = pcg_hash(j1 ^ 0x68BC21EBu);
+        float dz = (float(jz >> 8) * (1.0 / 16777216.0) - 0.5);
+        clip.z += dz * 1e-5 * clip.w;
+
+        gl_Position = clip; // instead of projection*view*wp
+        
+        
         TexCoord = aTexCoord;
     
     

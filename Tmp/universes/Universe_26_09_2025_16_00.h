@@ -33,12 +33,12 @@ namespace Universe_
 			engine_delete_flush_frames();
 
 			Program program;
-			program.le.halfLife = 0.01f;
+			program.le.halfLife = 0.02f;
 			program.le.brightness = 0.0f;
-			program.le.exposure = 100.0;
+			program.le.exposure = 1.0;
 			program.le.msaaSamples = 10;
 
-			program.capture.capture = false;
+			program.capture.capture = true;
 			program.capture.capture_png = false;
 			program.capture.capture_bmp = true;
 
@@ -78,7 +78,7 @@ namespace Universe_
 						auto id = sh.create_instance();
 						auto I = sh.instance(id);
 						I.set_group_size(1000, 1000, 1)
-							.set_drawcalls(4)
+							.set_drawcalls(1000)
 							.set_position_start(0.0f, 0.0f, 0.0f)
 							.set_position_end(0.0f, 0.0f, 0.0f)
 							.set_euler_start(0.0f, 0.0f, 0.0f)

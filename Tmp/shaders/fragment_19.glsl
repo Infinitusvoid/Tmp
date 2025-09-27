@@ -45,6 +45,30 @@ void buildONB(vec3 n, out vec3 b1, out vec3 b2) {
     b2 = vec3(b, s + n.y * n.y * a, -n.y);
 }
 
+//
+// ---- Put near the top of your FS (helpers) ----
+uint pcg_hash(uint x) {
+    x = x * 747796405u + 2891336453u;
+    x = ((x >> ((x >> 28u) + 4u)) ^ x) * 277803737u;
+    x = (x >> 22u) ^ x;
+    return x;
+}
+float u01(uint x) { return float(x >> 8) * (1.0 / 16777216.0); }
+
+// world-units per pixel at this fragment (approx, from derivatives)
+float worldPerPixel(vec3 wp) {
+    vec3 dx = dFdx(wp), dy = dFdy(wp);
+    return max(1e-6, 0.5 * (length(dx) + length(dy)));
+}
+
+// world-anchored random threshold (cell size tracks pixel footprint)
+float wsRand(vec3 wp, float cellW, uint salt) {
+    uvec3 cell = uvec3(floor(wp / cellW));
+    uint h = cell.x * 0x9E3779B9u ^ cell.y * 0x85EBCA6Bu ^ cell.z * 0xC2B2AE35u ^ salt;
+    return u01(pcg_hash(h));
+}
+
+
 void main()
 {
     // ---------------- stylized face glow (your look) ----------------
@@ -145,6 +169,37 @@ void main()
 
 
     vec3 color = base * lighting + emissive + w_color;
+
+    // ---- World-space stochastic coverage (FS-only) ----
+    // Use your generic uniforms to control it (no engine edits):
+    //   u0 = strength (0..1), u1 = cell size in *pixels* (1..2 good), u2 = base coverage (0..1)
+    const float ditherStrength = 1.0;
+    float cellPx = 1.0;
+    float baseCoverage = 0.65 * 10.0;
+
+    if (ditherStrength > 0.0) {
+        // cell size in world units matched to current pixel footprint
+        float cellW = worldPerPixel(vWorldPos) * cellPx;
+
+        // stable world-anchored threshold (won't align to the screen grid)
+        // float thr = wsRand(vWorldPos, cellW, 0u);
+        float thr = wsRand(vWorldPos, cellW, 17u ^ floatBitsToUint(floor(uTime * 0.5)));
+
+        // mix towards your requested coverage by strength
+        float cov = mix(1.0, baseCoverage, ditherStrength);
+
+        // stochastic keep/discard (breaks the lattice for sub-pixel cubes)
+        if (thr > cov) discard;
+
+        // Optional tiny world-space grain (no discard) — helps even without blending
+        float g = wsRand(vWorldPos + vec3(13.1, 7.7, 3.3), cellW, 1u) - 0.5;
+        // 5–10% is plenty; gate by strength
+        color *= 1.0 + 0.1 * ditherStrength * g;
+    }
+
+
+
+
     FragColor = vec4(color * color_vs, 1.0);
 }
 
