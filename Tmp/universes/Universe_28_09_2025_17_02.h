@@ -326,10 +326,68 @@ namespace Universe_
 	{
 		std::vector<Line> lines;
 
-		
+		void init()
+		{
+
+		}
+
+		void draw(Scene_::Scene& scene)
+		{
+
+		}
+
+		Line& add_line()
+		{
+			lines.emplace_back(Line());
+			return lines.back();
+		}
 	};
 
+	struct UnitCube
+	{
+		void init()
+		{
 
+		}
+
+		void draw(Scene_::Scene& scene)
+		{
+			add_shader(scene, 10, [](Program::Shader& sh) {
+
+
+				// Instance 0
+				{
+					auto id = sh.create_instance();
+					auto I = sh.instance(id);
+					I.set_group_size(1000, 100, 1)
+						.set_drawcalls(1)
+						.set_position_start(0.0f, 0.0f, 0.0f)
+						.set_position_end(0.0f, 0.0f, 0.0f)
+						.set_euler_start(0.0f, 0.0f, 0.0f)
+						.set_euler_end(0.0f, 0.0f, 0.0f)
+						.set_scale_start(1.0f, 1.0f, 1.0f)
+						.set_scale_end(1.0f, 1.0f, 1.0f);
+
+
+					constexpr int kU = 10;
+					for (int u = 0; u < kU; ++u)
+					{
+						float v_start = 0.1f * static_cast<float>(u);
+						float v_end = 1.0f - 0.1f * static_cast<float>(u);
+
+						v_start = 0.0;
+						v_end = 0.0;
+
+						I.set_u_start_end(u, v_start, v_end);
+					}
+
+					I.set_u_start_end(0, 72.29710, 72.29710);
+				}
+
+
+				});
+		}
+	};
 
 	struct Clip
 	{
@@ -376,145 +434,25 @@ namespace Universe_
 			Scene_::Scene scene = Scene_::Scene();
 			program.configure(scene);
 
-			// shaders
-			//if(false) //if (enable_shader_20)
-			//{
-			//	add_shader(scene, 20, [](Program::Shader& sh) {
-
-
-			//		// Instance 0
-			//		{
-			//			auto id = sh.create_instance();
-			//			auto I = sh.instance(id);
-			//			I.set_group_size(1000, 1000, 1)
-			//				.set_drawcalls(2)
-			//				.set_position_start(0.0f, 0.0f, 0.0f)
-			//				.set_position_end(0.0f, 0.0f, 0.0f)
-			//				.set_euler_start(0.0f, 0.0f, 0.0f)
-			//				.set_euler_end(0.0f, 0.0f, 0.0f)
-			//				.set_scale_start(1.0f, 1.0f, 1.0f)
-			//				.set_scale_end(1.0f, 1.0f, 1.0f);
-
-
-			//			constexpr int kU = 10;
-			//			for (int u = 0; u < kU; ++u)
-			//			{
-			//				float v_start = 0.1f * static_cast<float>(u);
-			//				float v_end = 1.0f - 0.1f * static_cast<float>(u);
-
-			//				v_start = 0.0;
-			//				v_end = 0.0;
-
-			//				if (u == 0) // color_r
-			//				{
-			//					v_start = 0.0;
-			//					v_end = 1.0;
-			//				}
-			//				else if (u == 1) // color_g
-			//				{
-			//					v_start = 1.0;
-			//					v_end = 1.0;
-			//				}
-			//				else if (u == 2) // color_b
-			//				{
-			//					v_start = 0.0;
-			//					v_end = 1.0;
-			//				}
-			//				else if (u == 3) // cube_size
-			//				{
-			//					v_start = 0.0001;
-			//					v_end = 0.0001;
-			//				}
-			//				else if (u == 4) // rnd_x_min
-			//				{
-			//					v_start = 0.0;
-			//					v_end = 0.0;
-			//				}
-			//				else if (u == 5) // rnd_x_max
-			//				{
-			//					v_start = 0.5;
-			//					v_end = 0.5;
-			//				}
-			//				else if (u == 6) // rnd_y_min
-			//				{
-			//					v_start = 0.0;
-			//					v_end = 0.0;
-			//				}
-			//				else if (u == 7) // rnd_y_max
-			//				{
-			//					v_start = 0.5;
-			//					v_end = 0.5;
-			//				}
-			//				else if (u == 8) // thickness
-			//				{
-			//					v_start = 0.1;
-			//					v_end = 0.1;
-			//				}
-			//				else if (u == 9) // jitter scale
-			//				{
-			//					v_start = 0.0;
-			//					v_end = 0.0;
-			//				}
-
-			//				I.set_u_start_end(u, v_start, v_end);
-			//			}
-			//			
-			//		}
-
-
-			//		});
-
-
-			//}
-
-			if(true)
+			if(enable_shader_20) // sphered
 			{
 				Spheres sphere;
 				sphere.init_1(10);
 				sphere.draw(scene, 1000);
+			}
 
-				
-				
-				
-				
+			if (enable_shdaer_21) // lines
+			{
+				Lines lines;
+				lines.init();
+				lines.draw(scene);
 			}
 
 			if (enable_shader_10_unit_cube)
 			{
-				add_shader(scene, 10, [](Program::Shader& sh) {
-
-
-					// Instance 0
-					{
-						auto id = sh.create_instance();
-						auto I = sh.instance(id);
-						I.set_group_size(1000, 100, 1)
-							.set_drawcalls(1)
-							.set_position_start(0.0f, 0.0f, 0.0f)
-							.set_position_end(0.0f, 0.0f, 0.0f)
-							.set_euler_start(0.0f, 0.0f, 0.0f)
-							.set_euler_end(0.0f, 0.0f, 0.0f)
-							.set_scale_start(1.0f, 1.0f, 1.0f)
-							.set_scale_end(1.0f, 1.0f, 1.0f);
-
-
-						constexpr int kU = 10;
-						for (int u = 0; u < kU; ++u)
-						{
-							float v_start = 0.1f * static_cast<float>(u);
-							float v_end = 1.0f - 0.1f * static_cast<float>(u);
-
-							v_start = 0.0;
-							v_end = 0.0;
-
-							I.set_u_start_end(u, v_start, v_end);
-						}
-
-						I.set_u_start_end(0, 72.29710, 72.29710);
-					}
-
-
-					});
+				UnitCube unit_cube;
+				unit_cube.init();
+				unit_cube.draw(scene);
 			}
 
 			// run program
@@ -549,6 +487,8 @@ namespace Universe_
 
 		const bool enable_shader_10_unit_cube = true;
 		const bool enable_shader_20 = true;
+
+		const bool enable_shdaer_21 = true;
 
 	};
 
