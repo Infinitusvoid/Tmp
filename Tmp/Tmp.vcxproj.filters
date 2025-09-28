@@ -133,5 +133,11 @@
     <None Include="CppCommponents\README.md">
       <Filter>Source Files\Resource Files\CppCommponents</Filter>
     </None>
+    <None Include="shaders\fragment_21.glsl">
+      <Filter>Source Files\Universe_28_09_2025_17_02</Filter>
+    </None>
+    <None Include="shaders\vertex_21.glsl">
+      <Filter>Source Files\Universe_28_09_2025_17_02</Filter>
+    </None>
   </ItemGroup>
 </Project>

@@ -254,7 +254,80 @@ namespace Universe_
 		}
 	};
 
-	
+	struct Line
+	{
+		Float_start_end x0 = {0.0f, 0.0f}; // u0
+		Float_start_end y0 = { 0.0f, 0.0f }; // u1
+		Float_start_end z0 = { 0.0f, 0.0f }; // u2
+
+		Float_start_end x1 = { 0.0f, 0.0f }; // u3
+		Float_start_end y1 = { 0.0f, 0.0f }; // u4
+		Float_start_end z1 = { 0.0f, 0.0f }; // u5
+
+		XYZ rgb_t0 = {0.0f, 0.0f, 0.0f}; // u6, u7, u8 
+		XYZ rgb_t1 = { 0.0f, 0.0f, 0.0f };
+
+		Float_start_end thickness = { 0.0f, 0.0f }; // u9
+
+		void set_x0(float value_at_t0, float value_at_t1)
+		{
+
+		}
+
+		void set_y0(float value_at_t0, float value_at_t1)
+		{
+
+		}
+
+		void set_z0(float value_at_t0, float value_at_t1)
+		{
+
+		}
+
+		void set_x1(float value_at_t0, float value_at_t1)
+		{
+
+		}
+
+		void set_y1(float value_at_t0, float value_at_t1)
+		{
+
+		}
+
+		void set_z1(float value_at_t0, float value_at_t1)
+		{
+
+		}
+
+		void set_rgb_at_t0(float r, float g, float b)
+		{
+
+		}
+
+		void set_rgb_at_t1(float r, float g, float b)
+		{
+
+		}
+
+		void set_thickness_at_t0(float value)
+		{
+
+		}
+
+		void set_thickness_at_t1(float value)
+		{
+
+		}
+
+
+	};
+
+	struct Lines
+	{
+		std::vector<Line> lines;
+
+		
+	};
 
 
 
@@ -474,7 +547,7 @@ namespace Universe_
 		const int clip_fps = 60;
 		const int clip_length_seconds = 4;
 
-		const bool enable_shader_10_unit_cube = false;
+		const bool enable_shader_10_unit_cube = true;
 		const bool enable_shader_20 = true;
 
 	};
