@@ -191,237 +191,246 @@ namespace Universe_
 			}
 		}
 
-		void init_cageburst(int number)
+		
+		// "City Lattice Compact"  smaller beads, strict unit-cube fit, global snap, skybridges
+		void init_city_lattice_compact(int number)
 		{
 			spheres.clear();
 			spheres.reserve(number);
 
 			auto RND = []() -> float { return Random::generate_random_float_0_to_1(); };
-			auto clamp01 = [](float v) -> float { return v < 0.f ? 0.f : (v > 1.f ? 1.f : v); };
-			auto fract01 = [](float v) -> float { return v - std::floor(v); };
-
-			const float TAU = 6.28318530718f;
-			const XYZ   center = { 0.5f, 0.5f, 0.5f };
-
-			// Split instances into three *distinct* archetypes:
-			const int n_meridian = std::max(1, int(number * 0.44f));
-			const int n_latband = std::max(1, int(number * 0.36f));
-			const int n_polar = std::max(0, number - (n_meridian + n_latband));
-
-			auto palette = [](float t) -> XYZ {
-				const float TAU = 6.28318530718f;
-				// Slightly different base so this doesn't resemble previous palettes
-				return {
-					0.45f + 0.50f * std::cos(TAU * (t + 0.10f)),
-					0.40f + 0.55f * std::cos(TAU * (t + 0.55f)),
-					0.50f + 0.45f * std::cos(TAU * (t + 0.85f))
-				};
+			auto lerp = [](float a, float b, float t) -> float { return a + (b - a) * t; };
+			auto clampf = [](float v, float lo, float hi) -> float { return (v < lo) ? lo : (v > hi ? hi : v); };
+			auto clampP = [&](XYZ p, float m)->XYZ {
+				p.x = clampf(p.x, m, 1.f - m); p.y = clampf(p.y, m, 1.f - m); p.z = clampf(p.z, m, 1.f - m); return p;
 				};
 
-			auto rand_centerish = [&]() -> XYZ {
-				const float r = 0.015f + 0.020f * RND();
-				return { center.x + (RND() - 0.5f) * r,
-						 center.y + (RND() - 0.5f) * r,
-						 center.z + (RND() - 0.5f) * r };
+			const float margin = 0.06f;          // safety margin to keep everything inside the box
+			const float ground = margin;         // ground plane sits at margin
+			const float snapStep = 0.01f;          // global lattice step for crisp alignment
+
+			auto snap = [&](float v) -> float {
+				float s = snapStep;
+				float q = std::round(v / s) * s;
+				return clampf(q, margin, 1.f - margin);
+				};
+			auto snapP = [&](XYZ p) -> XYZ { p.x = snap(p.x); p.y = snap(p.y); p.z = snap(p.z); return p; };
+
+			// Grid of buildings (tweak to taste; 3x3 keeps it readable)
+			const int gridX = 3, gridZ = 3;
+			const int buildings = gridX * gridZ;
+
+			// Per-building soft allocation; push_bead checks global cap.
+			const int per_build_budget = std::max(24, number / std::max(1, buildings));
+
+			// Bead profile  SMALLER than previous version
+			const float bead_base_lo = 0.0060f, bead_base_hi = 0.0090f;   // radius (instance scale)
+			const float cube_lo = 0.00030f, cube_hi = 0.00050f; // cube size per bead
+			const float thick_lo = 0.006f, thick_hi = 0.010f;   // shell thickness
+			const float jit_start_lo = 0.80f, jit_start_hi = 1.10f;
+			const float jit_end_lo = 0.12f, jit_end_hi = 0.18f;
+
+			auto push_bead = [&](const XYZ& startP, const XYZ& endP,
+				const XYZ& c0, const XYZ& c1,
+				float beadS, float beadE,
+				float cube0, float cube1,
+				float thick0, float thick1,
+				float jit0, float jit1)
+				{
+					if ((int)spheres.size() >= number) return false;
+
+					Sphere S;
+					S.start_position = clampP(startP, margin);
+					S.end_position = clampP(endP, margin);
+
+					S.start_color = c0;
+					S.end_color = c1;
+
+					S.radious = { beadS, beadE };
+					S.cube_size = { cube0, cube1 };
+
+					// full sampling for round, clean beads
+					S.x_rnd_min = { 0.f, 0.f }; S.x_rnd_max = { 1.f, 1.f };
+					S.y_rnd_min = { 0.f, 0.f }; S.y_rnd_max = { 1.f, 1.f };
+
+					S.thickness = { thick0, thick1 };
+					S.jitter = { jit0,   jit1 };
+
+					spheres.push_back(std::move(S));
+					return true;
 				};
 
-			// -----------------------
-			// 1) MERIDIAN NEEDLES
-			//    - ultra-narrow x-range (lon), full y-range  long meridian lines
-			//    - jitter falls (condense), cube size shrinks  razor spokes
-			// -----------------------
-			for (int i = 0; i < n_meridian; ++i)
-			{
-				const float phi0 = RND();                   // 0..1 azimuth slot
-				const float width0 = 0.004f + 0.010f * RND(); // very thin
-				const float shift = 0.10f + 0.35f * RND();   // slide in azimuth
-				const float phi1 = fract01(phi0 + shift);
-				const float width1 = width0 * (0.90f + 0.25f * RND());
+			// City cell sizes
+			const float cellW = (1.f - 2.f * margin) / float(gridX);
+			const float cellD = (1.f - 2.f * margin) / float(gridZ);
 
-				float x_min0 = phi0;
-				float x_max0 = std::min(1.0f, phi0 + width0);
-				if (x_max0 - x_min0 < 0.002f) { x_min0 = std::max(0.0f, 1.0f - width0); x_max0 = 1.0f; }
+			// Loop cells
+			for (int gz = 0; gz < gridZ && (int)spheres.size() < number; ++gz)
+				for (int gx = 0; gx < gridX && (int)spheres.size() < number; ++gx)
+				{
+					// Cell center (snapped)
+					float cx = margin + (gx + 0.5f) * cellW;
+					float cz = margin + (gz + 0.5f) * cellD;
+					cx = snap(cx); cz = snap(cz);
 
-				float x_min1 = phi1;
-				float x_max1 = std::min(1.0f, phi1 + width1);
-				if (x_max1 - x_min1 < 0.002f) { x_min1 = std::max(0.0f, 1.0f - width1); x_max1 = 1.0f; }
+					// Building footprint, snug inside cell (snapped)
+					float bw = (0.55f + 0.25f * RND()) * cellW;   // width
+					float bd = (0.55f + 0.25f * RND()) * cellD;   // depth
+					float halfW = 0.5f * bw, halfD = 0.5f * bd;
 
-				// full latitude span  pole-to-pole lines
-				float y_min0 = 0.0f, y_max0 = 1.0f;
-				float y_min1 = 0.0f, y_max1 = 1.0f;
+					// Small jitter then clamp & snap to stay inside margins
+					cx = snap(clampf(cx + (RND() - 0.5f) * 0.03f * cellW, margin + halfW, 1.f - margin - halfW));
+					cz = snap(clampf(cz + (RND() - 0.5f) * 0.03f * cellD, margin + halfD, 1.f - margin - halfD));
 
-				// positions: from tight core  out to a spherical shell along meridian direction
-				const float a = phi0 * TAU;
-				const float ro0 = 0.22f + 0.18f * RND();
-				const float ro1 = ro0 * (1.05f + 0.20f * RND());
-				XYZ p0 = rand_centerish();
-				XYZ p1 = { center.x + ro1 * std::cos(a),
-						   center.y + 0.02f * std::sin(3.0f * a + 2.0f * RND()),
-						   center.z + ro1 * std::sin(a) };
+					// Height: choose floor height first, then floors to fit under (1 - margin)
+					float floorH = lerp(0.018f, 0.030f, RND());                     // smaller floors
+					int   maxFlo = (int)std::floor(((1.f - margin) - ground) / floorH);
+					int   floors = std::clamp(int(maxFlo * lerp(0.55f, 0.85f, RND())), 8, std::min(24, maxFlo));
+					float topY = clampf(ground + floors * floorH, ground + 2 * floorH, 1.f - margin);
 
-				// crisp, thin lines (condense)
-				const float rad0 = 0.010f + 0.009f * RND();
-				const float rad1 = rad0 * (1.35f + 0.25f * RND());
-				const float cube0 = 0.00055f + 0.00025f * RND();
-				const float cube1 = cube0 * (0.70f + 0.12f * RND());
+					// Corners (snapped)
+					XYZ c00 = snapP({ cx - halfW, ground, cz - halfD });
+					XYZ c10 = snapP({ cx + halfW, ground, cz - halfD });
+					XYZ c01 = snapP({ cx - halfW, ground, cz + halfD });
+					XYZ c11 = snapP({ cx + halfW, ground, cz + halfD });
 
-				const float thick0 = 0.006f + 0.010f * RND();
-				const float thick1 = thick0 * (1.00f + 0.30f * RND()); // stay thin-ish
+					// Per-building bead counts (kept moderate)
+					int beads_per_col = std::clamp(floors * 2, 10, 48);
+					int beads_per_beam = std::clamp(10 + int(8 * RND()), 10, 22);
 
-				const float jit0 = 1.30f + 0.60f * RND();
-				const float jit1 = 0.18f + 0.20f * RND();
+					// Colors (neutral steel + faint warm beams)
+					auto steel = [&](float t)->XYZ { return { 0.60f + 0.20f * t, 0.65f + 0.18f * t, 0.72f + 0.15f * t }; };
+					auto amber = [&](float t)->XYZ { return { 0.92f, 0.70f + 0.25f * t, 0.38f + 0.22f * t }; };
 
-				// cool/cyan-ish for meridians
-				XYZ c0 = { 0.30f + 0.35f * RND(), 0.70f + 0.25f * RND(), 0.85f + 0.10f * RND() };
-				XYZ c1 = palette(fract01(phi0 * 0.73f + 0.12f));
+					// Bead parameters (small)
+					float bead_base = lerp(bead_base_lo, bead_base_hi, RND());
+					float bead_post = bead_base * 1.35f;
+					float cube0 = lerp(cube_lo, cube_hi, RND());
+					float cube1 = cube0 * lerp(0.72f, 0.82f, RND());
+					float thick0 = lerp(thick_lo, thick_hi, RND());
+					float thick1 = thick0 * lerp(1.05f, 1.25f, RND());
+					float jit0 = lerp(jit_start_lo, jit_start_hi, RND());
+					float jit1 = lerp(jit_end_lo, jit_end_hi, RND());
 
-				Sphere S;
-				S.start_position = p0;
-				S.end_position = p1;
-				S.start_color = c0;
-				S.end_color = c1;
-				S.radious = { rad0,  rad1 };
-				S.cube_size = { cube0, cube1 };
-				S.x_rnd_min = { x_min0, x_min1 };
-				S.x_rnd_max = { x_max0, x_max1 };
-				S.y_rnd_min = { y_min0, y_min1 };
-				S.y_rnd_max = { y_max0, y_max1 };
-				S.thickness = { thick0, thick1 };
-				S.jitter = { jit0,   jit1 };
-				spheres.push_back(std::move(S));
-			}
+					// Helper to add a vertical column
+					auto add_column = [&](const XYZ& base, bool isPost)
+						{
+							for (int k = 0; k < beads_per_col && (int)spheres.size() < number; ++k)
+							{
+								float t = (k + 0.5f) / float(beads_per_col);
+								XYZ endP = { base.x, snap(lerp(ground, topY, t)), base.z };
+								XYZ startP = { cx, ground, cz }; // assemble from core
 
-			// -----------------------
-			// 2) LATITUDE LINES (thin bands)
-			//    - full x-range, ultra-narrow y-range  crisp parallels
-			//    - thickness blooms (bold rings), jitter falls
-			// -----------------------
-			for (int i = 0; i < n_latband; ++i)
-			{
-				const float y_center0 = clamp01(0.08f + 0.84f * RND());
-				const float y_width0 = 0.020f + 0.040f * RND();
-				const float slide = (RND() < 0.5f ? -1.f : +1.f) * (0.18f + 0.38f * RND());
-				const float y_center1 = clamp01(y_center0 + slide);
-				const float y_width1 = y_width0 * (0.95f + 0.40f * RND());
+								float bS = bead_base * (isPost ? 1.10f : 1.00f);
+								float bE = (k % 6 == 0) ? bead_post : bead_base * 1.20f;
 
-				float y_min0 = clamp01(y_center0 - 0.5f * y_width0);
-				float y_max0 = clamp01(y_center0 + 0.5f * y_width0);
-				if (y_max0 - y_min0 < 0.01f) { y_min0 = clamp01(y_center0 - 0.01f); y_max0 = clamp01(y_center0 + 0.01f); }
+								XYZ col0 = steel(0.20f + 0.5f * t), col1 = steel(0.55f + 0.4f * t);
+								push_bead(startP, endP, col0, col1, bS, bE, cube0, cube1, thick0, thick1, jit0, jit1);
+							}
+						};
 
-				float y_min1 = clamp01(y_center1 - 0.5f * y_width1);
-				float y_max1 = clamp01(y_center1 + 0.5f * y_width1);
-				if (y_max1 - y_min1 < 0.01f) { y_min1 = clamp01(y_center1 - 0.01f); y_max1 = clamp01(y_center1 + 0.01f); }
+					// Four corner columns
+					add_column(c00, true);
+					add_column(c10, false);
+					add_column(c01, false);
+					add_column(c11, true);
 
-				// full azimuth  complete rings
-				float x_min0 = 0.0f, x_max0 = 1.0f;
-				float x_min1 = 0.0f, x_max1 = 1.0f;
+					if ((int)spheres.size() >= number) continue;
 
-				// positions: center  shell
-				const float a = 2.0f * TAU * RND();
-				const float ro1 = 0.26f + 0.22f * RND();
-				XYZ p0 = rand_centerish();
-				XYZ p1 = { center.x + ro1 * std::cos(a),
-						   center.y + 0.04f * std::cos(2.0f * a),
-						   center.z + ro1 * std::sin(a) };
+					// Floor beams (rect per floor)
+					auto add_beam = [&](const XYZ& A, const XYZ& B, bool warm)
+						{
+							for (int k = 0; k < beads_per_beam && (int)spheres.size() < number; ++k)
+							{
+								float t = (k + 0.5f) / float(beads_per_beam);
+								XYZ endP = { snap(lerp(A.x, B.x, t)), snap(A.y), snap(lerp(A.z, B.z, t)) };
+								XYZ startP = { cx, ground, cz };
 
-				// bold bands
-				const float rad0 = 0.012f + 0.010f * RND();
-				const float rad1 = rad0 * (1.40f + 0.35f * RND());
-				const float cube0 = 0.00060f + 0.00030f * RND();
-				const float cube1 = cube0 * (0.75f + 0.15f * RND());
+								bool post = (k % 5 == 0);
+								float bS = bead_base * (warm ? 1.05f : 1.00f);
+								float bE = post ? bead_post : bead_base * (warm ? 1.30f : 1.18f);
 
-				const float thick0 = 0.010f + 0.020f * RND();
-				const float thick1 = thick0 * (2.50f + 1.20f * RND()); // bloom fat lines
+								XYZ c0 = warm ? amber(0.30f + 0.5f * t) : steel(0.30f + 0.5f * t);
+								XYZ c1 = warm ? amber(0.60f + 0.4f * t) : steel(0.60f + 0.4f * t);
 
-				const float jit0 = 1.00f + 0.40f * RND();
-				const float jit1 = 0.25f + 0.20f * RND();
+								push_bead(startP, endP, c0, c1, bS, bE, cube0, cube1, thick0, thick1, jit0, jit1);
+							}
+						};
 
-				// warm/orange-ish for latitudes
-				XYZ c0 = { 0.90f + 0.05f * RND(), 0.55f + 0.20f * RND(), 0.25f + 0.20f * RND() };
-				XYZ c1 = palette(fract01(0.45f + y_center0 * 0.35f));
+					for (int f = 0; f <= floors && (int)spheres.size() < number; ++f)
+					{
+						float y = snap(ground + f * floorH);
+						if (y > topY) break;
 
-				Sphere S;
-				S.start_position = p0;
-				S.end_position = p1;
-				S.start_color = c0;
-				S.end_color = c1;
-				S.radious = { rad0,  rad1 };
-				S.cube_size = { cube0, cube1 };
-				S.x_rnd_min = { x_min0, x_min1 };
-				S.x_rnd_max = { x_max0, x_max1 };
-				S.y_rnd_min = { y_min0, y_min1 };
-				S.y_rnd_max = { y_max0, y_max1 };
-				S.thickness = { thick0, thick1 };
-				S.jitter = { jit0,   jit1 };
-				spheres.push_back(std::move(S));
-			}
+						XYZ a00 = { c00.x, y, c00.z }, a10 = { c10.x, y, c10.z };
+						XYZ a01 = { c01.x, y, c01.z }, a11 = { c11.x, y, c11.z };
 
-			// -----------------------
-			// 3) POLAR FLARES
-			//    - caps near poles, medium-wide azimuth
-			//    - some crystallize, some *explode* (jitter increases!)
-			// -----------------------
-			for (int i = 0; i < n_polar; ++i)
-			{
-				const bool north = (RND() < 0.5f);
-				const float cap = north ? (0.00f + 0.12f * RND())
-					: (0.88f + 0.12f * RND()); // y near 0 or 1
+						add_beam(a00, a10, true);   // front
+						add_beam(a10, a11, false);  // right
+						add_beam(a11, a01, true);   // back
+						add_beam(a01, a00, false);  // left
+					}
 
-				const float y_width = 0.08f + 0.10f * RND();
-				float y_min0 = clamp01(cap - 0.5f * y_width);
-				float y_max0 = clamp01(cap + 0.5f * y_width);
-				float y_min1 = y_min0, y_max1 = y_max0; // stable cap (or tweak slightly)
+					if ((int)spheres.size() >= number) continue;
 
-				const float x_center = RND();
-				const float x_width0 = 0.20f + 0.30f * RND(); // medium arc
-				const float x_width1 = x_width0 * (0.90f + 0.30f * RND());
-				float x_min0 = x_center;
-				float x_max0 = std::min(1.0f, x_center + x_width0);
-				if (x_max0 - x_min0 < 0.05f) { x_min0 = std::max(0.0f, 1.0f - x_width0); x_max0 = 1.0f; }
-				float x_min1 = x_min0;
-				float x_max1 = std::min(1.0f, x_min0 + x_width1);
+					// SKYBRIDGES: connect to neighbors along +X and +Z at a few floors
+					auto add_skybridges_to_neighbor = [&](int nx, int nz)
+						{
+							if (nx >= gridX || nz >= gridZ) return;
 
-				const float a = x_center * TAU;
-				const float ro1 = 0.30f + 0.25f * RND();
-				XYZ p0 = rand_centerish(); // all emerge from the core visually
-				XYZ p1 = { center.x + ro1 * std::cos(a),
-						   center.y + (north ? +1.0f : -1.0f) * (0.10f + 0.05f * RND()),
-						   center.z + ro1 * std::sin(a) };
+							// Neighbor's center
+							float ncx = margin + (nx + 0.5f) * cellW;
+							float ncz = margin + (nz + 0.5f) * cellD;
+							ncx = snap(ncx); ncz = snap(ncz);
 
-				// striking flares
-				const float rad0 = 0.014f + 0.012f * RND();
-				const float rad1 = rad0 * (1.60f + 0.50f * RND());
-				const float cube0 = 0.00065f + 0.00030f * RND();
-				const float cube1 = cube0 * (0.80f + 0.15f * RND());
+							// Shared mid floors (2-3 bridges)
+							int bridges = 2 + (int)(RND() * 2.f);
+							for (int i = 0; i < bridges && (int)spheres.size() < number; ++i)
+							{
+								float level = (i + 1.f) / float(bridges + 1);
+								float y = snap(ground + level * (topY - ground));
 
-				const float thick0 = 0.016f + 0.022f * RND();
-				const float thick1 = thick0 * (1.80f + 0.90f * RND());
+								// From our outer edge to neighbor's outer edge (straight line)
+								XYZ A, B;
+								if (nx != gx) { // X-bridge
+									float zmid = snap(cz);
+									A = { snap(cx + (nx > gx ? halfW : -halfW)), y, zmid };
+									B = { snap(ncx + (nx > gx ? -0.5f * (0.55f * cellW) : +0.5f * (0.55f * cellW))), y, zmid };
+								}
+								else {        // Z-bridge
+									float xmid = snap(cx);
+									A = { xmid, y, snap(cz + (nz > gz ? halfD : -halfD)) };
+									B = { xmid, y, snap(ncz + (nz > gz ? -0.5f * (0.55f * cellD) : +0.5f * (0.55f * cellD))) };
+								}
 
-				// 50% crystallize, 50% explode
-				bool explode = (RND() < 0.5f);
-				const float jit0 = explode ? (0.25f + 0.20f * RND()) : (1.10f + 0.50f * RND());
-				const float jit1 = explode ? (1.40f + 0.60f * RND()) : (0.22f + 0.20f * RND());
+								// Slim, warm-toned bridge
+								int bridge_beads = std::clamp(8 + (int)(6 * RND()), 8, 16);
+								for (int k = 0; k < bridge_beads && (int)spheres.size() < number; ++k)
+								{
+									float t = (k + 0.5f) / float(bridge_beads);
+									XYZ endP = { snap(lerp(A.x, B.x, t)), y, snap(lerp(A.z, B.z, t)) };
+									XYZ startP = { cx, ground, cz };
 
-				// vivid magenta/blue for polar contrast
-				XYZ c0 = { 0.90f + 0.08f * RND(), 0.25f + 0.20f * RND(), 0.85f + 0.10f * RND() };
-				XYZ c1 = palette(fract01((north ? 0.15f : 0.85f) + 0.20f * RND()));
+									float bS = bead_base * 0.95f;
+									float bE = bead_base * 1.15f;
 
-				Sphere S;
-				S.start_position = p0;
-				S.end_position = p1;
-				S.start_color = c0;
-				S.end_color = c1;
-				S.radious = { rad0,  rad1 };
-				S.cube_size = { cube0, cube1 };
-				S.x_rnd_min = { x_min0, x_min1 };
-				S.x_rnd_max = { x_max0, x_max1 };
-				S.y_rnd_min = { y_min0, y_min1 };
-				S.y_rnd_max = { y_max0, y_max1 };
-				S.thickness = { thick0, thick1 };
-				S.jitter = { jit0,   jit1 };
-				spheres.push_back(std::move(S));
-			}
+									XYZ c0 = amber(0.35f + 0.5f * t), c1 = amber(0.65f + 0.3f * t);
+									push_bead(startP, endP, c0, c1,
+										bS, bE,
+										cube0 * 0.95f, cube1 * 0.95f,
+										thick0 * 0.95f, thick1 * 0.95f,
+										jit0 * 0.95f, jit1 * 0.95f);
+								}
+							}
+						};
+
+					add_skybridges_to_neighbor(gx + 1, gz); // +X neighbor
+					add_skybridges_to_neighbor(gx, gz + 1); // +Z neighbor
+				}
 		}
+
+		
+
 
 
 
@@ -556,7 +565,7 @@ namespace Universe_
 			program.le.exposure = 1.0;
 			program.le.msaaSamples = 10;
 
-			program.capture.capture = false;
+			program.capture.capture = true;
 			program.capture.capture_png = false;
 			program.capture.capture_bmp = true;
 
@@ -682,10 +691,10 @@ namespace Universe_
 				// sphere.init(20);
 				// sphere.draw(scene, 1000);
 
+				
 				Spheres sp;
-				sp.init_cageburst(/*number=*/10);     // try 200–600
-				sp.draw(scene, /*cubes per sphere*/ 100);
-
+				sp.init_city_lattice_compact(/*number=*/4000);  // try 800–4000 depending on perf
+				sp.draw(scene, /*cubes per bead*/ 10000);
 				
 				
 			}
