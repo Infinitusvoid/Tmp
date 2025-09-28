@@ -159,7 +159,7 @@
     <ClInclude Include="GUniverse.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="ShaderWriter.h" />
-    <ClInclude Include="universes\Universe_28_09_2025_15_55.h" />
+    <ClInclude Include="universes\Universe_28_09_2025_16_10.h" />
     <ClInclude Include="Utils.h" />
     <ClInclude Include="WinProcess.h" />
   </ItemGroup>
