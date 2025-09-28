@@ -191,6 +191,240 @@ namespace Universe_
 			}
 		}
 
+		void init_cageburst(int number)
+		{
+			spheres.clear();
+			spheres.reserve(number);
+
+			auto RND = []() -> float { return Random::generate_random_float_0_to_1(); };
+			auto clamp01 = [](float v) -> float { return v < 0.f ? 0.f : (v > 1.f ? 1.f : v); };
+			auto fract01 = [](float v) -> float { return v - std::floor(v); };
+
+			const float TAU = 6.28318530718f;
+			const XYZ   center = { 0.5f, 0.5f, 0.5f };
+
+			// Split instances into three *distinct* archetypes:
+			const int n_meridian = std::max(1, int(number * 0.44f));
+			const int n_latband = std::max(1, int(number * 0.36f));
+			const int n_polar = std::max(0, number - (n_meridian + n_latband));
+
+			auto palette = [](float t) -> XYZ {
+				const float TAU = 6.28318530718f;
+				// Slightly different base so this doesn't resemble previous palettes
+				return {
+					0.45f + 0.50f * std::cos(TAU * (t + 0.10f)),
+					0.40f + 0.55f * std::cos(TAU * (t + 0.55f)),
+					0.50f + 0.45f * std::cos(TAU * (t + 0.85f))
+				};
+				};
+
+			auto rand_centerish = [&]() -> XYZ {
+				const float r = 0.015f + 0.020f * RND();
+				return { center.x + (RND() - 0.5f) * r,
+						 center.y + (RND() - 0.5f) * r,
+						 center.z + (RND() - 0.5f) * r };
+				};
+
+			// -----------------------
+			// 1) MERIDIAN NEEDLES
+			//    - ultra-narrow x-range (lon), full y-range  long meridian lines
+			//    - jitter falls (condense), cube size shrinks  razor spokes
+			// -----------------------
+			for (int i = 0; i < n_meridian; ++i)
+			{
+				const float phi0 = RND();                   // 0..1 azimuth slot
+				const float width0 = 0.004f + 0.010f * RND(); // very thin
+				const float shift = 0.10f + 0.35f * RND();   // slide in azimuth
+				const float phi1 = fract01(phi0 + shift);
+				const float width1 = width0 * (0.90f + 0.25f * RND());
+
+				float x_min0 = phi0;
+				float x_max0 = std::min(1.0f, phi0 + width0);
+				if (x_max0 - x_min0 < 0.002f) { x_min0 = std::max(0.0f, 1.0f - width0); x_max0 = 1.0f; }
+
+				float x_min1 = phi1;
+				float x_max1 = std::min(1.0f, phi1 + width1);
+				if (x_max1 - x_min1 < 0.002f) { x_min1 = std::max(0.0f, 1.0f - width1); x_max1 = 1.0f; }
+
+				// full latitude span  pole-to-pole lines
+				float y_min0 = 0.0f, y_max0 = 1.0f;
+				float y_min1 = 0.0f, y_max1 = 1.0f;
+
+				// positions: from tight core  out to a spherical shell along meridian direction
+				const float a = phi0 * TAU;
+				const float ro0 = 0.22f + 0.18f * RND();
+				const float ro1 = ro0 * (1.05f + 0.20f * RND());
+				XYZ p0 = rand_centerish();
+				XYZ p1 = { center.x + ro1 * std::cos(a),
+						   center.y + 0.02f * std::sin(3.0f * a + 2.0f * RND()),
+						   center.z + ro1 * std::sin(a) };
+
+				// crisp, thin lines (condense)
+				const float rad0 = 0.010f + 0.009f * RND();
+				const float rad1 = rad0 * (1.35f + 0.25f * RND());
+				const float cube0 = 0.00055f + 0.00025f * RND();
+				const float cube1 = cube0 * (0.70f + 0.12f * RND());
+
+				const float thick0 = 0.006f + 0.010f * RND();
+				const float thick1 = thick0 * (1.00f + 0.30f * RND()); // stay thin-ish
+
+				const float jit0 = 1.30f + 0.60f * RND();
+				const float jit1 = 0.18f + 0.20f * RND();
+
+				// cool/cyan-ish for meridians
+				XYZ c0 = { 0.30f + 0.35f * RND(), 0.70f + 0.25f * RND(), 0.85f + 0.10f * RND() };
+				XYZ c1 = palette(fract01(phi0 * 0.73f + 0.12f));
+
+				Sphere S;
+				S.start_position = p0;
+				S.end_position = p1;
+				S.start_color = c0;
+				S.end_color = c1;
+				S.radious = { rad0,  rad1 };
+				S.cube_size = { cube0, cube1 };
+				S.x_rnd_min = { x_min0, x_min1 };
+				S.x_rnd_max = { x_max0, x_max1 };
+				S.y_rnd_min = { y_min0, y_min1 };
+				S.y_rnd_max = { y_max0, y_max1 };
+				S.thickness = { thick0, thick1 };
+				S.jitter = { jit0,   jit1 };
+				spheres.push_back(std::move(S));
+			}
+
+			// -----------------------
+			// 2) LATITUDE LINES (thin bands)
+			//    - full x-range, ultra-narrow y-range  crisp parallels
+			//    - thickness blooms (bold rings), jitter falls
+			// -----------------------
+			for (int i = 0; i < n_latband; ++i)
+			{
+				const float y_center0 = clamp01(0.08f + 0.84f * RND());
+				const float y_width0 = 0.020f + 0.040f * RND();
+				const float slide = (RND() < 0.5f ? -1.f : +1.f) * (0.18f + 0.38f * RND());
+				const float y_center1 = clamp01(y_center0 + slide);
+				const float y_width1 = y_width0 * (0.95f + 0.40f * RND());
+
+				float y_min0 = clamp01(y_center0 - 0.5f * y_width0);
+				float y_max0 = clamp01(y_center0 + 0.5f * y_width0);
+				if (y_max0 - y_min0 < 0.01f) { y_min0 = clamp01(y_center0 - 0.01f); y_max0 = clamp01(y_center0 + 0.01f); }
+
+				float y_min1 = clamp01(y_center1 - 0.5f * y_width1);
+				float y_max1 = clamp01(y_center1 + 0.5f * y_width1);
+				if (y_max1 - y_min1 < 0.01f) { y_min1 = clamp01(y_center1 - 0.01f); y_max1 = clamp01(y_center1 + 0.01f); }
+
+				// full azimuth  complete rings
+				float x_min0 = 0.0f, x_max0 = 1.0f;
+				float x_min1 = 0.0f, x_max1 = 1.0f;
+
+				// positions: center  shell
+				const float a = 2.0f * TAU * RND();
+				const float ro1 = 0.26f + 0.22f * RND();
+				XYZ p0 = rand_centerish();
+				XYZ p1 = { center.x + ro1 * std::cos(a),
+						   center.y + 0.04f * std::cos(2.0f * a),
+						   center.z + ro1 * std::sin(a) };
+
+				// bold bands
+				const float rad0 = 0.012f + 0.010f * RND();
+				const float rad1 = rad0 * (1.40f + 0.35f * RND());
+				const float cube0 = 0.00060f + 0.00030f * RND();
+				const float cube1 = cube0 * (0.75f + 0.15f * RND());
+
+				const float thick0 = 0.010f + 0.020f * RND();
+				const float thick1 = thick0 * (2.50f + 1.20f * RND()); // bloom fat lines
+
+				const float jit0 = 1.00f + 0.40f * RND();
+				const float jit1 = 0.25f + 0.20f * RND();
+
+				// warm/orange-ish for latitudes
+				XYZ c0 = { 0.90f + 0.05f * RND(), 0.55f + 0.20f * RND(), 0.25f + 0.20f * RND() };
+				XYZ c1 = palette(fract01(0.45f + y_center0 * 0.35f));
+
+				Sphere S;
+				S.start_position = p0;
+				S.end_position = p1;
+				S.start_color = c0;
+				S.end_color = c1;
+				S.radious = { rad0,  rad1 };
+				S.cube_size = { cube0, cube1 };
+				S.x_rnd_min = { x_min0, x_min1 };
+				S.x_rnd_max = { x_max0, x_max1 };
+				S.y_rnd_min = { y_min0, y_min1 };
+				S.y_rnd_max = { y_max0, y_max1 };
+				S.thickness = { thick0, thick1 };
+				S.jitter = { jit0,   jit1 };
+				spheres.push_back(std::move(S));
+			}
+
+			// -----------------------
+			// 3) POLAR FLARES
+			//    - caps near poles, medium-wide azimuth
+			//    - some crystallize, some *explode* (jitter increases!)
+			// -----------------------
+			for (int i = 0; i < n_polar; ++i)
+			{
+				const bool north = (RND() < 0.5f);
+				const float cap = north ? (0.00f + 0.12f * RND())
+					: (0.88f + 0.12f * RND()); // y near 0 or 1
+
+				const float y_width = 0.08f + 0.10f * RND();
+				float y_min0 = clamp01(cap - 0.5f * y_width);
+				float y_max0 = clamp01(cap + 0.5f * y_width);
+				float y_min1 = y_min0, y_max1 = y_max0; // stable cap (or tweak slightly)
+
+				const float x_center = RND();
+				const float x_width0 = 0.20f + 0.30f * RND(); // medium arc
+				const float x_width1 = x_width0 * (0.90f + 0.30f * RND());
+				float x_min0 = x_center;
+				float x_max0 = std::min(1.0f, x_center + x_width0);
+				if (x_max0 - x_min0 < 0.05f) { x_min0 = std::max(0.0f, 1.0f - x_width0); x_max0 = 1.0f; }
+				float x_min1 = x_min0;
+				float x_max1 = std::min(1.0f, x_min0 + x_width1);
+
+				const float a = x_center * TAU;
+				const float ro1 = 0.30f + 0.25f * RND();
+				XYZ p0 = rand_centerish(); // all emerge from the core visually
+				XYZ p1 = { center.x + ro1 * std::cos(a),
+						   center.y + (north ? +1.0f : -1.0f) * (0.10f + 0.05f * RND()),
+						   center.z + ro1 * std::sin(a) };
+
+				// striking flares
+				const float rad0 = 0.014f + 0.012f * RND();
+				const float rad1 = rad0 * (1.60f + 0.50f * RND());
+				const float cube0 = 0.00065f + 0.00030f * RND();
+				const float cube1 = cube0 * (0.80f + 0.15f * RND());
+
+				const float thick0 = 0.016f + 0.022f * RND();
+				const float thick1 = thick0 * (1.80f + 0.90f * RND());
+
+				// 50% crystallize, 50% explode
+				bool explode = (RND() < 0.5f);
+				const float jit0 = explode ? (0.25f + 0.20f * RND()) : (1.10f + 0.50f * RND());
+				const float jit1 = explode ? (1.40f + 0.60f * RND()) : (0.22f + 0.20f * RND());
+
+				// vivid magenta/blue for polar contrast
+				XYZ c0 = { 0.90f + 0.08f * RND(), 0.25f + 0.20f * RND(), 0.85f + 0.10f * RND() };
+				XYZ c1 = palette(fract01((north ? 0.15f : 0.85f) + 0.20f * RND()));
+
+				Sphere S;
+				S.start_position = p0;
+				S.end_position = p1;
+				S.start_color = c0;
+				S.end_color = c1;
+				S.radious = { rad0,  rad1 };
+				S.cube_size = { cube0, cube1 };
+				S.x_rnd_min = { x_min0, x_min1 };
+				S.x_rnd_max = { x_max0, x_max1 };
+				S.y_rnd_min = { y_min0, y_min1 };
+				S.y_rnd_max = { y_max0, y_max1 };
+				S.thickness = { thick0, thick1 };
+				S.jitter = { jit0,   jit1 };
+				spheres.push_back(std::move(S));
+			}
+		}
+
+
+
 		
 
 
@@ -322,7 +556,7 @@ namespace Universe_
 			program.le.exposure = 1.0;
 			program.le.msaaSamples = 10;
 
-			program.capture.capture = false;
+			program.capture.capture = true;
 			program.capture.capture_png = false;
 			program.capture.capture_bmp = true;
 
@@ -444,11 +678,13 @@ namespace Universe_
 
 			if(true)
 			{
-				Spheres sphere;
-				
-				sphere.init(20);
-				
-				sphere.draw(scene, 1000);
+				// Spheres sphere;
+				// sphere.init(20);
+				// sphere.draw(scene, 1000);
+
+				Spheres sp;
+				sp.init_cageburst(/*number=*/4000);     // try 200–600
+				sp.draw(scene, /*cubes per sphere*/ 100);
 
 				
 				
