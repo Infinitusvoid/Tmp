@@ -155,7 +155,7 @@ void main()
 
     lighting *= 100.0;
 
-    // lighting = pow(lighting, vec3(4.0));
+    //lighting = pow(lighting, vec3(4.0));
     //lighting *= 100.0;
 
     //emissive *= vec3(0.0);
@@ -173,29 +173,34 @@ void main()
     // ---- World-space stochastic coverage (FS-only) ----
     // Use your generic uniforms to control it (no engine edits):
     //   u0 = strength (0..1), u1 = cell size in *pixels* (1..2 good), u2 = base coverage (0..1)
-    const float ditherStrength = 1.0;
-    float cellPx = 1.0;
-    float baseCoverage = 0.65 * 10.0;
+    
+    if(false)
+    {
+        const float ditherStrength = 0.0;
+        float cellPx = 1.0;
+        float baseCoverage = 0.65 * 10.0;
 
-    if (ditherStrength > 0.0) {
-        // cell size in world units matched to current pixel footprint
-        float cellW = worldPerPixel(vWorldPos) * cellPx;
+        if (ditherStrength > 0.0) {
+            // cell size in world units matched to current pixel footprint
+            float cellW = worldPerPixel(vWorldPos) * cellPx;
 
-        // stable world-anchored threshold (won't align to the screen grid)
-        // float thr = wsRand(vWorldPos, cellW, 0u);
-        float thr = wsRand(vWorldPos, cellW, 17u ^ floatBitsToUint(floor(uTime * 0.5)));
+            // stable world-anchored threshold (won't align to the screen grid)
+            // float thr = wsRand(vWorldPos, cellW, 0u);
+            float thr = wsRand(vWorldPos, cellW, 17u ^ floatBitsToUint(floor(uTime * 0.5)));
 
-        // mix towards your requested coverage by strength
-        float cov = mix(1.0, baseCoverage, ditherStrength);
+            // mix towards your requested coverage by strength
+            float cov = mix(1.0, baseCoverage, ditherStrength);
 
-        // stochastic keep/discard (breaks the lattice for sub-pixel cubes)
-        if (thr > cov) discard;
+            // stochastic keep/discard (breaks the lattice for sub-pixel cubes)
+            if (thr > cov) discard;
 
-        // Optional tiny world-space grain (no discard) — helps even without blending
-        float g = wsRand(vWorldPos + vec3(13.1, 7.7, 3.3), cellW, 1u) - 0.5;
-        // 5–10% is plenty; gate by strength
-        color *= 1.0 + 0.1 * ditherStrength * g;
+            // Optional tiny world-space grain (no discard) — helps even without blending
+            float g = wsRand(vWorldPos + vec3(13.1, 7.7, 3.3), cellW, 1u) - 0.5;
+            // 5–10% is plenty; gate by strength
+            color *= 1.0 + 0.1 * ditherStrength * g;
+        }
     }
+    
 
 
 
