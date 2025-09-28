@@ -25,7 +25,187 @@
 
 namespace Universe_
 {
+	struct XYZ
+	{
+		float x = 0;
+		float y = 0;
+		float z = 0;
+	};
+
+	struct Float_start_end
+	{
+		float start = 0;
+		float end = 0;
+	};
+
+	struct Sphere
+	{
+		XYZ start_position = { 0.0, 0.0, 0.0 };
+		XYZ end_position = { 0.0, 0.0, 0.0 };
+
+		XYZ start_color = { 0.0, 0.0, 0.0 };
+		XYZ end_color = { 0.0, 0.0, 0.0 };
+
+		Float_start_end cube_size = { 0.0001, 0001 };
+		Float_start_end radious = {0.0, 0.0};
+		Float_start_end x_rnd_min = { 0.0, 0.0 };
+		Float_start_end x_rnd_max = { 0.0, 0.0 };
+		Float_start_end y_rnd_min = { 0.0, 0.0 };
+		Float_start_end y_rnd_max = { 0.0, 0.0 };
+		Float_start_end thickness = { 0.0, 0.0 };
+		Float_start_end jitter = { 0.0, 0.0 };
+
+
+	};
+
+	struct Spheres
+	{
+		std::vector<Sphere> spheres;
+		
+
+		void init(int number)
+		{
+			for(int i = 0; i < number; i++)
+			{
+				Sphere sphere;
+
+				sphere.start_position = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
+				sphere.end_position = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
+
+				sphere.start_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
+				sphere.end_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
+
+				sphere.radious = { 0.02f + Random::generate_random_float_0_to_1() * 0.02f, 0.02f + Random::generate_random_float_0_to_1() * 0.02f };
+				
+				sphere.cube_size = { 0.001, 0.001 };
+
+				sphere.x_rnd_min = { 0.0, 0.0 };
+				sphere.x_rnd_max = { 1.0, 1.0 };
+
+				sphere.y_rnd_min = { 0.0, 0.0 };
+				sphere.y_rnd_max = { 1.0, 1.0 };
+
+				sphere.thickness = { 0.0, 0.0 };
+				
+				sphere.jitter.start = 1.0f;
+				sphere.jitter.end = 1.0f;
+				
+				spheres.push_back(std::move(sphere));
+			}
+		}
+
+		void draw(Scene_::Scene& scene, int number_of_cube_per_sphere)
+		{
+			const int sqrt_number_of_cube_per_sphere = int(sqrtf(float(number_of_cube_per_sphere)));
+
+			add_shader(scene, 20, [&](Program::Shader& sh) {
+
+
+				// Instance 0
+				
+
+
+				for(Sphere& sphere : spheres)
+				{
+					auto id = sh.create_instance();
+					auto I = sh.instance(id);
+					I.set_group_size(sqrt_number_of_cube_per_sphere, sqrt_number_of_cube_per_sphere, 1)
+						.set_drawcalls(1)
+						.set_position_start(sphere.start_position.x, sphere.start_position.y, sphere.start_position.z)
+						.set_position_end(sphere.end_position.x, sphere.end_position.y, sphere.end_position.z)
+						.set_euler_start(0.0f, 0.0f, 0.0f)
+						.set_euler_end(0.0f, 0.0f, 0.0f)
+						.set_scale_start(sphere.radious.start, sphere.radious.start, sphere.radious.start)
+						.set_scale_end(sphere.radious.end, sphere.radious.end, sphere.radious.end);
+
+
+					I.set_u_start_end(0, sphere.start_color.x, sphere.end_color.x); // u0 color_r
+					I.set_u_start_end(1, sphere.start_color.y, sphere.end_color.y); // u1 color_g
+					I.set_u_start_end(2, sphere.start_color.z, sphere.end_color.z); // u2 color_b
+
+					I.set_u_start_end(3, sphere.cube_size.start, sphere.cube_size.end); // u3 cube_size
+					I.set_u_start_end(4, sphere.x_rnd_min.start, sphere.x_rnd_min.end); // u4 rnd_x_min
+					I.set_u_start_end(5, sphere.x_rnd_max.start, sphere.x_rnd_max.end); // u5 rnd_x_max
+
+					I.set_u_start_end(6, sphere.y_rnd_min.start, sphere.y_rnd_min.end); // u6 rnd_y_min
+					I.set_u_start_end(7, sphere.y_rnd_max.start, sphere.y_rnd_max.end); // u7 rnd_y_max
+					I.set_u_start_end(8, sphere.thickness.start, sphere.thickness.end); // u8 thickness
+
+					I.set_u_start_end(9, sphere.jitter.start, sphere.jitter.end); // u9 jitter scale
+
+					//constexpr int kU = 10;
+					//for (int u = 0; u < kU; ++u)
+					//{
+					//	float v_start = 0.1f * static_cast<float>(u);
+					//	float v_end = 1.0f - 0.1f * static_cast<float>(u);
+
+					//	v_start = 0.0;
+					//	v_end = 0.0;
+
+					//	if (u == 0) // color_r
+					//	{
+					//		v_start = 0.0;
+					//		v_end = 1.0;
+					//	}
+					//	else if (u == 1) // color_g
+					//	{
+					//		v_start = 1.0;
+					//		v_end = 1.0;
+					//	}
+					//	else if (u == 2) // color_b
+					//	{
+					//		v_start = 0.0;
+					//		v_end = 1.0;
+					//	}
+					//	else if (u == 3) // cube_size
+					//	{
+					//		v_start = 0.0001;
+					//		v_end = 0.0001;
+					//	}
+					//	else if (u == 4) // rnd_x_min
+					//	{
+					//		v_start = 0.0;
+					//		v_end = 0.0;
+					//	}
+					//	else if (u == 5) // rnd_x_max
+					//	{
+					//		v_start = 0.5;
+					//		v_end = 0.5;
+					//	}
+					//	else if (u == 6) // rnd_y_min
+					//	{
+					//		v_start = 0.0;
+					//		v_end = 0.0;
+					//	}
+					//	else if (u == 7) // rnd_y_max
+					//	{
+					//		v_start = 0.5;
+					//		v_end = 0.5;
+					//	}
+					//	else if (u == 8) // thickness
+					//	{
+					//		v_start = 0.1;
+					//		v_end = 0.1;
+					//	}
+					//	else if (u == 9) // jitter scale
+					//	{
+					//		v_start = 0.0;
+					//		v_end = 0.0;
+					//	}
+
+					//	I.set_u_start_end(u, v_start, v_end);
+					//}
+
+				}
+
+
+			});
+		}
+	};
+
 	
+
+
 
 	struct Clip
 	{
@@ -42,7 +222,7 @@ namespace Universe_
 			program.le.exposure = 1.0;
 			program.le.msaaSamples = 10;
 
-			program.capture.capture = false;
+			program.capture.capture = true;
 			program.capture.capture_png = false;
 			program.capture.capture_bmp = true;
 
@@ -72,7 +252,7 @@ namespace Universe_
 			program.configure(scene);
 
 			// shaders
-			if (enable_shader_20)
+			if(false) //if (enable_shader_20)
 			{
 				add_shader(scene, 20, [](Program::Shader& sh) {
 
@@ -162,6 +342,14 @@ namespace Universe_
 
 			}
 
+			if(true)
+			{
+				Spheres sphere;
+				sphere.init(200);
+
+				sphere.draw(scene, 10000);
+			}
+
 			if (enable_shader_10_unit_cube)
 			{
 				add_shader(scene, 10, [](Program::Shader& sh) {
@@ -230,7 +418,7 @@ namespace Universe_
 		const int clip_fps = 60;
 		const int clip_length_seconds = 4;
 
-		const bool enable_shader_10_unit_cube = true;
+		const bool enable_shader_10_unit_cube = false;
 		const bool enable_shader_20 = true;
 
 	};
