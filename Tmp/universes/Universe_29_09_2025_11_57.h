@@ -4128,8 +4128,848 @@ namespace Universe_
 			}
 		}
 
-		
-		
+		void init_temporal_echo_cascade()
+		{
+			lines.clear();
+
+			// Self-contained constants
+			const float TAU = 6.283185307179586476925286766559f;
+			const float PI = 3.141592653589793238462643383279f;
+
+			// --- System Parameters ---
+			const int generations = 4; // How many "echo" levels
+			const int wave_segments = 120; // Resolution of each spherical wavefront
+			const float initial_radius = 0.05f; // Size of the initial pulse
+			const float max_radius = 1.2f; // Boundary where waves reverse
+			const float expansion_speed = 0.8f; // How fast waves grow
+			const float echo_shrink_factor = 0.6f; // How much smaller each echo generation is
+			const int sub_wave_count = 6; // How many secondary waves spawn from each wave edge
+			const float sub_wave_offset = 0.15f; // Distance from edge for secondary spawn
+
+			// Helper: Generate points on a sphere (for wavefronts)
+			auto generate_sphere_points = [&](float radius, int segments) -> std::vector<Vec3> {
+				std::vector<Vec3> points;
+				points.reserve(segments);
+				for (int i = 0; i < segments; ++i) {
+					float theta = TAU * i / segments;
+					float phi = PI * Random::generate_random_float_0_to_1(); // Uniform distribution on sphere
+					float sin_phi = std::sin(phi);
+					points.push_back({
+						radius * sin_phi * std::cos(theta),
+						radius * sin_phi * std::sin(theta),
+						radius * std::cos(phi)
+						});
+				}
+				return points;
+				};
+
+			// Helper: Color based on wave age/generation (brighter = newer)
+			auto age_color = [&](int gen, float progress) -> Vec3 {
+				float brightness = std::pow(0.7f, gen); // Each generation is dimmer
+				float hue_shift = 0.1f * gen; // Shift color per generation
+				float t = 0.5f + 0.5f * std::sin(TAU * (0.3f * progress + hue_shift));
+				return {
+					brightness * (0.5f + 0.5f * t),
+					brightness * (0.5f + 0.5f * std::sin(TAU * (0.33f + 0.3f * progress + hue_shift))),
+					brightness * (0.5f + 0.5f * std::sin(TAU * (0.66f + 0.3f * progress + hue_shift)))
+				};
+				};
+
+			// --- Recursive Cascade Generator ---
+			std::function<void(float, int, Vec3)> spawn_generation = [&](float start_time, int gen, Vec3 origin) {
+				if (gen >= generations) return;
+
+				// Calculate time scale for this generation
+				float gen_scale = std::pow(echo_shrink_factor, gen);
+				float gen_initial_radius = initial_radius * gen_scale;
+				float gen_max_radius = max_radius * gen_scale;
+				float gen_expansion_speed = expansion_speed * gen_scale;
+
+				// --- Primary Wave ---
+				auto primary_points = generate_sphere_points(gen_initial_radius, wave_segments);
+				for (int i = 0; i < wave_segments; ++i) {
+					Vec3 start_pos = origin;
+					Vec3 end_pos = primary_points[i];
+
+					Line& primary_line = add_line();
+					primary_line.x0.start = start_pos.x;
+					primary_line.y0.start = start_pos.y;
+					primary_line.z0.start = start_pos.z;
+					primary_line.x1.start = start_pos.x;
+					primary_line.y1.start = start_pos.y;
+					primary_line.z1.start = start_pos.z; // Start collapsed at origin
+
+					// Animate: expand and then contract (echo)
+					float mid_time = start_time + 0.5f; // Midpoint is full expansion
+					primary_line.copy_start_to_end();
+					// Full expansion at mid_time
+					primary_line.x0.end = origin.x + (end_pos.x - origin.x) * (gen_max_radius / gen_initial_radius);
+					primary_line.y0.end = origin.y + (end_pos.y - origin.y) * (gen_max_radius / gen_initial_radius);
+					primary_line.z0.end = origin.z + (end_pos.z - origin.z) * (gen_max_radius / gen_initial_radius);
+					primary_line.x1.end = primary_line.x0.end;
+					primary_line.y1.end = primary_line.y0.end;
+					primary_line.z1.end = primary_line.z0.end;
+
+					// Color: Bright for new generation
+					Vec3 color = age_color(gen, 0.0f);
+					primary_line.rgb_t0 = color;
+					primary_line.rgb_t1 = color;
+					primary_line.thickness.start = 0.005f * gen_scale;
+					primary_line.thickness.end = 0.002f * gen_scale;
+					primary_line.number_of_cubes = 40;
+				}
+
+				// --- Secondary Waves Spawned at Wave Edge ---
+				if (gen < generations - 1) { // Don't spawn children for the last gen
+					float spawn_time = start_time + 0.45f; // Spawn just before the echo
+					for (int j = 0; j < sub_wave_count; ++j) {
+						// Pick a random point on the primary wave's edge at its full expansion
+						int idx = (j * wave_segments) / sub_wave_count;
+						Vec3 spawn_origin = {
+							origin.x + (primary_points[idx].x - origin.x) * (gen_max_radius / gen_initial_radius),
+							origin.y + (primary_points[idx].y - origin.y) * (gen_max_radius / gen_initial_radius),
+							origin.z + (primary_points[idx].z - origin.z) * (gen_max_radius / gen_initial_radius)
+						};
+						// Add small jitter to spawn location
+						spawn_origin.x += sub_wave_offset * Random::generate_random_float_minus_one_to_plus_one();
+						spawn_origin.y += sub_wave_offset * Random::generate_random_float_minus_one_to_plus_one();
+						spawn_origin.z += sub_wave_offset * Random::generate_random_float_minus_one_to_plus_one();
+
+						// Recursively spawn the next generation
+						spawn_generation(spawn_time, gen + 1, spawn_origin);
+					}
+				}
+				};
+
+			// --- Start the Cascade ---
+			spawn_generation(0.0f, 0, { 0.0f, 0.0f, 0.0f }); // Start at origin, generation 0
+
+			// --- Add a Faint Static Grid for Spatial Reference ---
+			const float grid_size = 2.0f;
+			const int grid_lines = 10;
+			const float step = grid_size / grid_lines;
+			Vec3 grid_color = { 0.1f, 0.1f, 0.12f };
+
+			for (int i = 0; i <= grid_lines; ++i) {
+				float pos = -grid_size * 0.5f + i * step;
+				// XZ plane grid
+				{
+					Line& line = add_line();
+					line.x0.start = -grid_size * 0.5f; line.y0.start = -0.5f; line.z0.start = pos;
+					line.x1.start = grid_size * 0.5f; line.y1.start = -0.5f; line.z1.start = pos;
+					line.x0.end = line.x0.start; line.y0.end = line.y0.start; line.z0.end = line.z0.start;
+					line.x1.end = line.x1.start; line.y1.end = line.y1.start; line.z1.end = line.z1.start;
+					line.rgb_t0 = grid_color; line.rgb_t1 = grid_color;
+					line.thickness.start = 0.001f; line.thickness.end = 0.001f;
+					line.number_of_cubes = 100;
+				}
+				{
+					Line& line = add_line();
+					line.x0.start = pos; line.y0.start = -0.5f; line.z0.start = -grid_size * 0.5f;
+					line.x1.start = pos; line.y1.start = -0.5f; line.z1.start = grid_size * 0.5f;
+					line.x0.end = line.x0.start; line.y0.end = line.y0.start; line.z0.end = line.z0.start;
+					line.x1.end = line.x1.start; line.y1.end = line.y1.start; line.z1.end = line.z1.start;
+					line.rgb_t0 = grid_color; line.rgb_t1 = grid_color;
+					line.thickness.start = 0.001f; line.thickness.end = 0.001f;
+					line.number_of_cubes = 100;
+				}
+			}
+		}
+
+		// --- Ocean + Sky + Rising Glyphs (Z is up; Y is depth) ---
+		void init_2010_ocean_glyph_overture()
+		{
+			lines.clear();
+
+			const float TAU = 6.28318530718f;
+
+			auto clamp01 = [](float v) { return std::max(0.0f, std::min(1.0f, v)); };
+			auto mixf = [](float a, float b, float t) { return a + (b - a) * t; };
+
+			// helper to emit a line that "reveals" from its midpoint
+			auto emit = [&](Vec3 A, Vec3 B, Vec3 c0, Vec3 c1, float t0, float t1, int cubes)
+				{
+					Line& L = add_line();
+					Vec3 M{ 0.5f * (A.x + B.x), 0.5f * (A.y + B.y), 0.5f * (A.z + B.z) };
+					L.x0.start = M.x; L.y0.start = M.y; L.z0.start = M.z;
+					L.x1.start = M.x; L.y1.start = M.y; L.z1.start = M.z;
+					L.rgb_t0 = c0; L.thickness.start = t0; L.number_of_cubes = cubes;
+					L.copy_start_to_end();
+					L.x0.end = A.x; L.y0.end = A.y; L.z0.end = A.z;
+					L.x1.end = B.x; L.y1.end = B.y; L.z1.end = B.z;
+					L.rgb_t1 = c1; L.thickness.end = t1;
+				};
+
+			// ===============================
+			// A) OCEAN (Z-up heightfield)
+			// ===============================
+			{
+				const int   GX = 48, GY = 34;
+				const float EX = 2.8f, EY = 2.2f;
+				const float seaZ = -0.08f, amp0 = 0.16f, amp1 = 0.30f;
+				const float windX = 0.05f, windY = 0.04f;
+				const float baseTh = 0.0062f;
+				const int   cubes = 18;
+
+				// sun for reflection
+				const float sunX = -0.58f, sunY = -0.22f, sunZ = 0.26f;
+
+				auto waves = [&](float x, float y, float amp) {
+					float s1 = std::sin(1.8f * x + 0.6f * y);
+					float s2 = std::sin(0.7f * x - 1.9f * y + 1.7f);
+					float ch = 0.35f * std::sin(3.4f * x + 2.2f * y);
+					float fade = 0.5f + 0.5f * std::exp(-0.9f * std::fabs(y));
+					return amp * fade * (0.55f * s1 + 0.45f * s2 + 0.25f * ch);
+					};
+				auto slopeMag = [&](float x, float y, float amp) {
+					const float e = 0.012f;
+					float dx = waves(x + e, y, amp) - waves(x - e, y, amp);
+					float dy = waves(x, y + e, amp) - waves(x, y - e, amp);
+					return std::sqrt(dx * dx + dy * dy) / (2.0f * e);
+					};
+				auto oceanCol = [&](float z, float foam, float hil)->Vec3 {
+					float t = clamp01((z - (seaZ - 0.35f)) / 0.9f);
+					Vec3 base{ mixf(0.04f,0.10f,t), mixf(0.18f,0.75f,t), mixf(0.35f,0.95f,t) };
+					Vec3 foamC{ 0.92f,0.96f,0.98f }, gold{ 1.0f,0.88f,0.52f };
+					base.x = mixf(base.x, foamC.x, 0.55f * foam);
+					base.y = mixf(base.y, foamC.y, 0.55f * foam);
+					base.z = mixf(base.z, foamC.z, 0.55f * foam);
+					base.x = mixf(base.x, gold.x, 0.75f * hil);
+					base.y = mixf(base.y, gold.y, 0.75f * hil);
+					base.z = mixf(base.z, gold.z, 0.55f * hil);
+					return base;
+					};
+				auto highlight = [&](float x, float y) {
+					float dx = (x - sunX), sy = 0.22f;
+					float band = std::exp(-0.5f * (dx * dx) / (sy * sy));
+					float depth = clamp01(1.0f - 0.35f * std::fabs(y - sunY));
+					return 0.8f * band * depth;
+					};
+
+				float dx = (GX > 1) ? EX / float(GX - 1) : 0.0f;
+				float dy = (GY > 1) ? EY / float(GY - 1) : 0.0f;
+				auto X = [&](int j) {return -0.5f * EX + j * dx; };
+				auto Y = [&](int i) {return -0.5f * EY + i * dy; };
+
+				auto addSeg = [&](float x0, float y0, float x1, float y1) {
+					float z0s = seaZ + waves(x0, y0, amp0), z1s = seaZ + waves(x1, y1, amp0);
+					float z0e = seaZ + waves(x0 + 0.15f, y0 + 0.10f, amp1);
+					float z1e = seaZ + waves(x1 + 0.15f, y1 + 0.10f, amp1);
+					float x0e = x0 + windX * std::sin(0.6f * y0 + 0.8f * x0);
+					float y0e = y0 + windY * std::cos(0.7f * x0 - 0.9f * y0);
+					float x1e = x1 + windX * std::sin(0.6f * y1 + 0.8f * x1);
+					float y1e = y1 + windY * std::cos(0.7f * x1 - 0.9f * y1);
+
+					float foam0 = clamp01(1.5f * slopeMag(x0, y0, amp1));
+					float foam1 = clamp01(1.5f * slopeMag(x1, y1, amp1));
+					float hil0 = highlight(x0, y0), hil1 = highlight(x1, y1);
+
+					Vec3 A0{ x0, y0, z0s }, B0{ x1, y1, z1s };
+					Vec3 A1{ x0e,y0e,z0e }, B1{ x1e,y1e,z1e };
+					Vec3 c0 = oceanCol(0.5f * (z0s + z1s), 0.5f * (foam0 + foam1), 0.5f * (hil0 + hil1));
+					Vec3 c1 = oceanCol(0.5f * (z0e + z1e), 0.5f * (foam0 + foam1), 0.5f * (hil0 + hil1));
+					float th0 = baseTh * (0.8f + 0.5f * foam0), th1 = baseTh * (0.8f + 0.5f * foam1);
+
+					emit(A0, B0, c0, c1, baseTh * 0.35f, 0.5f * (th0 + th1), cubes);
+					};
+
+				for (int i = 0; i < GY; i++) {
+					float y = Y(i);
+					for (int j = 0; j < GX - 1; j++) addSeg(X(j), y, X(j + 1), y);
+				}
+				for (int j = 0; j < GX; j++) {
+					float x = X(j);
+					for (int i = 0; i < GY - 1; i++) addSeg(x, Y(i), x, Y(i + 1));
+				}
+			}
+
+			// ===============================
+			// B) SKY (gradient curtains + sun + a few clouds)
+			// ===============================
+			{
+				const int   C = 52, R = 9;
+				const float EX = 2.8f, EY = 2.2f;
+				const float zH = 0.0f, zTop = 1.30f;
+				const float baseTh = 0.0058f;
+				const int   cubes = 20;
+
+				const float sunX = -0.58f, sunY = -0.22f, sunZ = 0.26f;
+
+				auto skyGrad = [&](float z) {
+					float t = clamp01((z - zH) / (zTop - zH));
+					Vec3 warm{ 0.98f,0.78f,0.55f }, cool{ 0.24f,0.52f,0.95f };
+					return Vec3{ mixf(warm.x,cool.x,t), mixf(warm.y,cool.y,t), mixf(warm.z,cool.z,t) };
+					};
+
+				auto X = [&](int j) { return -0.5f * EX + j * (EX / std::max(1, C - 1)); };
+				auto Y = [&](int i) { return -0.5f * EY + i * (EY / std::max(1, R - 1)); };
+
+				for (int i = 0; i < R; i++) for (int j = 0; j < C; j++) {
+					float x = X(j), y = Y(i);
+					float sx = 0.04f * std::sin(0.8f * y + 0.6f * x);
+					float sy = 0.03f * std::cos(0.7f * x - 0.9f * y);
+					float ds = std::exp(-2.0f * ((x - sunX) * (x - sunX) + 0.4f * (y - sunY) * (y - sunY)));
+					Vec3 c0 = skyGrad(zH + 0.001f), c1 = skyGrad(zTop);
+					c1.x = mixf(c1.x, 1.00f, 0.35f * ds);
+					c1.y = mixf(c1.y, 0.88f, 0.35f * ds);
+					c1.z = mixf(c1.z, 0.60f, 0.25f * ds);
+
+					emit({ x,y,zH }, { x + sx,y + sy,zTop }, c0, c1, baseTh * 0.28f, baseTh, cubes);
+				}
+
+				// sun chords (small bloom)
+				{
+					const int rays = 64; const float R0 = 0.13f, R1 = 0.20f;
+					const float th = 0.0088f;
+					for (int k = 0; k < rays; k++) {
+						float a0 = (k / float(rays)) * TAU, a1 = a0 + (0.75f * TAU / rays);
+						Vec3 s0{ sunX + R0 * std::cos(a0), sunY + R0 * std::sin(a0), sunZ };
+						Vec3 e0{ sunX + R0 * std::cos(a1), sunY + R0 * std::sin(a1), sunZ };
+						Vec3 s1{ sunX + R1 * std::cos(a0), sunY + R1 * std::sin(a0), sunZ };
+						Vec3 e1{ sunX + R1 * std::cos(a1), sunY + R1 * std::sin(a1), sunZ };
+						emit(s0, e0, { 1.0f,0.90f,0.60f }, { 1.0f,0.96f,0.85f }, th * 0.25f, th, 28);
+						emit(s1, e1, { 1.0f,0.96f,0.85f }, { 1.0f,0.90f,0.60f }, th * 0.25f, th, 28);
+					}
+				}
+
+				// a few cloud puffs (elliptical rings)
+				{
+					int clouds = 7;
+					for (int c = 0; c < clouds; c++) {
+						float cx = -1.3f + 2.6f * Random::generate_random_float_0_to_1();
+						float cy = -1.0f + 2.0f * Random::generate_random_float_0_to_1();
+						float cz = 0.55f + 0.55f * Random::generate_random_float_0_to_1();
+						int puffs = 4 + (Random::random_int(0, 1000) % 3);
+						float baseR = 0.10f + 0.08f * Random::generate_random_float_0_to_1();
+						for (int p = 0; p < puffs; p++) {
+							float pr = baseR * (0.75f + 0.5f * Random::generate_random_float_0_to_1());
+							float px = cx + 0.65f * pr * Random::generate_random_float_minus_one_to_plus_one();
+							float py = cy + 0.65f * pr * Random::generate_random_float_minus_one_to_plus_one();
+							int segs = 20;
+							for (int s = 0; s < segs; s++) {
+								float a0 = (s / float(segs)) * TAU, a1 = ((s + 1) / float(segs)) * TAU;
+								Vec3 A{ px + 0.5f * pr * std::cos(a0), py + 0.8f * pr * std::sin(a0), cz };
+								Vec3 B{ px + 0.5f * pr * std::cos(a1), py + 0.8f * pr * std::sin(a1), cz };
+								emit(A, B, { 0.94f,0.96f,0.98f }, { 0.88f,0.92f,0.98f }, 0.0045f, 0.0075f, 16);
+							}
+						}
+					}
+				}
+			}
+
+			// ===============================
+			// C) HORIZON accent
+			// ===============================
+			{
+				const int segs = 80; const float EX = 2.8f; const float zH = 0.002f;
+				for (int i = 0; i < segs; i++) {
+					float t0 = i / float(segs), t1 = (i + 1) / float(segs);
+					float x0 = mixf(-0.5f * EX, 0.5f * EX, t0), x1 = mixf(-0.5f * EX, 0.5f * EX, t1);
+					float y0 = 0.06f * std::sin(0.7f * t0), y1 = 0.06f * std::sin(0.7f * t1);
+					emit({ x0,y0,zH }, { x1,y1,zH }, { 0.95f,0.98f,1.0f }, { 0.85f,0.95f,1.0f }, 0.0035f, 0.0060f, 22);
+				}
+			}
+
+			// ===============================
+			// D) Rising Glyph Band (YZ swapped feel)
+			// ===============================
+			{
+				// minimal stroke font (normalized [0,1]); just enough for "MATH"
+				struct V2 { float x, y; }; using Stroke = std::pair<V2, V2>;
+				auto pv = [&](std::vector<Stroke>& S, float x, float y0, float y1) {S.push_back({ {x,y0},{x,y1} }); };
+				auto ph = [&](std::vector<Stroke>& S, float y, float x0, float x1) {S.push_back({ {x0,y},{x1,y} }); };
+				auto pd = [&](std::vector<Stroke>& S, float x0, float y0, float x1, float y1) {S.push_back({ {x0,y0},{x1,y1} }); };
+				auto strokes = [&](char C) {
+					std::vector<Stroke>S; float m = 0.10f, l = m, r = 1.0f - m, b = m, t = 1.0f - m, mid = 0.5f, hi = 0.62f;
+					switch (C) {
+					case 'M': pv(S, l, b, t); pv(S, r, b, t); pd(S, l, t, mid, b + 0.25f); pd(S, r, t, mid, b + 0.25f); break;
+					case 'A': pd(S, l, b, 0.5f, t); pd(S, r, b, 0.5f, t); ph(S, hi, l + 0.15f, r - 0.15f); break;
+					case 'T': ph(S, t, l, r); pv(S, mid, b, t); break;
+					case 'H': pv(S, l, b, t); pv(S, r, b, t); ph(S, mid, l, r); break;
+					default:  ph(S, t, l, r); ph(S, b, l, r); pv(S, l, b, t); pv(S, r, b, t); break;
+					} return S;
+					};
+
+				const char* text = "MATH  MATH  MATH  ";
+				int len = 0; while (text[len] != '\0') ++len;
+
+				const float letterH = 0.16f, spacing = 0.26f, cell = letterH / spacing;
+				const int cols = 22, rows = 2;
+				const float bandY = -0.15f;        // start depth (near horizon)
+				const float bandZ = 0.05f;        // start height just above horizon
+				const float riseZ = 0.42f;        // how high letters rise
+				const float swirl = 1.20f;        // spin around Z while rising
+				const float yawY = 0.55f;        // yaw around Y to give parallax
+				const float baseTh = 0.0068f; const int cubes = 22;
+
+				auto rotZ = [&](Vec3 p, float a) { float c = std::cos(a), s = std::sin(a); return Vec3{ c * p.x - s * p.y, s * p.x + c * p.y, p.z }; };
+				auto rotY = [&](Vec3 p, float a) { float c = std::cos(a), s = std::sin(a); return Vec3{ c * p.x + s * p.z, p.y, -s * p.x + c * p.z }; };
+
+				int idx = 0;
+				float fullW = (cols - 1) * cell;
+				for (int r = 0; r < rows; r++)
+					for (int c = 0; c < cols; c++)
+					{
+						char ch = text[idx++ % len];
+						auto S = strokes(ch);
+						float cx = -0.5f * fullW + c * cell;
+						float cy = bandY + 0.08f * r;
+						float cz = bandZ + 0.02f * r;
+
+						// color by grid
+						float hue = std::fmod(0.10f * r + 0.07f * c, 1.0f);
+						Vec3 c0{ 0.5f + 0.5f * std::cos(TAU * (hue + 0.00f)),
+								 0.5f + 0.5f * std::cos(TAU * (hue + 0.33f)),
+								 0.5f + 0.5f * std::cos(TAU * (hue + 0.66f)) };
+						Vec3 c1{ 0.5f + 0.5f * std::cos(TAU * (hue + 0.10f)),
+								 0.5f + 0.5f * std::cos(TAU * (hue + 0.43f)),
+								 0.5f + 0.5f * std::cos(TAU * (hue + 0.76f)) };
+
+						auto mapPt = [&](V2 p)->Vec3 {
+							// glyph plane: XZ, stacked along Y (YZ swapped vibe)
+							float X = cx + (p.x - 0.5f) * letterH;
+							float Z = cz + (p.y - 0.5f) * letterH;
+							float Y = cy;
+							return Vec3{ X,Y,Z };
+							};
+
+						for (const auto& st : S)
+						{
+							Vec3 P0 = mapPt(st.first);
+							Vec3 P1 = mapPt(st.second);
+
+							// START: legible band near horizon
+							Vec3 A0 = P0, B0 = P1;
+
+							// END: swirl around Z, yaw around Y, rise in Z
+							Vec3 q0 = rotZ(Vec3{ P0.x - cx, P0.y - cy, P0.z - cz }, swirl);
+							q0 = rotY(q0, yawY);
+							Vec3 q1 = rotZ(Vec3{ P1.x - cx, P1.y - cy, P1.z - cz }, swirl);
+							q1 = rotY(q1, yawY);
+
+							Vec3 A1{ cx + q0.x, cy + q0.y, cz + q0.z + riseZ };
+							Vec3 B1{ cx + q1.x, cy + q1.y, cz + q1.z + riseZ };
+
+							emit(A0, B0, c0, c1, baseTh * 0.30f, baseTh * 0.80f, cubes);
+						}
+					}
+			}
+		}
+
+
+
+		void init_solar_flare()
+		{
+			lines.clear();
+
+			// --- SECTION 1: Self-Contained Helpers (Vector Math Lambdas) ---
+			auto vec_add = [](const Vec3& a, const Vec3& b) -> Vec3 { return { a.x + b.x, a.y + b.y, a.z + b.z }; };
+			auto vec_scale = [](const Vec3& v, float s) -> Vec3 { return { v.x * s, v.y * s, v.z * s }; };
+			auto vec_length = [](const Vec3& v) -> float { return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z); };
+			auto vec_normalize = [&](const Vec3& v) -> Vec3 {
+				float len = vec_length(v);
+				return (len > 1e-6f) ? vec_scale(v, 1.0f / len) : Vec3{ 0,0,0 };
+				};
+
+			// --- SECTION 2: Effect Configuration (The Fun Part!) ---
+			const int   number_of_particles = 1500;   // More particles = bigger, denser flare
+			const float max_distance = 1.8f;          // How far the particles travel
+			const float spiral_tightness = 8.0f;      // Higher = more twists
+			const float arc_strength = 0.5f;          // How much the spirals "fan out"
+			const float tail_length = 0.08f;          // Length of each particle's trail
+
+			// --- SECTION 3: Line Generation Logic ---
+			for (int i = 0; i < number_of_particles; ++i)
+			{
+				Line& particle = add_line();
+
+				// --- Step 1: Give each particle a unique, random trajectory ---
+
+				// Pick a random direction on a sphere for the eruption "ray"
+				float theta = Random::generate_random_float_0_to_1() * 2.0f * 3.14159265f; // Azimuth
+				float phi = acos(1.0f - 2.0f * Random::generate_random_float_0_to_1()); // Polar (inclination)
+				Vec3 main_direction = {
+					sin(phi) * cos(theta),
+					sin(phi) * sin(theta),
+					cos(phi)
+				};
+
+				// Create two perpendicular vectors to define the plane of the spiral
+				Vec3 tangent1 = vec_normalize({ -main_direction.y, main_direction.x, 0 });
+				if (vec_length(tangent1) < 0.1f) { // Handle case where main_direction is along Z
+					tangent1 = { 1, 0, 0 };
+				}
+				Vec3 tangent2 = vec_normalize({
+					main_direction.y * tangent1.z - main_direction.z * tangent1.y,
+					main_direction.z * tangent1.x - main_direction.x * tangent1.z,
+					main_direction.x * tangent1.y - main_direction.y * tangent1.x
+					});
+
+				// Randomize this particle's specific properties
+				float final_dist = max_distance * (0.5f + 0.5f * Random::generate_random_float_0_to_1());
+				float spiral_angle = final_dist * spiral_tightness * (0.75f + 0.5f * Random::generate_random_float_0_to_1());
+
+				// --- Step 2: Calculate the FINAL position (the end of the animation) ---
+
+				// The base position is along the main eruption ray
+				Vec3 base_pos = vec_scale(main_direction, final_dist);
+
+				// The spiral offset is calculated on the plane defined by the tangents
+				Vec3 spiral_offset_1 = vec_scale(tangent1, cos(spiral_angle) * final_dist * arc_strength);
+				Vec3 spiral_offset_2 = vec_scale(tangent2, sin(spiral_angle) * final_dist * arc_strength);
+
+				// The final head position is the base + spiral offsets
+				Vec3 head_pos_end = vec_add(base_pos, vec_add(spiral_offset_1, spiral_offset_2));
+
+				// The tail position is slightly behind the head, giving it direction
+				Vec3 tail_direction = vec_normalize(head_pos_end); // Simplified tail
+				Vec3 tail_pos_end = vec_add(head_pos_end, vec_scale(tail_direction, -tail_length));
+
+				particle.x1.end = head_pos_end.x;
+				particle.y1.end = head_pos_end.y;
+				particle.z1.end = head_pos_end.z;
+				particle.x0.end = tail_pos_end.x;
+				particle.y0.end = tail_pos_end.y;
+				particle.z0.end = tail_pos_end.z;
+
+				// --- Step 3: Calculate the START position (the beginning of the animation) ---
+				// Everything starts collapsed at the origin for a dramatic eruption.
+				particle.x0.start = 0.0f; particle.y0.start = 0.0f; particle.z0.start = 0.0f;
+				particle.x1.start = 0.0f; particle.y1.start = 0.0f; particle.z1.start = 0.0f;
+
+				// --- Step 4: Styling for an energetic look ---
+				// Starts hot, cools down
+				particle.rgb_t0 = { 1.0f, 1.0f, 0.8f }; // Bright white-yellow core
+				particle.rgb_t1 = { 1.0f, 0.4f + 0.3f * Random::generate_random_float_0_to_1(), 0.1f }; // Fiery orange/red
+
+				// Starts thick, thins out
+				particle.thickness.start = 0.012f;
+				particle.thickness.end = 0.001f;
+				particle.number_of_cubes = 50;
+			}
+		}
+
+
+		// --- Glass of Water (Z is up; optional Y/Z swap toggle) ---
+		void init_2020_glass_of_water()
+		{
+			lines.clear();
+
+			const float TAU = 6.28318530718f;
+
+			// flip this if you want Y<->Z swapped globally for the piece
+			const bool yz_swapped = false;
+
+			// small helper: emit a line (reveals from midpoint) with optional Y/Z swap
+			auto emitXYZ = [&](float x0, float y0, float z0,
+				float x1, float y1, float z1,
+				Vec3 c0, Vec3 c1,
+				float t0, float t1, int cubes)
+				{
+					Line& L = add_line();
+
+					auto map = [&](float X, float Y, float Z)->Vec3 {
+						return yz_swapped ? Vec3{ X, Z, Y } : Vec3{ X, Y, Z };
+						};
+
+					Vec3 A = map(x0, y0, z0);
+					Vec3 B = map(x1, y1, z1);
+					Vec3 M{ 0.5f * (A.x + B.x), 0.5f * (A.y + B.y), 0.5f * (A.z + B.z) };
+
+					L.x0.start = M.x; L.y0.start = M.y; L.z0.start = M.z;
+					L.x1.start = M.x; L.y1.start = M.y; L.z1.start = M.z;
+
+					L.rgb_t0 = c0; L.thickness.start = t0; L.number_of_cubes = cubes;
+
+					L.copy_start_to_end();
+
+					L.x0.end = A.x; L.y0.end = A.y; L.z0.end = A.z;
+					L.x1.end = B.x; L.y1.end = B.y; L.z1.end = B.z;
+
+					L.rgb_t1 = c1; L.thickness.end = t1;
+				};
+
+			auto mixf = [](float a, float b, float t) { return a + (b - a) * t; };
+			auto clamp01 = [](float v) { return std::max(0.0f, std::min(1.0f, v)); };
+
+			// --------------------------------------------
+			// SCENE PARAMETERS
+			// --------------------------------------------
+			const float tableZ = -0.02f;
+
+			const float glassR_outer = 0.28f;
+			const float glassR_inner = 0.25f;
+			const float glassH = 0.75f;
+
+			const float waterH = 0.46f;            // fill level
+			const float meniscusUp = 0.016f;           // slight lift at the rim
+
+			// colors (soft and believable)
+			const Vec3  colGlassA{ 0.78f, 0.90f, 1.00f };
+			const Vec3  colGlassB{ 0.92f, 0.97f, 1.00f };
+			const Vec3  colWaterA{ 0.35f, 0.64f, 0.95f };
+			const Vec3  colWaterB{ 0.55f, 0.86f, 1.00f };
+			const Vec3  colRimHi{ 1.00f, 0.98f, 0.92f };
+			const Vec3  colRimLo{ 0.92f, 0.98f, 1.00f };
+			const Vec3  colCausticA{ 1.00f, 0.90f, 0.60f };
+			const Vec3  colCausticB{ 0.98f, 0.98f, 0.85f };
+			const Vec3  colTable{ 0.18f, 0.18f, 0.20f };
+
+			// --------------------------------------------
+			// 0) TABLE GRID (gives grounding + refraction context)
+			// --------------------------------------------
+			{
+				const int   N = 12;
+				const float span = 1.8f;
+				const float step = span / float(N);
+				const float th = 0.0025f;
+
+				for (int i = -N; i <= N; ++i) {
+					float y = i * step;
+					emitXYZ(-span, y, tableZ, span, y, tableZ,
+						colTable, colTable, th, th, 40);
+					float x = i * step;
+					emitXYZ(x, -span, tableZ, x, span, tableZ,
+						colTable, colTable, th, th, 40);
+				}
+			}
+
+			// --------------------------------------------
+			// 1) GLASS OUTER CYLINDER (vertical ribs + base ring)
+			// --------------------------------------------
+			{
+				const int ribs = 48;
+				for (int i = 0; i < ribs; i++)
+				{
+					float a = (i / float(ribs)) * TAU;
+					float x = glassR_outer * std::cos(a);
+					float y = glassR_outer * std::sin(a);
+
+					// fake Fresnel highlight (brighter near X)
+					float fres = 0.25f + 0.75f * std::fabs(std::cos(a));
+					Vec3 c0 = { mixf(colGlassA.x,colGlassB.x,fres),
+								mixf(colGlassA.y,colGlassB.y,fres),
+								mixf(colGlassA.z,colGlassB.z,fres) };
+
+					emitXYZ(x, y, 0.0f, x, y, glassH,
+						c0, c0, 0.0052f, 0.0072f, 36);
+				}
+
+				// base ring (ellipse)
+				const int segs = 72;
+				for (int s = 0; s < segs; s++) {
+					float a0 = (s / float(segs)) * TAU;
+					float a1 = ((s + 1) / float(segs)) * TAU;
+					float x0 = glassR_outer * std::cos(a0);
+					float y0 = glassR_outer * std::sin(a0);
+					float x1 = glassR_outer * std::cos(a1);
+					float y1 = glassR_outer * std::sin(a1);
+					emitXYZ(x0, y0, 0.0f, x1, y1, 0.0f,
+						colRimLo, colRimLo, 0.006f, 0.008f, 28);
+				}
+			}
+
+			// --------------------------------------------
+			// 2) GLASS INNER CYLINDER (suggest wall thickness)
+			// --------------------------------------------
+			{
+				const int ribs = 36;
+				for (int i = 0; i < ribs; i++)
+				{
+					float a = (i / float(ribs)) * TAU;
+					float x = glassR_inner * std::cos(a);
+					float y = glassR_inner * std::sin(a);
+
+					// slightly dimmer inside
+					Vec3 c = { 0.72f, 0.86f, 0.98f };
+					emitXYZ(x, y, 0.0f, x, y, glassH,
+						c, c, 0.0042f, 0.0062f, 30);
+				}
+			}
+
+			// --------------------------------------------
+			// 3) WATER SURFACE: rim ring + meniscus (short radial lifts)
+			// --------------------------------------------
+			{
+				// rim ring at fill level inside the glass
+				const int segs = 84;
+				for (int s = 0; s < segs; s++) {
+					float a0 = (s / float(segs)) * TAU;
+					float a1 = ((s + 1) / float(segs)) * TAU;
+					float r = glassR_inner * 0.996f;
+
+					float x0 = r * std::cos(a0);
+					float y0 = r * std::sin(a0);
+					float x1 = r * std::cos(a1);
+					float y1 = r * std::sin(a1);
+
+					emitXYZ(x0, y0, waterH, x1, y1, waterH,
+						colWaterB, colWaterA, 0.0065f, 0.0085f, 32);
+				}
+
+				// meniscus: short radial segments that rise near the wall
+				const int spokes = 48;
+				for (int k = 0; k < spokes; k++)
+				{
+					float a = (k / float(spokes)) * TAU;
+					float r0 = glassR_inner * 0.92f;
+					float r1 = glassR_inner * 1.00f;
+					float x0 = r0 * std::cos(a);
+					float y0 = r0 * std::sin(a);
+					float x1 = r1 * std::cos(a);
+					float y1 = r1 * std::sin(a);
+
+					// ease the lifthigher near the wall, subtle in the middle
+					float lift = meniscusUp * (0.6f + 0.4f * std::pow(std::fabs(std::cos(a)), 1.5f));
+
+					emitXYZ(x0, y0, waterH, x1, y1, waterH + lift,
+						colWaterA, colWaterB, 0.0055f, 0.0072f, 18);
+				}
+			}
+
+			// --------------------------------------------
+			// 4) WATER VOLUME: horizontal chords (gives body)
+			// --------------------------------------------
+			{
+				const int layers = 14;
+				const int chords = 38;
+				for (int li = 0; li < layers; ++li)
+				{
+					float t = (li + 0.5f) / layers;
+					float z = mixf(0.02f, waterH - 0.02f, t);
+					float thk = mixf(0.0060f, 0.0045f, t); // thinner near surface
+					float tint = mixf(0.75f, 1.00f, t);
+
+					for (int ci = 0; ci < chords; ++ci)
+					{
+						// draw across diameter at various angles for crosshatch feel
+						float a = (ci / float(chords)) * TAU;
+						float r = glassR_inner * (0.98f - 0.04f * std::sin(3.0f * a));
+						float x0 = -r * std::cos(a), y0 = -r * std::sin(a);
+						float x1 = r * std::cos(a), y1 = r * std::sin(a);
+
+						Vec3 c0{ colWaterA.x * tint, colWaterA.y * tint, colWaterA.z * tint };
+						Vec3 c1{ colWaterB.x * tint, colWaterB.y * tint, colWaterB.z * tint };
+
+						emitXYZ(x0, y0, z, x1, y1, z, c0, c1, thk * 0.65f, thk, 20);
+					}
+				}
+			}
+
+			// --------------------------------------------
+			// 5) SPECULAR HIGHLIGHTS on the glass (two bright verticals)
+			// --------------------------------------------
+			{
+				const int segs = 4 * 36;
+				const float th = 0.010f;
+				float angs[2] = { +0.65f, -0.65f };
+				for (int h = 0; h < 2; ++h) {
+					float a = angs[h];
+					float x = glassR_outer * 0.995f * std::cos(a);
+					float y = glassR_outer * 0.995f * std::sin(a);
+					emitXYZ(x, y, 0.02f, x, y, glassH - 0.01f,
+						colRimHi, colRimLo, th * 0.55f, th, segs);
+				}
+			}
+
+			// --------------------------------------------
+			// 6) BUBBLES (tiny rising segments inside the water)
+			// --------------------------------------------
+			{
+				const int bubbles = 90;
+				for (int b = 0; b < bubbles; b++)
+				{
+					float rr = glassR_inner * 0.78f * std::sqrt(Random::generate_random_float_0_to_1());
+					float a = TAU * Random::generate_random_float_0_to_1();
+					float x = rr * std::cos(a);
+					float y = rr * std::sin(a);
+					float z0 = 0.05f + (waterH - 0.10f) * Random::generate_random_float_0_to_1();
+					float dz = 0.02f + 0.05f * Random::generate_random_float_0_to_1();
+
+					emitXYZ(x, y, z0, x + 0.01f * std::cos(6 * a), y + 0.01f * std::sin(6 * a), z0 + dz,
+						Vec3{ 0.92f,0.98f,1.00f }, Vec3{ 0.85f,0.95f,1.00f },
+						0.0038f, 0.0048f, 8);
+				}
+			}
+
+			// --------------------------------------------
+			// 7) CAUSTIC STARBURST under the glass (on the table)
+			// --------------------------------------------
+			{
+				const int rays = 28;
+				for (int r = 0; r < rays; r++)
+				{
+					float a = (r / float(rays)) * TAU;
+					float jitter = 0.08f * Random::generate_random_float_minus_one_to_plus_one();
+					float r0 = 0.05f;
+					float r1 = glassR_inner * (0.65f + 0.15f * std::sin(3.0f * a + jitter));
+
+					float x0 = r0 * std::cos(a);
+					float y0 = r0 * std::sin(a);
+					float x1 = r1 * std::cos(a + 0.2f * jitter);
+					float y1 = r1 * std::sin(a + 0.2f * jitter);
+
+					float th = 0.0045f + 0.0025f * std::fabs(std::cos(2.0f * a));
+
+					emitXYZ(x0, y0, tableZ, x1, y1, tableZ,
+						colCausticA, colCausticB, th * 0.6f, th, 24);
+				}
+
+				// faint base circle for caustics
+				const int segs = 60;
+				for (int s = 0; s < segs; s++) {
+					float a0 = (s / float(segs)) * TAU;
+					float a1 = ((s + 1) / float(segs)) * TAU;
+					float r = glassR_inner * 0.72f;
+					float x0 = r * std::cos(a0), y0 = r * std::sin(a0);
+					float x1 = r * std::cos(a1), y1 = r * std::sin(a1);
+					emitXYZ(x0, y0, tableZ, x1, y1, tableZ,
+						Vec3{ 0.55f,0.60f,0.40f }, Vec3{ 0.90f,0.92f,0.70f },
+						0.0022f, 0.0030f, 18);
+				}
+			}
+
+			// --------------------------------------------
+			// 8) TOP RIM (bright ellipse)
+			// --------------------------------------------
+			{
+				const int segs = 90;
+				for (int s = 0; s < segs; s++) {
+					float a0 = (s / float(segs)) * TAU;
+					float a1 = ((s + 1) / float(segs)) * TAU;
+					float x0 = glassR_outer * std::cos(a0);
+					float y0 = glassR_outer * std::sin(a0);
+					float x1 = glassR_outer * std::cos(a1);
+					float y1 = glassR_outer * std::sin(a1);
+
+					// emphasize facing directions
+					float f0 = 0.45f + 0.55f * std::fabs(std::cos(a0));
+					float f1 = 0.45f + 0.55f * std::fabs(std::cos(a1));
+					Vec3 c0{ mixf(colRimLo.x,colRimHi.x,f0),
+							 mixf(colRimLo.y,colRimHi.y,f0),
+							 mixf(colRimLo.z,colRimHi.z,f0) };
+					Vec3 c1{ mixf(colRimLo.x,colRimHi.x,f1),
+							 mixf(colRimLo.y,colRimHi.y,f1),
+							 mixf(colRimLo.z,colRimHi.z,f1) };
+
+					emitXYZ(x0, y0, glassH, x1, y1, glassH,
+						c0, c1, 0.0065f, 0.0090f, 36);
+				}
+			}
+		}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -4304,15 +5144,12 @@ namespace Universe_
 				// lines.init_0011_flip_unique_matrix_orbit();
 				// lines.init_geometric_unfolding();
 				// lines.init_hyperbolic_gyroid_lattice();
+				// lines.init_0013_sea_and_sky_zup();
+				// lines.init_temporal_echo_cascade();
 
-
-
-				lines.init_0013_sea_and_sky_zup();
-
-
-
-
-
+				lines.init_2010_ocean_glyph_overture();
+				// lines.init_solar_flare();
+				// lines.init_2020_glass_of_water();
 
 				
 
