@@ -5991,9 +5991,11 @@ namespace Universe_
 			const float M_PI = 3.14159265359f;
 			static float time_base = 0.0f;
 
-			// World parameters
-			int chunk_size = 8;
-			int render_distance = 3; // chunks in each direction
+			// SAFE WORLD PARAMETERS - Limited to prevent infinite loops
+			const int CHUNK_SIZE = 6;  // Reduced from 8
+			const int RENDER_DISTANCE = 2; // Reduced from 3
+			const int MAX_VOXELS_PER_CHUNK = 20; // Safety limit
+
 			float voxel_size = 0.08f;
 			float world_center_x = 0.0f;
 			float world_center_z = 0.0f;
@@ -6001,41 +6003,18 @@ namespace Universe_
 			// Terrain generation parameters
 			float terrain_frequency = 0.5f;
 			float terrain_amplitude = 0.3f;
-			float cave_frequency = 2.0f;
 
-			// Advanced noise function using multiple octaves
+			// SIMPLIFIED noise function - removed deep nesting
 			auto voxel_noise = [&](float x, float y, float z) -> float {
-				// Multi-octave Perlin-like noise
-				float value = 0.0f;
-				float amplitude = 1.0f;
-				float frequency = terrain_frequency;
-				float max_value = 0.0f;
-
-				for (int octave = 0; octave < 4; octave++) {
-					// 3D noise using sine waves (simplified Perlin)
-					float noise_val =
-						sin(x * frequency + time_base * 0.1f) *
-						cos(z * frequency * 1.3f + time_base * 0.07f) *
-						sin(y * frequency * 0.7f + time_base * 0.05f);
-
-					value += noise_val * amplitude;
-					max_value += amplitude;
-					amplitude *= 0.5f;
-					frequency *= 2.0f;
-				}
-
-				return value / max_value;
+				return sin(x * terrain_frequency) * cos(z * terrain_frequency * 1.3f) * sin(y * terrain_frequency * 0.7f);
 				};
 
-			// Biome determination
+			// SIMPLIFIED biome determination
 			auto get_biome = [&](float x, float z) -> int {
 				float temp = sin(x * 0.2f) * cos(z * 0.2f);
-				float humidity = sin(x * 0.15f + 2.0f) * cos(z * 0.15f + 1.0f);
-
-				if (temp > 0.3f && humidity > 0.2f) return 0; // Forest
+				if (temp > 0.3f) return 0; // Forest
 				if (temp < -0.3f) return 1; // Snow
-				if (humidity < -0.3f) return 2; // Desert
-				return 3; // Plains
+				return 2; // Plains
 				};
 
 			// Get voxel color based on position and biome
@@ -6044,171 +6023,121 @@ namespace Universe_
 
 				switch (biome) {
 				case 0: // Forest
-					if (height > 0.8f) {
-						return { 0.1f, 0.6f, 0.1f }; // Grass
-					}
-					else if (height > 0.3f) {
-						return { 0.3f, 0.2f, 0.1f }; // Dirt
-					}
-					else {
-						return { 0.2f, 0.2f, 0.2f }; // Stone
-					}
+					if (height > 0.8f) return { 0.1f, 0.6f, 0.1f };
+					else if (height > 0.3f) return { 0.3f, 0.2f, 0.1f };
+					else return { 0.2f, 0.2f, 0.2f };
 				case 1: // Snow
-					if (height > 0.7f) {
-						return { 0.9f, 0.9f, 1.0f }; // Snow
-					}
-					else if (height > 0.4f) {
-						return { 0.6f, 0.6f, 0.7f }; // Stone
-					}
-					else {
-						return { 0.3f, 0.3f, 0.4f }; // Deep stone
-					}
-				case 2: // Desert
-					if (height > 0.6f) {
-						return { 0.9f, 0.8f, 0.4f }; // Sand
-					}
-					else {
-						return { 0.7f, 0.6f, 0.3f }; // Sandstone
-					}
+					if (height > 0.7f) return { 0.9f, 0.9f, 1.0f };
+					else return { 0.6f, 0.6f, 0.7f };
 				default: // Plains
-					if (height > 0.7f) {
-						return { 0.4f, 0.7f, 0.3f }; // Grass
-					}
-					else if (height > 0.4f) {
-						return { 0.5f, 0.4f, 0.2f }; // Dirt
-					}
-					else {
-						return { 0.3f, 0.3f, 0.3f }; // Stone
-					}
+					if (height > 0.7f) return { 0.4f, 0.7f, 0.3f };
+					else return { 0.5f, 0.4f, 0.2f };
 				}
 				};
 
-			// Generate a single voxel cube with optimized line drawing
+			// OPTIMIZED voxel cube creation - only creates visible edges
 			auto create_voxel_cube = [&](float center_x, float center_y, float center_z,
 				float r, float g, float b, bool animated = false) {
 					float half_size = voxel_size * 0.5f;
 
-					// Define the 8 corners of the voxel
-					std::vector<std::tuple<float, float, float>> corners = {
-						{center_x - half_size, center_y - half_size, center_z - half_size},
-						{center_x + half_size, center_y - half_size, center_z - half_size},
-						{center_x + half_size, center_y - half_size, center_z + half_size},
-						{center_x - half_size, center_y - half_size, center_z + half_size},
-						{center_x - half_size, center_y + half_size, center_z - half_size},
-						{center_x + half_size, center_y + half_size, center_z - half_size},
-						{center_x + half_size, center_y + half_size, center_z + half_size},
-						{center_x - half_size, center_y + half_size, center_z + half_size}
+					// Only create 4 key edges instead of 12 for performance
+					std::vector<std::tuple<float, float, float, float, float, float>> edges = {
+						// Bottom square
+						{center_x - half_size, center_y - half_size, center_z - half_size,
+						 center_x + half_size, center_y - half_size, center_z - half_size},
+						{center_x + half_size, center_y - half_size, center_z - half_size,
+						 center_x + half_size, center_y - half_size, center_z + half_size},
+						{center_x + half_size, center_y - half_size, center_z + half_size,
+						 center_x - half_size, center_y - half_size, center_z + half_size},
+						{center_x - half_size, center_y - half_size, center_z + half_size,
+						 center_x - half_size, center_y - half_size, center_z - half_size},
+						 // Four vertical edges
+						 {center_x - half_size, center_y - half_size, center_z - half_size,
+						  center_x - half_size, center_y + half_size, center_z - half_size},
+						 {center_x + half_size, center_y - half_size, center_z - half_size,
+						  center_x + half_size, center_y + half_size, center_z - half_size},
+						 {center_x + half_size, center_y - half_size, center_z + half_size,
+						  center_x + half_size, center_y + half_size, center_z + half_size},
+						 {center_x - half_size, center_y - half_size, center_z + half_size,
+						  center_x - half_size, center_y + half_size, center_z + half_size}
 					};
 
-					// Define the 12 edges of the cube
-					std::vector<std::pair<int, int>> edges = {
-						{0,1}, {1,2}, {2,3}, {3,0}, // Bottom face
-						{4,5}, {5,6}, {6,7}, {7,4}, // Top face  
-						{0,4}, {1,5}, {2,6}, {3,7}  // Vertical edges
-					};
-
-					for (const auto& [start_idx, end_idx] : edges) {
+					for (const auto& [x0, y0, z0, x1, y1, z1] : edges) {
 						Line& edge = add_line();
 
-						auto [sx, sy, sz] = corners[start_idx];
-						auto [ex, ey, ez] = corners[end_idx];
-
-						edge.x0.start = sx;
-						edge.y0.start = sy;
-						edge.z0.start = sz;
-						edge.x1.start = ex;
-						edge.y1.start = ey;
-						edge.z1.start = ez;
+						edge.x0.start = x0;
+						edge.y0.start = y0;
+						edge.z0.start = z0;
+						edge.x1.start = x1;
+						edge.y1.start = y1;
+						edge.z1.start = z1;
 
 						edge.rgb_t0.x = r;
 						edge.rgb_t0.y = g;
 						edge.rgb_t0.z = b;
 
 						edge.thickness.start = 0.004f;
-						edge.number_of_cubes = 4;
+						edge.number_of_cubes = 3; // Reduced for performance
 						edge.copy_start_to_end();
 
 						if (animated) {
-							// Add subtle animation to certain voxels
-							float anim_offset = sin(time_base * 2.0f + center_x * 3.0f + center_z * 2.0f) * 0.01f;
-							edge.x1.end = ex + anim_offset;
-							edge.y1.end = ey + anim_offset * 0.5f;
+							float anim_offset = sin(time_base * 2.0f + center_x * 3.0f) * 0.01f;
+							edge.x1.end = x1 + anim_offset;
+							edge.y1.end = y1 + anim_offset * 0.5f;
 						}
 					}
 				};
 
-			// Generate terrain chunks around center
-			for (int chunk_x = -render_distance; chunk_x <= render_distance; chunk_x++) {
-				for (int chunk_z = -render_distance; chunk_z <= render_distance; chunk_z++) {
-					float chunk_world_x = world_center_x + chunk_x * chunk_size * voxel_size;
-					float chunk_world_z = world_center_z + chunk_z * chunk_size * voxel_size;
+			// SAFE terrain generation with limited voxel count
+			int total_voxels_created = 0;
+
+			for (int chunk_x = -RENDER_DISTANCE; chunk_x <= RENDER_DISTANCE; chunk_x++) {
+				for (int chunk_z = -RENDER_DISTANCE; chunk_z <= RENDER_DISTANCE; chunk_z++) {
+					float chunk_world_x = world_center_x + chunk_x * CHUNK_SIZE * voxel_size;
+					float chunk_world_z = world_center_z + chunk_z * CHUNK_SIZE * voxel_size;
 
 					int biome = get_biome(chunk_world_x, chunk_world_z);
+					int voxels_in_chunk = 0;
 
-					for (int local_x = 0; local_x < chunk_size; local_x++) {
-						for (int local_z = 0; local_z < chunk_size; local_z++) {
+					// SAFE: Only iterate through limited positions
+					for (int local_x = 0; local_x < CHUNK_SIZE && voxels_in_chunk < MAX_VOXELS_PER_CHUNK; local_x++) {
+						for (int local_z = 0; local_z < CHUNK_SIZE && voxels_in_chunk < MAX_VOXELS_PER_CHUNK; local_z++) {
 							float world_x = chunk_world_x + local_x * voxel_size;
 							float world_z = chunk_world_z + local_z * voxel_size;
 
 							// Generate terrain height
 							float height_noise = voxel_noise(world_x, 0.0f, world_z);
-							int terrain_height = int((height_noise * 0.5f + 0.5f) * chunk_size);
+							int terrain_height = int((height_noise * 0.5f + 0.5f) * CHUNK_SIZE);
 
-							// Generate caves and overhangs
-							for (int local_y = 0; local_y < chunk_size; local_y++) {
+							// SAFE: Only create surface voxels and a few underground
+							for (int local_y = 0; local_y <= terrain_height && local_y < CHUNK_SIZE; local_y++) {
+								if (voxels_in_chunk >= MAX_VOXELS_PER_CHUNK) break;
+
 								float world_y = local_y * voxel_size;
 
-								float density = voxel_noise(world_x, world_y, world_z);
-								float cave_density = sin(world_x * cave_frequency) * cos(world_z * cave_frequency) *
-									sin(world_y * cave_frequency * 0.5f);
+								// Only create voxel if it's near surface or has special properties
+								bool should_create = false;
 
-								bool should_create_voxel = false;
-
-								// Solid terrain
-								if (local_y <= terrain_height && density > -0.1f) {
-									should_create_voxel = true;
+								if (local_y == terrain_height) {
+									// Surface voxel - always create
+									should_create = true;
 								}
-								// Cave systems
-								else if (cave_density > 0.3f && density > -0.2f) {
-									should_create_voxel = true;
+								else if (local_y >= terrain_height - 1 && local_y > 0) {
+									// Just below surface - 50% chance
+									should_create = (Random::generate_random_float_0_to_1() > 0.5f);
 								}
-								// Floating islands
-								else if (local_y > terrain_height + 2 && density > 0.4f &&
-									sin(world_x * 0.8f) * cos(world_z * 0.8f) > 0.5f) {
-									should_create_voxel = true;
+								else if (local_y == 0) {
+									// Bottom layer - always create
+									should_create = true;
 								}
 
-								if (should_create_voxel) {
+								if (should_create) {
 									auto [r, g, b] = get_voxel_color(world_x, world_y, world_z, biome);
+									bool animated = (local_y == terrain_height) && (Random::generate_random_float_0_to_1() > 0.7f);
 
-									// Special voxel types based on conditions
-									bool is_animated = false;
-
-									// Glowing ore veins
-									if (density > 0.6f && local_y < terrain_height - 2) {
-										r = 0.8f + 0.2f * sin(time_base * 3.0f + world_x);
-										g = 0.6f + 0.4f * cos(time_base * 2.0f + world_z);
-										b = 0.2f;
-										is_animated = true;
-									}
-
-									// Water/lava pools
-									else if (local_y == terrain_height + 1 && density < -0.3f) {
-										if (biome == 1) { // Snow biome - water
-											r = 0.2f;
-											g = 0.4f;
-											b = 0.8f + 0.2f * sin(time_base * 2.0f);
-											is_animated = true;
-										}
-										else { // Other biomes - lava
-											r = 0.9f + 0.1f * sin(time_base * 4.0f);
-											g = 0.3f + 0.2f * cos(time_base * 3.0f);
-											b = 0.1f;
-											is_animated = true;
-										}
-									}
-
-									create_voxel_cube(world_x, world_y, world_z, r, g, b, is_animated);
+									create_voxel_cube(world_x, world_y, world_z, r, g, b, animated);
+									voxels_in_chunk++;
+									total_voxels_created++;
 								}
 							}
 						}
@@ -6216,84 +6145,53 @@ namespace Universe_
 				}
 			}
 
-			// Generate dynamic entities
+			// LIMITED entity generation
 			auto generate_entities = [&]() {
-				// Floating crystals
-				for (int crystal = 0; crystal < 8; crystal++) {
-					float angle = crystal * (2.0f * M_PI / 8) + time_base * 0.5f;
-					float radius = 0.8f + 0.2f * sin(crystal * 1.7f);
-					float height = 0.5f + 0.3f * cos(time_base * 0.7f + crystal);
+				// Only 3 floating crystals instead of 8
+				for (int crystal = 0; crystal < 3; crystal++) {
+					float angle = crystal * (2.0f * M_PI / 3) + time_base * 0.5f;
+					float radius = 0.6f;
+					float height = 0.4f + 0.2f * sin(time_base * 0.7f + crystal);
 
 					float crystal_x = radius * cos(angle);
 					float crystal_z = radius * sin(angle);
 					float crystal_y = height;
 
-					// Create crystal cluster
-					for (int i = -1; i <= 1; i++) {
-						for (int j = -1; j <= 1; j++) {
-							for (int k = -1; k <= 1; k++) {
-								if (abs(i) + abs(j) + abs(k) <= 1) { // Only create adjacent voxels
-									float voxel_x = crystal_x + i * voxel_size;
-									float voxel_y = crystal_y + j * voxel_size;
-									float voxel_z = crystal_z + k * voxel_size;
-
-									create_voxel_cube(voxel_x, voxel_y, voxel_z,
-										0.7f + 0.3f * sin(time_base * 2.0f + crystal),
-										0.3f + 0.3f * cos(time_base * 1.5f + crystal),
-										0.9f + 0.1f * sin(time_base * 2.5f + crystal),
-										true);
-								}
-							}
-						}
-					}
+					// Single crystal voxel instead of cluster
+					create_voxel_cube(crystal_x, crystal_y, crystal_z,
+						0.7f + 0.3f * sin(time_base * 2.0f),
+						0.3f,
+						0.9f,
+						true);
 				}
 
-				// Particle effects
-				for (int particle = 0; particle < 20; particle++) {
-					float life = fmod(time_base * 0.3f + particle * 0.2f, 1.0f);
+				// Only 8 particles instead of 20
+				for (int particle = 0; particle < 8; particle++) {
+					float life = fmod(time_base * 0.3f + particle * 0.3f, 1.0f);
 					if (life < 0.8f) {
-						float angle = particle * (2.0f * M_PI / 20) + time_base * 2.0f;
-						float radius = 0.3f + life * 0.5f;
-						float height = -0.2f + life * 1.0f;
+						float angle = particle * (2.0f * M_PI / 8) + time_base * 2.0f;
+						float radius = 0.2f + life * 0.3f;
+						float height = -0.1f + life * 0.8f;
 
-						float px = radius * cos(angle);
-						float pz = radius * sin(angle);
-						float py = height;
-
-						create_voxel_cube(px, py, pz,
-							0.9f, 0.8f, 0.1f,
-							true);
+						create_voxel_cube(radius * cos(angle), height, radius * sin(angle),
+							0.9f, 0.8f, 0.1f, true);
 					}
 				}
 				};
 
-			// Generate skybox with distant voxel clouds
+			// LIMITED skybox
 			auto generate_skybox = [&]() {
-				for (int cloud = 0; cloud < 5; cloud++) {
-					float angle = cloud * (2.0f * M_PI / 5) + time_base * 0.1f;
-					float radius = 1.5f + 0.2f * sin(cloud * 2.0f);
-					float height = 0.8f + 0.1f * cos(cloud * 1.3f);
+				// Only 2 clouds instead of 5
+				for (int cloud = 0; cloud < 2; cloud++) {
+					float angle = cloud * M_PI + time_base * 0.1f;
+					float radius = 1.2f;
+					float height = 0.7f;
 
 					float cloud_x = radius * cos(angle);
 					float cloud_z = radius * sin(angle);
-					float cloud_y = height;
 
-					// Create cloud formation
-					for (int i = -2; i <= 2; i++) {
-						for (int j = -1; j <= 1; j++) {
-							for (int k = -2; k <= 2; k++) {
-								if (Random::generate_random_float_0_to_1() > 0.6f) {
-									float voxel_x = cloud_x + i * voxel_size * 0.7f;
-									float voxel_y = cloud_y + j * voxel_size * 0.7f;
-									float voxel_z = cloud_z + k * voxel_size * 0.7f;
-
-									create_voxel_cube(voxel_x, voxel_y, voxel_z,
-										0.9f, 0.9f, 0.95f,
-										true);
-								}
-							}
-						}
-					}
+					// Single cloud voxel instead of formation
+					create_voxel_cube(cloud_x, height, cloud_z, 0.9f, 0.9f, 0.95f, true);
 				}
 				};
 
@@ -6304,6 +6202,9 @@ namespace Universe_
 
 			// Increment time for animation
 			time_base += 0.016f;
+
+			// DEBUG: Print voxel count to verify it's reasonable
+			// printf("Total voxels created: %d\n", total_voxels_created);
 		}
 
 
@@ -6421,9 +6322,854 @@ namespace Universe_
 
 
 		
+		
+		void init_spiral_torus_interference()
+		{
+			lines.clear();
+
+			const float TAU = 6.2831853071795864769252867665590f;
+			const float PI = 3.1415926535897932384626433832795f;
+
+			// --- Configuration ---
+			const int num_tori = 3; // Number of overlapping tori
+			const float major_radius = 0.6f; // Radius of the main ring
+			const float minor_radius = 0.15f; // Radius of the tube
+			const int segments_per_torus = 100; // Resolution of each torus ring
+			const int rings_per_torus = 40; // Number of rings around the major radius
+			const float base_rotation_speed = 0.2f; // Base rotation speed
+			const float rotation_speed_variance = 0.1f; // How much each torus differs in speed
+			const float phase_variance = 0.3f; // Phase offset between tori
+			const float hue_shift_per_torus = 0.33f; // Color difference between tori
+			const float base_thickness = 0.004f;
+			const int cubes_per_segment = 15;
+
+			auto hue_to_rgb = [&](float h) -> Vec3 {
+				h = fmodf(h, 1.0f);
+				float r = 0.5f + 0.5f * std::cos(TAU * (h + 0.00f));
+				float g = 0.5f + 0.5f * std::cos(TAU * (h + 0.33f));
+				float b = 0.5f + 0.5f * std::cos(TAU * (h + 0.66f));
+				return { r, g, b };
+				};
+
+			// --- Generate Interfering Tori ---
+			for (int t = 0; t < num_tori; ++t) {
+				float torus_rotation_speed = base_rotation_speed + (Random::generate_random_float_0_to_1() - 0.5f) * rotation_speed_variance;
+				float torus_phase_offset = t * phase_variance;
+				Vec3 base_color = hue_to_rgb(t * hue_shift_per_torus);
+
+				for (int ring = 0; ring < rings_per_torus; ++ring) {
+					float u = float(ring) / float(rings_per_torus); // 0 to 1
+					float theta = u * TAU; // Angle around the major radius
+
+					for (int seg = 0; seg < segments_per_torus; ++seg) {
+						float v = float(seg) / float(segments_per_torus); // 0 to 1
+						float phi = v * TAU; // Angle around the minor radius (tube)
+
+						// Calculate base torus point
+						float x_base = (major_radius + minor_radius * std::cos(phi)) * std::cos(theta);
+						float y_base = minor_radius * std::sin(phi);
+						float z_base = (major_radius + minor_radius * std::cos(phi)) * std::sin(theta);
+
+						// Animate rotation for this specific torus
+						float current_time = torus_phase_offset + torus_rotation_speed * 0.1; // 'time' from shader
+						float cos_rot = std::cos(current_time);
+						float sin_rot = std::sin(current_time);
+
+						// Rotate the point around the Y-axis
+						float x_rot = x_base * cos_rot - z_base * sin_rot;
+						float y_rot = y_base;
+						float z_rot = x_base * sin_rot + z_base * cos_rot;
+
+						// Calculate the *next* point to form a line segment
+						float v_next = float(seg + 1) / float(segments_per_torus);
+						float phi_next = v_next * TAU;
+						float x_base_next = (major_radius + minor_radius * std::cos(phi_next)) * std::cos(theta);
+						float y_base_next = minor_radius * std::sin(phi_next);
+						float z_base_next = (major_radius + minor_radius * std::cos(phi_next)) * std::sin(theta);
+
+						float x_rot_next = x_base_next * cos_rot - z_base_next * sin_rot;
+						float y_rot_next = y_base_next;
+						float z_rot_next = x_base_next * sin_rot + z_base_next * cos_rot;
+
+						// Create the line segment for this frame
+						Line& line = add_line();
+
+						// The line starts and ends at the current calculated positions (no animation start/end needed here
+						// if we want a continuous, spinning torus, otherwise use animation as shown in other examples)
+						// For a simple, non-revealing effect:
+						line.x0.start = x_rot;
+						line.y0.start = y_rot;
+						line.z0.start = z_rot;
+						line.x1.start = x_rot_next;
+						line.y1.start = y_rot_next;
+						line.z1.start = z_rot_next;
+
+						line.copy_start_to_end(); // If no animation, start and end are the same
+
+						line.x0.end = z_rot;
+						line.y0.end = y_rot;
+						line.z0.end = x_rot;
+						line.x1.end = z_rot_next;
+						line.y1.end = y_rot_next;
+						line.z1.end = x_rot_next;
+						
+
+
+						// Apply color and style
+						line.rgb_t0 = base_color;
+						line.rgb_t1 = base_color;
+						line.thickness.start = base_thickness;
+						line.thickness.end = base_thickness;
+						line.number_of_cubes = cubes_per_segment;
+					}
+				}
+			}
+		}
+
+
+		void init_pulsing_neural_mesh()
+		{
+			lines.clear();
+
+			const float TAU = 6.2831853071795864769252867665590f;
+			const float PI = 3.1415926535897932384626433832795f;
+
+			// --- Configuration ---
+			const int num_nodes = 50; // Total number of nodes
+			const float sphere_radius = 0.8f; // Radius of the sphere the nodes are placed in
+			const float connection_distance = 0.3f; // Maximum distance for a connection to form
+			const float pulse_speed = 1.5f; // How fast the pulses travel along connections
+			const float pulse_frequency = 0.8f; // How often new pulses start
+			const Vec3 inactive_color = { 0.1f, 0.1f, 0.2f }; // Color when not active
+			const Vec3 active_color = { 0.9f, 0.8f, 0.1f }; // Color when active (like synapse)
+			const float base_thickness_inactive = 0.002f;
+			const float base_thickness_active = 0.008f;
+			const int cubes_per_connection = 10;
+
+			// --- Helper: Calculate distance between two Vec3 ---
+			auto distance = [](const Vec3& a, const Vec3& b) -> float {
+				float dx = a.x - b.x;
+				float dy = a.y - b.y;
+				float dz = a.z - b.z;
+				return std::sqrt(dx * dx + dy * dy + dz * dz);
+				};
+
+			// --- 1. Generate Nodes ---
+			std::vector<Vec3> nodes;
+			nodes.reserve(num_nodes);
+			for (int i = 0; i < num_nodes; ++i) {
+				// Random point inside a sphere
+				float z = Random::generate_random_float_minus_one_to_plus_one();
+				float phi = Random::generate_random_float_0_to_1() * TAU;
+				float r_cyl = std::sqrt(1.0f - z * z); // Radius of the circle at height z
+				float x = r_cyl * std::cos(phi);
+				float y = r_cyl * std::sin(phi);
+				// Scale by a random radius to fill the volume
+				float scale = std::cbrt(Random::generate_random_float_0_to_1()); // For uniform distribution in volume
+				nodes.push_back({
+					x * sphere_radius * scale,
+					y * sphere_radius * scale,
+					z * sphere_radius * scale
+					});
+			}
+
+			// --- 2. Generate Connections ---
+			for (int i = 0; i < num_nodes; ++i) {
+				for (int j = i + 1; j < num_nodes; ++j) { // Avoid duplicate connections (i,j) and (j,i)
+					float dist = distance(nodes[i], nodes[j]);
+					if (dist <= connection_distance) {
+						Line& line = add_line();
+
+						// Start and End positions are the two node positions
+						line.x0.start = nodes[i].x;
+						line.y0.start = nodes[i].y;
+						line.z0.start = nodes[i].z;
+						line.x1.start = nodes[j].x;
+						line.y1.start = nodes[j].y;
+						line.z1.start = nodes[j].z;
+
+						line.copy_start_to_end(); // Static line between nodes
+
+						// --- Animation Logic (Pulsing) ---
+						// Use the global 'time' and unique properties of this connection to drive the pulse
+						float connection_id_factor = (i * num_nodes + j) * 0.01f; // Unique offset for each connection
+						float pulse_progress = std::fmod(pulse_frequency * 0.1 + connection_id_factor, 1.0f); // 0 to 1, loops
+
+						// Determine if this part of the line is "lit up" based on the pulse progress
+						// A simple pulse could just be a threshold, but let's make it a traveling "wave"
+						// Imagine a pulse traveling from node i to node j. The "active" part moves along the line.
+						Vec3 dir = { nodes[j].x - nodes[i].x, nodes[j].y - nodes[i].y, nodes[j].z - nodes[i].z };
+						float pulse_position_along_line = pulse_progress; // 0 = at node i, 1 = at node j
+
+						// For simplicity, let's just pulse the entire line's brightness/thickness based on the pulse_progress
+						// A more complex effect could animate the start/end points along the line itself.
+						float pulse_intensity = std::sin(pulse_progress * TAU); // Oscillates -1 to 1
+						pulse_intensity = (pulse_intensity + 1.0f) / 2.0f; // Remap to 0 to 1
+
+						// Interpolate color and thickness based on pulse
+						line.rgb_t0.x = inactive_color.x + pulse_intensity * (active_color.x - inactive_color.x);
+						line.rgb_t0.y = inactive_color.y + pulse_intensity * (active_color.y - inactive_color.y);
+						line.rgb_t0.z = inactive_color.z + pulse_intensity * (active_color.z - inactive_color.z);
+						line.rgb_t1 = line.rgb_t0; // Same color for both ends
+
+						line.thickness.start = base_thickness_inactive + pulse_intensity * (base_thickness_active - base_thickness_inactive);
+						line.thickness.end = line.thickness.start; // Same thickness for both ends
+
+						line.number_of_cubes = cubes_per_connection;
+					}
+				}
+			}
+		}
+
+		
+		// --- Airplane v2: stabilized wireframe delta-jet with contrails ---
+		void init_2031_airplane_stabilized()
+		{
+			lines.clear();
+
+			// ===== knobs =====
+			const bool  yz_swapped = true;       // set false for classic Y-up
+			const float scale = 1.00f;     // overall scene scale
+			const float TAU = 6.28318530718f;
+
+			// Animation poses (start -> end)
+			struct Pose { Vec3 t; float yaw, pitch, roll, s; };
+			const Pose P0{ {-1.15f, 0.04f, -0.02f},  0.00f,  0.02f, -0.10f, scale };
+			const Pose P1{ { 1.05f, 0.26f,  0.14f},  0.22f,  0.08f,  0.28f, scale };
+
+			// Palette / thickness
+			const Vec3 bodyA{ 0.78f,0.86f,0.98f }, bodyB{ 0.62f,0.74f,0.94f };
+			const Vec3 wingA{ 0.86f,0.94f,1.00f }, wingB{ 0.66f,0.82f,0.98f };
+			const Vec3 accent{ 0.98f,0.80f,0.35f };
+			const Vec3 trail{ 0.97f,0.99f,1.00f };
+
+			const float tThin = 0.0060f;
+			const float tMed = 0.0085f;
+			const float tThick = 0.0120f;
+
+			const int cubesFine = 34;
+			const int cubesMed = 26;
+			const int cubesTrail = 20;
+
+			// ========= math helpers =========
+			auto rotX = [](Vec3 p, float a) { float c = std::cos(a), s = std::sin(a); return Vec3{ p.x, c * p.y - s * p.z, s * p.y + c * p.z }; };
+			auto rotY = [](Vec3 p, float a) { float c = std::cos(a), s = std::sin(a); return Vec3{ c * p.x + s * p.z, p.y, -s * p.x + c * p.z }; };
+			auto rotZ = [](Vec3 p, float a) { float c = std::cos(a), s = std::sin(a); return Vec3{ c * p.x - s * p.y, s * p.x + c * p.y, p.z }; };
+
+			auto applyPoseLocal = [&](const Pose& P, Vec3 v)->Vec3 {
+				// local (X nosetail, Y up, Z leftright) -> posed local
+				Vec3 q{ v.x * P.s, v.y * P.s, v.z * P.s };
+				// Z-Y-X order is stable for aircraft-ish yaw/pitch/roll feel
+				q = rotZ(q, P.roll);
+				q = rotY(q, P.yaw);
+				q = rotX(q, P.pitch);
+				q = { q.x + P.t.x, q.y + P.t.y, q.z + P.t.z };
+				// final axis mapping (kept to very last step)
+				return yz_swapped ? Vec3{ q.x, q.z, q.y } : q;
+				};
+
+			auto addL = [&](Vec3 a0, Vec3 b0, Vec3 a1, Vec3 b1, Vec3 c0, Vec3 c1, float th0, float th1, int cubes) {
+				Line& L = add_line();
+				Vec3 M{ 0.5f * (a0.x + b0.x), 0.5f * (a0.y + b0.y), 0.5f * (a0.z + b0.z) };
+				L.x0.start = M.x; L.y0.start = M.y; L.z0.start = M.z;
+				L.x1.start = M.x; L.y1.start = M.y; L.z1.start = M.z;
+				L.rgb_t0 = c0; L.thickness.start = th0; L.number_of_cubes = cubes;
+				L.copy_start_to_end();
+				L.x0.end = a1.x; L.y0.end = a1.y; L.z0.end = a1.z;
+				L.x1.end = b1.x; L.y1.end = b1.y; L.z1.end = b1.z;
+				L.rgb_t1 = c1; L.thickness.end = th1;
+				};
+
+			auto seg_local = [&](Vec3 A, Vec3 B, Vec3 cA, Vec3 cB, float thA, float thB, int cubes) {
+				addL(applyPoseLocal(P0, A), applyPoseLocal(P0, B),
+					applyPoseLocal(P1, A), applyPoseLocal(P1, B),
+					cA, cB, thA, thB, cubes);
+				};
+
+			// ========= geometry (LOCAL space) =========
+			// Fuselage radius along X (nose ~ +0.95 to tail ~ -0.85). Smooth, bounded.
+			auto fusRadY = [&](float x) {
+				// piecewise smooth dome: big center, taper to nose/tail
+				float a = 0.18f, c = 0.10f, half = 0.78f;
+				float t = 1.0f - ((x - c) * (x - c)) / (half * half);
+				t = std::max(0.0f, t);
+				return a * std::sqrt(t);
+				};
+			auto fusRadZ = [&](float x) { return 0.70f * fusRadY(x); };
+
+			// (1) Longitudinal ribs (very stable): connect successive rings at fixed angles around the body
+			{
+				const int rings = 30;                  // along X
+				const int spokes = 8;                  // around radius (in YZ)
+				const float xNose = 0.95f, xTail = -0.85f;
+
+				for (int s = 0; s < spokes; ++s) {
+					float ang = (s / float(spokes)) * TAU; // angle in YZ
+					float cy = std::cos(ang), sy = std::sin(ang);
+
+					for (int i = 0; i < rings - 1; ++i) {
+						float a = i / (rings - 1.0f), b = (i + 1) / (rings - 1.0f);
+						float xa = xNose * (1 - a) + xTail * a;
+						float xb = xNose * (1 - b) + xTail * b;
+
+						// ellipse on YZ
+						Vec3 Pa{ xa, fusRadY(xa) * cy, fusRadZ(xa) * sy };
+						Vec3 Pb{ xb, fusRadY(xb) * cy, fusRadZ(xb) * sy };
+
+						seg_local(Pa, Pb, bodyA, bodyB, tMed, tMed, cubesFine);
+					}
+				}
+
+				// centerline (nose-to-tail)
+				seg_local(Vec3{ xNose, 0, 0 }, Vec3{ xTail, 0, 0 }, bodyB, bodyA, tMed, tMed, cubesFine);
+
+				// simple canopy line (top front)
+				seg_local(Vec3{ 0.78f,  fusRadY(0.78f) * 0.85f, 0.0f },
+					Vec3{ 0.58f,  fusRadY(0.58f) * 0.95f, 0.0f }, accent, bodyA, tMed, tThin, 20);
+			}
+
+			// (2) Delta wings (trapezoid planform), symmetric
+			auto build_wing = [&](float side) {
+				// side = +1 right wing (Z+), -1 left (Z-)
+				const Vec3 rootLE{ 0.18f,  0.01f,  0.10f * side };
+				const Vec3 rootTE{ -0.15f, -0.02f,  0.06f * side };
+				const Vec3 tipLE{ 0.10f,  0.03f,  0.95f * side };
+				const Vec3 tipTE{ -0.34f, -0.02f,  0.82f * side };
+
+				// leading/trailing/tip edges
+				seg_local(rootLE, tipLE, wingA, wingB, tThick, tThick, cubesFine);
+				seg_local(rootTE, tipTE, wingA, wingB, tMed, tMed, cubesFine);
+				seg_local(tipLE, tipTE, wingB, wingA, tMed, tMed, cubesFine);
+				// one mid rib
+				seg_local(Vec3{ -0.02f, 0.01f, 0.12f * side }, Vec3{ -0.06f, 0.02f, 0.84f * side }, wingB, wingA, tThin, tThin, cubesMed);
+
+				// wingtip accent
+				seg_local(tipLE, Vec3{ tipLE.x + 0.06f, tipLE.y + 0.03f, tipLE.z }, accent, accent, tThin, tThin, 16);
+				};
+			build_wing(+1.0f);
+			build_wing(-1.0f);
+
+			// (3) Tailplanes
+			{
+				// vertical fin
+				Vec3 baseF{ -0.58f,  0.00f, 0.00f };
+				Vec3 baseB{ -0.78f, -0.04f, 0.00f };
+				Vec3 top{ -0.44f,  0.26f, 0.00f };
+				seg_local(baseF, top, bodyB, bodyA, tThick, tThick, cubesMed);
+				seg_local(baseB, top, bodyB, bodyA, tMed, tMed, cubesMed);
+
+				// horizontal stabs
+				Vec3 H_leR{ -0.52f, 0.02f,  0.52f }, H_teR{ -0.70f,-0.02f, 0.45f };
+				Vec3 H_leL{ -0.52f, 0.02f, -0.52f }, H_teL{ -0.70f,-0.02f,-0.45f };
+				seg_local(H_leR, H_teR, wingA, wingB, tMed, tMed, cubesMed);
+				seg_local(H_leL, H_teL, wingA, wingB, tMed, tMed, cubesMed);
+				seg_local(H_leR, H_leL, wingB, wingA, tMed, tMed, cubesMed);
+				seg_local(H_teR, H_teL, wingB, wingA, tThin, tThin, cubesMed);
+			}
+
+			// (4) Engine glow (simple afterburner starlines at tail centerline)
+			{
+				Vec3 nozzle{ -0.80f, -0.01f, 0.0f };
+				const int rays = 6;
+				for (int i = 0; i < rays; ++i) {
+					float a = (i / float(rays)) * TAU;
+					Vec3 A{ nozzle.x, nozzle.y, nozzle.z };
+					Vec3 B{ nozzle.x - 0.18f,
+							nozzle.y + 0.04f * std::sin(a),
+							nozzle.z + 0.06f * std::cos(a) };
+					seg_local(A, B, Vec3{ 0.95f,0.75f,0.35f }, Vec3{ 1.0f,0.90f,0.55f }, tThin * 0.9f, tThin * 0.7f, 16);
+				}
+			}
+
+			// (5) Contrails (smooth & stable). Start short & calm  end longer & wavier.
+			auto contrail = [&](Vec3 anchor, float len, float amp, int segs) {
+				for (int i = 0; i < segs; ++i) {
+					float t0 = i / float(segs);
+					float t1 = (i + 1) / float(segs);
+
+					float Ls = 0.25f * len, Le = len;     // start vs end length
+
+					auto curve = [&](float tt, float L, float phase)->Vec3 {
+						// trail goes backwards in -X with gentle Y/Z waves
+						float x = anchor.x - L * tt;
+						float y = anchor.y + amp * 0.25f * std::sin(5.3f * tt + 1.1f * phase);
+						float z = anchor.z + amp * 0.40f * std::sin(3.9f * tt + 2.0f * phase);
+						return Vec3{ x,y,z };
+						};
+
+					Vec3 A0 = applyPoseLocal(P0, curve(t0, Ls, 0.0f));
+					Vec3 B0 = applyPoseLocal(P0, curve(t1, Ls, 0.0f));
+					Vec3 A1 = applyPoseLocal(P1, curve(t0, Le, 1.4f));
+					Vec3 B1 = applyPoseLocal(P1, curve(t1, Le, 2.2f));
+
+					addL(A0, B0, A1, B1, trail, trail, tThin * 0.70f, tThin * 0.55f, cubesTrail);
+				}
+				};
+			// tips & tail contrails
+			contrail(Vec3{ 0.10f, 0.03f,  0.95f }, 0.90f, 0.08f, 30);
+			contrail(Vec3{ 0.10f, 0.03f, -0.95f }, 0.90f, 0.08f, 30);
+			contrail(Vec3{ -0.72f,-0.01f,  0.00f }, 0.55f, 0.05f, 22);
+		}
+
+
+		void init_neural_aurora()
+		{
+			const float M_PI = 3.14159265359f;
+			static float time_base = 0.0f;
+
+			// Neural network parameters
+			int neuron_layers = 5;
+			int neurons_per_layer = 12;
+			float network_radius = 0.6f;
+			float layer_spacing = 0.15f;
+
+			// Aurora parameters
+			float aurora_frequency = 2.5f;
+			float aurora_amplitude = 0.4f;
+			float pulse_speed = 1.8f;
+
+			// Create neural nodes with aurora effects
+			std::vector<std::tuple<float, float, float, float>> neurons; // x, y, z, energy
+
+			// Generate neural nodes in spherical layers
+			for (int layer = 0; layer < neuron_layers; layer++) {
+				float layer_radius = network_radius * (0.3f + 0.7f * (layer / float(neuron_layers - 1)));
+				float layer_height = -0.3f + layer * layer_spacing;
+
+				for (int neuron = 0; neuron < neurons_per_layer; neuron++) {
+					float angle = neuron * (2.0f * M_PI / neurons_per_layer);
+
+					// Add spherical distortion
+					float distortion = sin(time_base * 0.7f + layer * 2.0f) * 0.1f;
+
+					float x = layer_radius * cos(angle) + distortion * cos(angle * 3.0f);
+					float y = layer_height + sin(angle * 2.0f + layer) * 0.05f;
+					float z = layer_radius * sin(angle) + distortion * sin(angle * 3.0f);
+
+					// Neural energy pulse
+					float energy = 0.5f + 0.5f * sin(time_base * pulse_speed + layer * 1.3f + neuron * 0.7f);
+
+					neurons.push_back({ x, y, z, energy });
+				}
+			}
+
+			// Create neural connections with aurora colors
+			for (int i = 0; i < neurons.size(); i++) {
+				auto [x1, y1, z1, energy1] = neurons[i];
+
+				// Connect to nearby neurons (limited connections for performance)
+				int connections_per_neuron = 4;
+				for (int j = 0; j < connections_per_neuron; j++) {
+					int target_idx = (i + j * 3) % neurons.size();
+					if (target_idx == i) continue;
+
+					auto [x2, y2, z2, energy2] = neurons[target_idx];
+
+					// Calculate distance-based connection strength
+					float dx = x2 - x1;
+					float dy = y2 - y1;
+					float dz = z2 - z1;
+					float distance = sqrt(dx * dx + dy * dy + dz * dz);
+
+					if (distance < 0.5f) { // Only connect nearby neurons
+						Line& connection = add_line();
+
+						connection.x0.start = x1;
+						connection.y0.start = y1;
+						connection.z0.start = z1;
+						connection.x1.start = x2;
+						connection.y1.start = y2;
+						connection.z1.start = z2;
+
+						// Aurora color palette based on energy and position
+						float hue = (energy1 + energy2) * 0.5f + (y1 + y2) * 2.0f + time_base * 0.5f;
+						float saturation = 0.7f + 0.3f * sin(time_base * 1.2f + i);
+
+						connection.rgb_t0.x = 0.1f + 0.4f * sin(hue) * saturation;
+						connection.rgb_t0.y = 0.3f + 0.6f * sin(hue + 1.0f) * saturation;
+						connection.rgb_t0.z = 0.8f + 0.2f * sin(hue + 2.0f) * saturation;
+
+						// Thickness based on connection strength and energy
+						float strength = (1.0f - distance) * (energy1 + energy2) * 0.5f;
+						connection.thickness.start = 0.003f + 0.015f * strength;
+						connection.number_of_cubes = 8 + int(strength * 12);
+
+						connection.copy_start_to_end();
+
+						// Animate with neural pulse propagation
+						float pulse_phase = time_base * 3.0f + i * 0.2f + j * 0.5f;
+						float pulse_wave = sin(pulse_phase) * 0.05f;
+
+						connection.x1.end = x2 + pulse_wave * dx;
+						connection.y1.end = y2 + pulse_wave * dy * 0.3f;
+						connection.z1.end = z2 + pulse_wave * dz;
+					}
+				}
+
+				// Create neuron nodes as glowing points
+				Line& neuron_node = add_line();
+				neuron_node.x0.start = x1;
+				neuron_node.y0.start = y1;
+				neuron_node.z0.start = z1;
+				neuron_node.x1.start = x1 + 0.001f; // Small line to represent point
+				neuron_node.y1.start = y1;
+				neuron_node.z1.start = z1;
+
+				// Bright neuron core color
+				neuron_node.rgb_t0.x = 0.9f + 0.1f * sin(time_base * 2.0f + i);
+				neuron_node.rgb_t0.y = 0.7f + 0.3f * cos(time_base * 1.5f + i);
+				neuron_node.rgb_t0.z = 1.0f;
+
+				neuron_node.thickness.start = 0.02f * energy1;
+				neuron_node.number_of_cubes = 6;
+				neuron_node.copy_start_to_end();
+
+				// Pulsing neuron animation
+				float neuron_pulse = sin(time_base * 4.0f + i * 0.7f) * 0.01f;
+				neuron_node.x1.end = x1 + 0.001f + neuron_pulse;
+				neuron_node.y1.end = y1 + neuron_pulse * 0.5f;
+			}
+
+			// Create flowing aurora tendrils
+			auto create_aurora_tendrils = [&]() {
+				int tendril_count = 8;
+				float tendril_length = 1.2f;
+
+				for (int tendril = 0; tendril < tendril_count; tendril++) {
+					float base_angle = tendril * (2.0f * M_PI / tendril_count);
+					float tendril_phase = time_base * 0.8f + tendril * 1.3f;
+
+					int segments = 25;
+					for (int seg = 0; seg < segments; seg++) {
+						float segment_ratio = seg / float(segments - 1);
+
+						// Aurora wave mathematics
+						float wave_x = sin(tendril_phase + seg * 0.5f) * 0.1f * (1.0f - segment_ratio);
+						float wave_y = cos(tendril_phase * 1.3f + seg * 0.7f) * 0.08f;
+						float wave_z = sin(tendril_phase * 0.9f + seg * 0.6f) * 0.12f;
+
+						float x = (network_radius + tendril_length * segment_ratio) * cos(base_angle) + wave_x;
+						float y = -0.2f + 0.8f * segment_ratio + wave_y;
+						float z = (network_radius + tendril_length * segment_ratio) * sin(base_angle) + wave_z;
+
+						if (seg > 0) {
+							// Calculate previous segment position
+							float prev_wave_x = sin(tendril_phase + (seg - 1) * 0.5f) * 0.1f * (1.0f - (seg - 1) / float(segments - 1));
+							float prev_wave_y = cos(tendril_phase * 1.3f + (seg - 1) * 0.7f) * 0.08f;
+							float prev_wave_z = sin(tendril_phase * 0.9f + (seg - 1) * 0.6f) * 0.12f;
+
+							float prev_x = (network_radius + tendril_length * (seg - 1) / float(segments - 1)) * cos(base_angle) + prev_wave_x;
+							float prev_y = -0.2f + 0.8f * (seg - 1) / float(segments - 1) + prev_wave_y;
+							float prev_z = (network_radius + tendril_length * (seg - 1) / float(segments - 1)) * sin(base_angle) + prev_wave_z;
+
+							Line& tendril_segment = add_line();
+							tendril_segment.x0.start = prev_x;
+							tendril_segment.y0.start = prev_y;
+							tendril_segment.z0.start = prev_z;
+							tendril_segment.x1.start = x;
+							tendril_segment.y1.start = y;
+							tendril_segment.z1.start = z;
+
+							// Aurora green-blue-purple gradient
+							float color_shift = segment_ratio * 2.0f + time_base * 0.3f;
+							tendril_segment.rgb_t0.x = 0.1f + 0.3f * sin(color_shift);
+							tendril_segment.rgb_t0.y = 0.6f + 0.3f * sin(color_shift + 1.0f);
+							tendril_segment.rgb_t0.z = 0.8f + 0.2f * sin(color_shift + 2.0f);
+
+							tendril_segment.thickness.start = 0.008f * (1.0f - segment_ratio * 0.7f);
+							tendril_segment.number_of_cubes = 10;
+							tendril_segment.copy_start_to_end();
+
+							// Flowing aurora motion
+							float next_phase = time_base * 0.8f + 0.1f + tendril * 1.3f;
+							float next_wave_x = sin(next_phase + seg * 0.5f) * 0.12f * (1.0f - segment_ratio);
+							float next_wave_y = cos(next_phase * 1.3f + seg * 0.7f) * 0.1f;
+							float next_x = (network_radius + tendril_length * segment_ratio) * cos(base_angle + 0.02f) + next_wave_x;
+							float next_y = -0.2f + 0.8f * segment_ratio + next_wave_y;
+							float next_z = (network_radius + tendril_length * segment_ratio) * sin(base_angle + 0.02f) + wave_z;
+
+							tendril_segment.x1.end = next_x;
+							tendril_segment.y1.end = next_y;
+							tendril_segment.z1.end = next_z;
+						}
+					}
+				}
+				};
+
+			// Create energy particles flowing through the system
+			auto create_energy_particles = [&]() {
+				int particle_count = 30;
+
+				for (int particle = 0; particle < particle_count; particle++) {
+					float life_cycle = fmod(time_base * 0.4f + particle * 0.1f, 1.0f);
+
+					if (life_cycle < 0.8f) {
+						// Particle follows neural pathways
+						float path_angle = particle * (2.0f * M_PI / particle_count) + time_base * 2.0f;
+						float path_radius = 0.3f + 0.4f * life_cycle;
+						float height = -0.4f + 1.2f * life_cycle;
+
+						// Orbital motion with neural attraction
+						float neural_pull = sin(time_base * 3.0f + particle * 5.0f) * 0.05f;
+
+						float px = path_radius * cos(path_angle) + neural_pull * cos(path_angle * 2.0f);
+						float py = height + neural_pull * sin(path_angle);
+						float pz = path_radius * sin(path_angle) + neural_pull * sin(path_angle * 2.0f);
+
+						Line& particle_line = add_line();
+						particle_line.x0.start = px;
+						particle_line.y0.start = py;
+						particle_line.z0.start = pz;
+						particle_line.x1.start = px + 0.002f;
+						particle_line.y1.start = py;
+						particle_line.z1.start = pz;
+
+						// Bright particle colors
+						float particle_hue = life_cycle * 3.0f + particle * 0.2f;
+						particle_line.rgb_t0.x = 0.8f + 0.2f * sin(particle_hue);
+						particle_line.rgb_t0.y = 0.9f + 0.1f * sin(particle_hue + 1.0f);
+						particle_line.rgb_t0.z = 1.0f;
+
+						particle_line.thickness.start = 0.015f * (0.2f + 0.8f * life_cycle);
+						particle_line.number_of_cubes = 4;
+						particle_line.copy_start_to_end();
+
+						// Particle follows evolving path
+						float next_life = fmod(time_base * 0.4f + 0.05f + particle * 0.1f, 1.0f);
+						if (next_life < 0.8f) {
+							float next_path_angle = path_angle + 0.1f;
+							float next_path_radius = 0.3f + 0.4f * next_life;
+							float next_height = -0.4f + 1.2f * next_life;
+							float next_neural_pull = sin((time_base + 0.1f) * 3.0f + particle * 5.0f) * 0.06f;
+
+							float next_px = next_path_radius * cos(next_path_angle) + next_neural_pull * cos(next_path_angle * 2.0f);
+							float next_py = next_height + next_neural_pull * sin(next_path_angle);
+
+							particle_line.x1.end = next_px + 0.002f;
+							particle_line.y1.end = next_py;
+						}
+					}
+				}
+				};
+
+			// Create background energy field
+			auto create_energy_field = [&]() {
+				int field_lines = 12;
+
+				for (int line = 0; line < field_lines; line++) {
+					float angle = line * (2.0f * M_PI / field_lines);
+					float field_phase = time_base * 0.5f + line * 0.4f;
+
+					Line& field_line = add_line();
+					field_line.x0.start = 1.5f * cos(angle);
+					field_line.y0.start = -0.5f;
+					field_line.z0.start = 1.5f * sin(angle);
+					field_line.x1.start = 0.8f * cos(angle + 0.3f);
+					field_line.y1.start = 0.5f;
+					field_line.z1.start = 0.8f * sin(angle + 0.3f);
+
+					// Subtle background energy color
+					float field_hue = time_base * 0.2f + line * 0.5f;
+					field_line.rgb_t0.x = 0.05f + 0.1f * sin(field_hue);
+					field_line.rgb_t0.y = 0.1f + 0.1f * sin(field_hue + 1.0f);
+					field_line.rgb_t0.z = 0.15f + 0.1f * sin(field_hue + 2.0f);
+
+					field_line.thickness.start = 0.002f;
+					field_line.number_of_cubes = 8;
+					field_line.copy_start_to_end();
+
+					// Gentle field motion
+					float field_sway = sin(field_phase) * 0.05f;
+					field_line.x1.end = 0.8f * cos(angle + 0.3f + field_sway);
+					field_line.y1.end = 0.5f + field_sway * 0.3f;
+					field_line.z1.end = 0.8f * sin(angle + 0.3f + field_sway);
+				}
+				};
+
+			// ===== MAIN EXECUTION =====
+
+			create_aurora_tendrils();
+			create_energy_particles();
+			create_energy_field();
+
+			// Increment time for animation
+			time_base += 0.016f;
+		}
 
 
 
+		void init_living_coral()
+		{
+			lines.clear();
+
+			// ====================================================================
+			// SECTION 1: ARTISTIC PARAMETERS & CONFIGURATION ("The Knobs")
+			// Tweak these values to create different species of coral.
+			// ====================================================================
+
+			// --- Stalk Parameters ---
+			const int   num_stalk_segments = 40;     // Resolution of the main stalk
+			const float stalk_height = 1.6f;         // Final height of the coral
+			const float stalk_curve_factor = 0.15f;    // How much the main stalk bends
+
+			// --- Arm Parameters ---
+			const float arm_probability = 0.35f;   // 35% chance for a stalk segment to grow an arm
+			const int   num_arm_segments = 25;      // Resolution of each arm
+			const float arm_length = 0.4f;         // How far arms extend
+			const float arm_spiral_factor = 4.0f;  // How tightly the arms curl
+			const float arm_sway_amount = 0.3f;    // How much the arms gently move at the end
+
+			// --- Plankton Parameters ---
+			const int   num_plankton = 150;        // Number of drifting particles
+			const float plankton_sphere_radius = 1.2f; // The volume they occupy
+			const float plankton_drift_speed = 0.1f; // How fast they move
+
+			// --- Color Palette ---
+			const Vec3 stalk_color = { 0.8f, 0.7f, 0.9f };     // Pale lavender
+			const Vec3 arm_color_base = { 0.9f, 0.5f, 0.8f };      // Magenta base
+			const Vec3 arm_color_tip = { 0.4f, 0.8f, 1.0f };       // Glowing cyan tip
+			const Vec3 plankton_color = { 0.7f, 1.0f, 0.8f };      // Soft seafoam green
+
+			// --- General Styling & Constants ---
+			const float base_thickness = 0.012f;
+			const float TAU = 6.28318530718f;
+			const float PI = 3.14159265359f; // <<<<<<<<<<<<< FIXED: PI constant is now defined.
+
+			// ====================================================================
+			// SECTION 2: PROCEDURAL GENERATION OF THE CORAL
+			// We build the stalk first, and probabilistically grow arms from it.
+			// ====================================================================
+
+			// --- Part 2a: The Stalk ---
+			for (int i = 0; i < num_stalk_segments; ++i)
+			{
+				float t0 = (float)i / num_stalk_segments;
+				float t1 = (float)(i + 1) / num_stalk_segments;
+
+				// Calculate the start and end points of this stalk segment
+				Vec3 p0 = {
+					stalk_curve_factor * sin(t0 * PI), // Use PI for a single curve
+					-stalk_height / 2.0f + t0 * stalk_height,
+					stalk_curve_factor * cos(t0 * PI)
+				};
+				Vec3 p1 = {
+					stalk_curve_factor * sin(t1 * PI),
+					-stalk_height / 2.0f + t1 * stalk_height,
+					stalk_curve_factor * cos(t1 * PI)
+				};
+
+				// Create the line for this stalk segment
+				Line& stalk_segment = add_line();
+				stalk_segment.x0.end = p0.x; stalk_segment.y0.end = p0.y; stalk_segment.z0.end = p0.z;
+				stalk_segment.x1.end = p1.x; stalk_segment.y1.end = p1.y; stalk_segment.z1.end = p1.z;
+
+				// ANIMATION: Grow the stalk from its base
+				stalk_segment.x0.start = 0.0f; stalk_segment.y0.start = -stalk_height / 2.0f; stalk_segment.z0.start = 0.0f;
+				stalk_segment.x1.start = 0.0f; stalk_segment.y1.start = -stalk_height / 2.0f; stalk_segment.z1.start = 0.0f;
+
+				// Styling: Thicker at the base, thinner at the top
+				stalk_segment.rgb_t0 = stalk_color;
+				stalk_segment.rgb_t1 = stalk_color;
+				stalk_segment.thickness.start = base_thickness * (1.0f - t0 * 0.5f);
+				stalk_segment.thickness.end = base_thickness * (1.0f - t1 * 0.5f);
+				stalk_segment.number_of_cubes = 10;
+
+				// --- Part 2b: The Arms (Probabilistic Growth) ---
+				if (Random::generate_random_float_0_to_1() < arm_probability && i > 5)
+				{
+					float arm_base_angle = Random::generate_random_float_0_to_1() * TAU;
+
+					for (int j = 0; j < num_arm_segments; ++j)
+					{
+						float at0 = (float)j / num_arm_segments;
+						float at1 = (float)(j + 1) / num_arm_segments;
+
+						auto calculate_arm_point = [&](float progress, float sway_phase) -> Vec3 {
+							float current_radius = progress * arm_length;
+							float current_angle = arm_base_angle + progress * arm_spiral_factor;
+							float sway_offset = arm_sway_amount * sin(progress * PI + sway_phase);
+
+							Vec3 arm_point = {
+								current_radius * cos(current_angle),
+								current_radius * sin(current_angle) * 0.5f, // Use Y for upward curve
+								current_radius * sin(current_angle)
+							};
+
+							float tilt = PI / 4.0f;
+							arm_point = { arm_point.x, arm_point.y * cos(tilt) - arm_point.z * sin(tilt), arm_point.y * sin(tilt) + arm_point.z * cos(tilt) };
+
+							arm_point.z += sway_offset;
+							return vec_add(p1, arm_point);
+							};
+
+						Vec3 ap0 = calculate_arm_point(at0, 0.0f);
+						Vec3 ap1 = calculate_arm_point(at1, 0.0f);
+						Vec3 ap0_swayed = calculate_arm_point(at0, PI);
+						Vec3 ap1_swayed = calculate_arm_point(at1, PI);
+
+						Line& arm_segment = add_line();
+
+						arm_segment.x0.start = p1.x; arm_segment.y0.start = p1.y; arm_segment.z0.start = p1.z;
+						arm_segment.x1.start = p1.x; arm_segment.y1.start = p1.y; arm_segment.z1.start = p1.z;
+
+						arm_segment.x0.end = ap0_swayed.x; arm_segment.y0.end = ap0_swayed.y; arm_segment.z0.end = ap0_swayed.z;
+						arm_segment.x1.end = ap1_swayed.x; arm_segment.y1.end = ap1_swayed.y; arm_segment.z1.end = ap1_swayed.z;
+
+						float color_mix = pow(at0, 0.7f);
+						Vec3 segment_color = {
+							(1 - color_mix) * arm_color_base.x + color_mix * arm_color_tip.x,
+							(1 - color_mix) * arm_color_base.y + color_mix * arm_color_tip.y,
+							(1 - color_mix) * arm_color_base.z + color_mix * arm_color_tip.z,
+						};
+						arm_segment.rgb_t0 = segment_color;
+						arm_segment.rgb_t1 = segment_color;
+						arm_segment.thickness.start = base_thickness * 0.5f * (1.0f - at0);
+						arm_segment.thickness.end = base_thickness * 0.5f * (1.0f - at1);
+						arm_segment.number_of_cubes = 8;
+					}
+				}
+			}
+
+			// ====================================================================
+			// SECTION 3: ATMOSPHERIC PARTICLES (PLANKTON)
+			// ====================================================================
+
+			for (int i = 0; i < num_plankton; ++i)
+			{
+				Line& plankton = add_line();
+
+				float theta = Random::generate_random_float_0_to_1() * TAU;
+				float phi = acos(2.0f * Random::generate_random_float_0_to_1() - 1.0f);
+				float r = plankton_sphere_radius * pow(Random::generate_random_float_0_to_1(), 0.5f);
+
+				Vec3 p0 = {
+					r * sin(phi) * cos(theta),
+					r * cos(phi),
+					r * sin(phi) * sin(theta)
+				};
+
+				Vec3 drift = {
+					Random::generate_random_float_minus_one_to_plus_one(),
+					Random::generate_random_float_minus_one_to_plus_one(),
+					Random::generate_random_float_minus_one_to_plus_one()
+				};
+				drift = vec_normalize(drift);
+				drift = vec_scale(drift, plankton_drift_speed);
+				Vec3 p1 = vec_add(p0, drift);
+
+				plankton.x0.start = p0.x; plankton.y0.start = p0.y; plankton.z0.start = p0.z;
+				plankton.x1.start = p0.x; plankton.y1.start = p0.y; plankton.z1.start = p0.z;
+
+				plankton.x0.end = p0.x; plankton.y0.end = p0.y; plankton.z0.end = p0.z;
+				plankton.x1.end = p1.x; plankton.y1.end = p1.y; plankton.z1.end = p1.z;
+
+				plankton.rgb_t0 = plankton_color;
+				plankton.rgb_t1 = vec_scale(plankton_color, 0.5f);
+				plankton.thickness.start = 0.0f;
+				plankton.thickness.end = 0.005f;
+				plankton.number_of_cubes = 5;
+			}
+		}
 
 
 
@@ -6618,19 +7364,19 @@ namespace Universe_
 				// lines.init_quantum_fluid_pool();
 				// lines.init_2030_airplane_wirefly();
 				// lines.init_rainy_window_final_v2();
+				// lines.init_spiral_torus_interference();
 
 
+				
+
+				
 				
 
 				// lines.init_voxel_universe();
-				
-				
-
-
-
-				
-
-
+				// lines.init_pulsing_neural_mesh();
+				// lines.init_2031_airplane_stabilized();
+				// lines.init_neural_aurora();
+				// lines.init_living_coral();
 
 				// --
 				
