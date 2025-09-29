@@ -1201,109 +1201,7 @@ namespace Universe_
 			}
 		}
 
-		void init_letter_morph()
-		{
-			lines.clear();
 
-			// --- Letter Definition System ---
-			// We define letters as a series of paired points (p0, p1, p0, p1, ...)
-			std::unordered_map<char, std::vector<Vec3>> letter_definitions;
-			size_t max_lines_per_letter = 0;
-
-			// Define a few letters in a normalized [-0.5, 0.5] space
-			// 'A' (3 lines)
-			letter_definitions['A'] = {
-				{-0.4f, -0.5f, 0.0f}, { 0.0f,  0.5f, 0.0f}, // Left leg
-				{ 0.0f,  0.5f, 0.0f}, { 0.4f, -0.5f, 0.0f}, // Right leg
-				{-0.25f, 0.0f, 0.0f}, { 0.25f, 0.0f, 0.0f}  // Crossbar
-			};
-
-			// 'X' (2 lines)
-			letter_definitions['X'] = {
-				{-0.4f, -0.5f, 0.0f}, { 0.4f,  0.5f, 0.0f},
-				{ 0.4f, -0.5f, 0.0f}, {-0.4f,  0.5f, 0.0f}
-			};
-
-			// 'C' (3 lines, approximating a curve)
-			letter_definitions['C'] = {
-				{ 0.4f,  0.3f, 0.0f}, {-0.2f,  0.5f, 0.0f},
-				{-0.2f,  0.5f, 0.0f}, {-0.4f,  0.0f, 0.0f},
-				{-0.4f,  0.0f, 0.0f}, {-0.2f, -0.5f, 0.0f},
-				{-0.2f, -0.5f, 0.0f}, { 0.4f, -0.3f, 0.0f}
-			};
-
-			// 'O' (4 lines, an octagon)
-			letter_definitions['O'] = {
-				{ 0.0f,  0.5f, 0.0f}, { 0.4f,  0.3f, 0.0f},
-				{ 0.4f,  0.3f, 0.0f}, { 0.4f, -0.3f, 0.0f},
-				{ 0.4f, -0.3f, 0.0f}, { 0.0f, -0.5f, 0.0f},
-				{ 0.0f, -0.5f, 0.0f}, {-0.4f, -0.3f, 0.0f},
-				{-0.4f, -0.3f, 0.0f}, {-0.4f,  0.3f, 0.0f},
-				{-0.4f,  0.3f, 0.0f}, { 0.0f,  0.5f, 0.0f}
-			};
-
-			// --- Step 1: Find the max number of lines needed ---
-			for (const auto& pair : letter_definitions) {
-				max_lines_per_letter = std::max(max_lines_per_letter, pair.second.size() / 2);
-			}
-
-			// --- Step 2: Pad all letters to have the same number of lines ---
-			Vec3 zero_point = { 0.0f, 0.0f, 0.0f };
-			for (auto& pair : letter_definitions) {
-				while (pair.second.size() / 2 < max_lines_per_letter) {
-					pair.second.push_back(zero_point); // Add p0 for the zero-length line
-					pair.second.push_back(zero_point); // Add p1 for the zero-length line
-				}
-			}
-
-			// --- Step 3: Configure the Morph ---
-			char start_char = 'C';
-			char end_char = 'O';
-			float scale = 1.2f; // Overall size of the letters
-
-			Vec3 start_color = { 0.1f, 0.9f, 1.0f }; // Cyan
-			Vec3 end_color = { 1.0f, 0.4f, 0.1f }; // Orange
-
-			const auto& start_points = letter_definitions.at(start_char);
-			const auto& end_points = letter_definitions.at(end_char);
-
-			// --- Step 4: Create the morphing lines ---
-			for (size_t i = 0; i < max_lines_per_letter; ++i)
-			{
-				Line& line = add_line();
-
-				// Get the points for the i-th line of each letter
-				const Vec3& p0_start = start_points[i * 2];
-				const Vec3& p1_start = start_points[i * 2 + 1];
-				const Vec3& p0_end = end_points[i * 2];
-				const Vec3& p1_end = end_points[i * 2 + 1];
-
-				// Set the START state of the animation (the first letter)
-				line.x0.start = p0_start.x * scale;
-				line.y0.start = p0_start.y * scale;
-				line.z0.start = p0_start.z * scale;
-				line.x1.start = p1_start.x * scale;
-				line.y1.start = p1_start.y * scale;
-				line.z1.start = p1_start.z * scale;
-
-				// Set the END state of the animation (the second letter)
-				line.x0.end = p0_end.x * scale;
-				line.y0.end = p0_end.y * scale;
-				line.z0.end = p0_end.z * scale;
-				line.x1.end = p1_end.x * scale;
-				line.y1.end = p1_end.y * scale;
-				line.z1.end = p1_end.z * scale;
-
-				// Set colors to morph as well
-				line.rgb_t0 = start_color;
-				line.rgb_t1 = end_color;
-
-				// Styling
-				line.thickness.start = 0.015f;
-				line.thickness.end = 0.01f; // Taper slightly
-				line.number_of_cubes = 100;
-			}
-		}
 
 
 
@@ -1459,7 +1357,6 @@ namespace Universe_
 				// lines.init_abstract_cityscape();
 				lines.init_0002_trefoil_weave();
 
-				// lines.init_letter_morph();
 
 				lines.draw(scene);
 			}
