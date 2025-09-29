@@ -364,7 +364,7 @@ namespace Universe_
 					line.rgb_t0.y = 0.2 * Random::generate_random_float_0_to_1();
 					line.rgb_t0.z = 0.2 * Random::generate_random_float_0_to_1();
 
-					line.thickness.start = 0.01;
+					line.thickness.start = 0.01 * 0.2;
 					line.number_of_cubes = 100;
 
 					line.copy_start_to_end();
@@ -421,7 +421,7 @@ namespace Universe_
 					line.rgb_t0.y = 0.2f;
 					line.rgb_t0.z = 0.5f - 0.5f * line.y1.start; // Blue channel for inverse height
 
-					line.thickness.start = 0.005f;
+					line.thickness.start = 0.005f * 0.2f;
 					line.number_of_cubes = 50;
 
 					line.copy_start_to_end();
@@ -4958,32 +4958,161 @@ namespace Universe_
 			}
 		}
 
-		void init_2011_coast_mountain_sea()
+		
+
+		void init_calculus_morph()
 		{
 			lines.clear();
 
+			// --- SECTION 1: Self-Contained Helpers (Vector Math Lambdas) ---
+			auto vec_add = [](const Vec3& a, const Vec3& b) -> Vec3 { return { a.x + b.x, a.y + b.y, a.z + b.z }; };
+			auto vec_scale = [](const Vec3& v, float s) -> Vec3 { return { v.x * s, v.y * s, v.z * s }; };
+			auto lerp = [](float a, float b, float t) -> float { return a * (1.0f - t) + b * t; };
+
+			// --- SECTION 2: Master Parametric Function ---
+			// This is the heart of the effect. It calculates a point on the surface
+			// for any given (u, v) coordinates and a morph factor 't'.
+			// t = 0.0 -> Perfect Klein Bottle
+			// t = 1.0 -> Perfect Torus
+			auto calculate_point = [&](float u, float v, float t) -> Vec3 {
+				const float PI = 3.1415926535f;
+
+				// --- Klein Bottle Equations (Figure-8 immersion) ---
+				float r_k = 2.0f - cos(v);
+				float x_k, y_k, z_k;
+				if (u < PI) {
+					x_k = 6.0f * cos(u) * (1.0f + sin(u)) + r_k * cos(v) * cos(u);
+					y_k = 16.0f * sin(u) + r_k * cos(v) * sin(u);
+				}
+				else {
+					x_k = 6.0f * cos(u) * (1.0f + sin(u)) + r_k * cos(u + PI) * cos(v);
+					y_k = 16.0f * sin(u);
+				}
+				z_k = r_k * sin(v);
+
+				// --- Torus Equations ---
+				float major_radius = 12.0f;
+				float minor_radius = 4.0f;
+				float x_t = (major_radius + minor_radius * cos(v)) * cos(u);
+				float y_t = (major_radius + minor_radius * cos(v)) * sin(u);
+				float z_t = minor_radius * sin(v);
+
+				// --- Linearly Interpolate (Lerp) between the two shapes ---
+				Vec3 result;
+				result.x = lerp(x_k, x_t, t);
+				result.y = lerp(y_k, y_t, t);
+				result.z = lerp(z_k, z_t, t);
+
+				return result;
+				};
+
+			// --- SECTION 3: Effect Configuration ---
+			const int u_steps = 100; // Resolution along the main tube
+			const int v_steps = 30;  // Resolution around the tube
+			const float scale = 0.08f;
+			Vec3 start_color = { 1.0f, 0.2f, 0.5f }; // Energetic Magenta for the Klein Bottle
+			Vec3 end_color = { 0.2f, 0.8f, 1.0f }; // Calm Cyan for the Torus
+
+			// --- SECTION 4: Wireframe Generation ---
+			const float TAU = 6.2831853f;
+			for (int i = 0; i < u_steps; ++i) {
+				for (int j = 0; j < v_steps; ++j) {
+					float u1 = (float)i / u_steps * TAU;
+					float v1 = (float)j / v_steps * TAU;
+					float u2 = (float)(i + 1) / u_steps * TAU;
+					float v2 = (float)(j + 1) / v_steps * TAU;
+
+					// Calculate the 4 corners of a quad on the surface for both start and end states
+					Vec3 p11_start = vec_scale(calculate_point(u1, v1, 0.0f), scale);
+					Vec3 p12_start = vec_scale(calculate_point(u1, v2, 0.0f), scale);
+					Vec3 p21_start = vec_scale(calculate_point(u2, v1, 0.0f), scale);
+
+					Vec3 p11_end = vec_scale(calculate_point(u1, v1, 1.0f), scale);
+					Vec3 p12_end = vec_scale(calculate_point(u1, v2, 1.0f), scale);
+					Vec3 p21_end = vec_scale(calculate_point(u2, v1, 1.0f), scale);
+
+					// Create the two lines that form the wireframe grid for this quad
+
+					// Line along the U direction (longitude)
+					{
+						Line& line_u = add_line();
+						line_u.x0.start = p11_start.x; line_u.y0.start = p11_start.y; line_u.z0.start = p11_start.z;
+						line_u.x1.start = p21_start.x; line_u.y1.start = p21_start.y; line_u.z1.start = p21_start.z;
+						line_u.x0.end = p11_end.x; line_u.y0.end = p11_end.y; line_u.z0.end = p11_end.z;
+						line_u.x1.end = p21_end.x; line_u.y1.end = p21_end.y; line_u.z1.end = p21_end.z;
+
+						line_u.rgb_t0 = start_color; line_u.rgb_t1 = end_color;
+						line_u.thickness.start = 0.003f; line_u.thickness.end = 0.004f;
+						line_u.number_of_cubes = 20;
+					}
+					// Line along the V direction (latitude)
+					{
+						Line& line_v = add_line();
+						line_v.x0.start = p11_start.x; line_v.y0.start = p11_start.y; line_v.z0.start = p11_start.z;
+						line_v.x1.start = p12_start.x; line_v.y1.start = p12_start.y; line_v.z1.start = p12_start.z;
+						line_v.x0.end = p11_end.x; line_v.y0.end = p11_end.y; line_v.z0.end = p11_end.z;
+						line_v.x1.end = p12_end.x; line_v.y1.end = p12_end.y; line_v.z1.end = p12_end.z;
+
+						line_v.rgb_t0 = start_color; line_v.rgb_t1 = end_color;
+						line_v.thickness.start = 0.003f; line_v.thickness.end = 0.004f;
+						line_v.number_of_cubes = 15;
+					}
+				}
+			}
+		}
+
+		
+
+
+		// --- Low-poly City: cubes + triangles wireframe world (Y<->Z aware) ---
+		void init_2012_lowpoly_city_world()
+		{
+			lines.clear();
+
+			// ===== knobs =====
+			const bool  yz_swapped = true;   // << flip Y and Z to match your preferred camera
 			const float TAU = 6.28318530718f;
 
-			// Flip this to render with Y/Z swapped
-			const bool yz_swapped = false;
+			// City layout
+			const int   GX = 18;               // grid width  (plots)
+			const int   GZ = 14;               // grid depth  (plots)
+			const float cellW = 0.28f;         // plot width  (X)
+			const float cellD = 0.28f;         // plot depth  (Z)
+			const float groundY = -0.85f;      // ground "plane" baseline (before Y/Z swap)
+			const int   roadEvery = 4;         // every Nth row/col is a road
+			const float roadInset = 0.08f;     // road eats this margin out of adjacent plots
 
-			// ---- tiny helpers ----
-			auto mixf = [](float a, float b, float t) { return a + (b - a) * t; };
-			auto clamp01 = [](float v) { return std::max(0.0f, std::min(1.0f, v)); };
+			// Building scale
+			const float minH = 0.20f;
+			const float maxH = 1.00f;          // downtown will reach this
+			const float baseFoot = 0.16f;      // baseline footprint half-size
+			const float footJitter = 0.06f;    // per-building size jitter
 
-			// Emit a line with midpoint-reveal and optional Y/Z swap
-			auto emit = [&](float x0, float y0, float z0,
-				float x1, float y1, float z1,
-				Vec3 c0, Vec3 c1, float t0, float t1, int cubes)
+			// Colors
+			const Vec3 groundA{ 0.18f,0.19f,0.22f }, groundB{ 0.11f,0.12f,0.14f }; // asphalt / plaza
+			const Vec3 roadC{ 0.08f,0.08f,0.09f };
+			const Vec3 boxLow{ 0.55f,0.58f,0.63f }, boxHigh{ 0.82f,0.86f,0.92f }; // concrete/steel
+			const Vec3 roofA{ 0.90f,0.46f,0.32f }, roofB{ 0.98f,0.70f,0.45f };   // terracotta-ish
+			const Vec3 glassA{ 0.10f,0.40f,0.70f }, glassB{ 0.35f,0.65f,0.95f };  // glass accent
+			const Vec3 treeG0{ 0.10f,0.55f,0.30f }, treeG1{ 0.20f,0.75f,0.45f };
+			const Vec3 trunkC{ 0.35f,0.22f,0.14f };
+
+			// Thickness
+			const float baseTh = 0.0075f;
+			const float roadTh = 0.0110f;
+			const float parkTh = 0.0060f;
+			const int   cubesLo = 16;
+			const int   cubesMd = 26;
+			const int   cubesHi = 40;
+
+			// ---------- helpers ----------
+			auto mapYZ = [&](float X, float Y, float Z)->Vec3 {
+				return yz_swapped ? Vec3{ X, Z, Y } : Vec3{ X, Y, Z };
+				};
+			auto emit = [&](Vec3 A, Vec3 B, Vec3 c0, Vec3 c1, float t0, float t1, int cubes)
 				{
 					Line& L = add_line();
-
-					auto map = [&](float X, float Y, float Z)->Vec3 {
-						return yz_swapped ? Vec3{ X, Z, Y } : Vec3{ X, Y, Z };
-						};
-					Vec3 A = map(x0, y0, z0), B = map(x1, y1, z1);
 					Vec3 M{ 0.5f * (A.x + B.x), 0.5f * (A.y + B.y), 0.5f * (A.z + B.z) };
-
 					L.x0.start = M.x; L.y0.start = M.y; L.z0.start = M.z;
 					L.x1.start = M.x; L.y1.start = M.y; L.z1.start = M.z;
 					L.rgb_t0 = c0; L.thickness.start = t0; L.number_of_cubes = cubes;
@@ -4992,275 +5121,292 @@ namespace Universe_
 					L.x1.end = B.x; L.y1.end = B.y; L.z1.end = B.z;
 					L.rgb_t1 = c1; L.thickness.end = t1;
 				};
+			auto lerp = [](float a, float b, float t) { return a + (b - a) * t; };
+			auto mix3 = [&](Vec3 a, Vec3 b, float t)->Vec3 {
+				return Vec3{ lerp(a.x,b.x,t), lerp(a.y,b.y,t), lerp(a.z,b.z,t) };
+				};
+			auto edge = [&](float x0, float y0, float z0, float x1, float y1, float z1,
+				Vec3 c0, Vec3 c1, float t0, float t1, int cubes) {
+					emit(mapYZ(x0, y0, z0), mapYZ(x1, y1, z1), c0, c1, t0, t1, cubes);
+				};
 
-			// --------------------------------------------
-			// SCENE LAYOUT (tweak here first)
-			// --------------------------------------------
-			const float Xw = 3.2f;       // world half-width (X)
-			const float Znear = -0.50f;  // near depth
-			const float Zshore = 0.00f;  // shoreline (water meets sand)
-			const float Zhorizon = 1.85f;// horizon band (mountain sits here)
-			const float Zfar = 2.30f;    // sky/sea far limit
-
-			const float seaLevelY = -0.18f;
-			const float beachBaseY = -0.24f;
-
-			// palettes
-			const Vec3 sandA{ 0.78f,0.68f,0.52f }, sandB{ 0.90f,0.80f,0.62f };
-			const Vec3 waterDeep{ 0.10f,0.36f,0.62f }, waterShal{ 0.18f,0.60f,0.86f };
-			const Vec3 foamA{ 0.95f,0.98f,1.00f }, foamB{ 0.85f,0.95f,1.00f };
-			const Vec3 ridgeDark{ 0.26f,0.28f,0.32f }, ridgeLite{ 0.40f,0.44f,0.50f };
-			const Vec3 skyLow{ 0.98f,0.78f,0.56f }, skyHigh{ 0.38f,0.60f,0.92f };
-			const Vec3 cloudA{ 0.95f,0.92f,0.90f }, cloudB{ 0.88f,0.90f,0.94f };
-			const Vec3 sunA{ 1.00f,0.86f,0.55f }, sunB{ 1.00f,0.74f,0.38f };
-
-			// --------------------------------------------
-			// BEACH (sand ripples toward the viewer)
-			// --------------------------------------------
-			{
-				const int rows = 28;                 // along Z (near  shore)
-				const int cols = 120;                // along X
-				const float baseTh = 0.0060f;
-				for (int i = 0; i < rows; i++)
+			// Axis-aligned cuboid wireframe (centered on cx,cz; from y to y+h)
+			auto box_wire = [&](float cx, float cy, float cz, float sx, float sz, float h, Vec3 col0, Vec3 col1)
 				{
-					float v = i / float(rows - 1);
-					float z = mixf(Znear, Zshore, v);
+					float x0 = cx - sx, x1 = cx + sx;
+					float z0 = cz - sz, z1 = cz + sz;
+					float y0 = cy, y1 = cy + h;
 
-					for (int j = 0; j < cols - 1; j++)
+					// bottom rectangle
+					edge(x0, y0, z0, x1, y0, z0, col0, col0, baseTh * 0.6f, baseTh, cubesMd);
+					edge(x1, y0, z0, x1, y0, z1, col0, col0, baseTh * 0.6f, baseTh, cubesMd);
+					edge(x1, y0, z1, x0, y0, z1, col0, col0, baseTh * 0.6f, baseTh, cubesMd);
+					edge(x0, y0, z1, x0, y0, z0, col0, col0, baseTh * 0.6f, baseTh, cubesMd);
+
+					// top rectangle
+					edge(x0, y1, z0, x1, y1, z0, col1, col1, baseTh * 0.6f, baseTh, cubesMd);
+					edge(x1, y1, z0, x1, y1, z1, col1, col1, baseTh * 0.6f, baseTh, cubesMd);
+					edge(x1, y1, z1, x0, y1, z1, col1, col1, baseTh * 0.6f, baseTh, cubesMd);
+					edge(x0, y1, z1, x0, y1, z0, col1, col1, baseTh * 0.6f, baseTh, cubesMd);
+
+					// verticals
+					edge(x0, y0, z0, x0, y1, z0, col0, col1, baseTh, baseTh, cubesHi);
+					edge(x1, y0, z0, x1, y1, z0, col0, col1, baseTh, baseTh, cubesHi);
+					edge(x1, y0, z1, x1, y1, z1, col0, col1, baseTh, baseTh, cubesHi);
+					edge(x0, y0, z1, x0, y1, z1, col0, col1, baseTh, baseTh, cubesHi);
+				};
+
+			// Pyramid roof on a rectangle (apex above center)
+			auto pyramid_roof = [&](float cx, float cy, float cz, float sx, float sz, float h, Vec3 ca, Vec3 cb)
+				{
+					float x0 = cx - sx, x1 = cx + sx;
+					float z0 = cz - sz, z1 = cz + sz;
+					float y = cy;
+					// base rim
+					edge(x0, y, z0, x1, y, z0, ca, cb, baseTh, baseTh, cubesLo);
+					edge(x1, y, z0, x1, y, z1, ca, cb, baseTh, baseTh, cubesLo);
+					edge(x1, y, z1, x0, y, z1, ca, cb, baseTh, baseTh, cubesLo);
+					edge(x0, y, z1, x0, y, z0, ca, cb, baseTh, baseTh, cubesLo);
+					// apex
+					float ax = cx, ay = y + h, az = cz;
+					edge(x0, y, z0, ax, ay, az, ca, cb, baseTh, baseTh, cubesLo);
+					edge(x1, y, z0, ax, ay, az, ca, cb, baseTh, baseTh, cubesLo);
+					edge(x1, y, z1, ax, ay, az, ca, cb, baseTh, baseTh, cubesLo);
+					edge(x0, y, z1, ax, ay, az, ca, cb, baseTh, baseTh, cubesLo);
+				};
+
+			// Gable roof (ridge along X or Z)
+			auto gable_roof = [&](float cx, float cy, float cz, float sx, float sz, float ridgeH, bool ridgeAlongX, Vec3 ca, Vec3 cb)
+				{
+					float x0 = cx - sx, x1 = cx + sx;
+					float z0 = cz - sz, z1 = cz + sz;
+					float y = cy;
+
+					// base rim
+					edge(x0, y, z0, x1, y, z0, ca, cb, baseTh, baseTh, cubesLo);
+					edge(x1, y, z0, x1, y, z1, ca, cb, baseTh, baseTh, cubesLo);
+					edge(x1, y, z1, x0, y, z1, ca, cb, baseTh, baseTh, cubesLo);
+					edge(x0, y, z1, x0, y, z0, ca, cb, baseTh, baseTh, cubesLo);
+
+					if (ridgeAlongX)
 					{
-						float u0 = j / float(cols - 1);
-						float u1 = (j + 1) / float(cols - 1);
-						float x0 = mixf(-Xw, Xw, u0);
-						float x1 = mixf(-Xw, Xw, u1);
-
-						// gentle beach slope + small ripples (cross & long)
-						auto sandY = [&](float x, float zz) {
-							float slope = 0.08f * (Zshore - zz); // rises slightly toward camera
-							float r1 = 0.015f * std::sin(8.0f * zz + 1.8f * x);
-							float r2 = 0.010f * std::sin(12.0f * x + 0.7f * zz);
-							return beachBaseY + slope + r1 + r2;
-							};
-						float y0 = sandY(x0, z), y1 = sandY(x1, z);
-
-						float t = clamp01(0.5f + 0.5f * ((z - Znear) / (Zshore - Znear)));
-						Vec3 c0{ mixf(sandA.x,sandB.x,t), mixf(sandA.y,sandB.y,t), mixf(sandA.z,sandB.z,t) };
-
-						emit(x0, y0, z, x1, y1, z, c0, c0, baseTh * 0.6f, baseTh, 18);
+						// ridge line along X
+						edge(x0, y + ridgeH, cz, x1, y + ridgeH, cz, ca, cb, baseTh, baseTh, cubesLo);
+						// hips
+						edge(x0, y, z0, x0, y + ridgeH, cz, ca, cb, baseTh, baseTh, cubesLo);
+						edge(x1, y, z0, x1, y + ridgeH, cz, ca, cb, baseTh, baseTh, cubesLo);
+						edge(x0, y, z1, x0, y + ridgeH, cz, ca, cb, baseTh, baseTh, cubesLo);
+						edge(x1, y, z1, x1, y + ridgeH, cz, ca, cb, baseTh, baseTh, cubesLo);
 					}
+					else
+					{
+						// ridge line along Z
+						edge(cx, y + ridgeH, z0, cx, y + ridgeH, z1, ca, cb, baseTh, baseTh, cubesLo);
+						// hips
+						edge(x0, y, z0, cx, y + ridgeH, z0, ca, cb, baseTh, baseTh, cubesLo);
+						edge(x1, y, z0, cx, y + ridgeH, z0, ca, cb, baseTh, baseTh, cubesLo);
+						edge(x0, y, z1, cx, y + ridgeH, z1, ca, cb, baseTh, baseTh, cubesLo);
+						edge(x1, y, z1, cx, y + ridgeH, z1, ca, cb, baseTh, baseTh, cubesLo);
+					}
+				};
+
+			// Tent kiosk (triangular prism)
+			auto tent_kiosk = [&](float cx, float cy, float cz, float sx, float sz, float h, Vec3 ca, Vec3 cb)
+				{
+					// base rectangle perimeter
+					box_wire(cx, cy, cz, sx, sz, 0.001f, ca, ca);
+					// top is ridge along Z, sides are triangles
+					gable_roof(cx, cy, cz, sx, sz, h, false, ca, cb);
+				};
+
+			// Tiny low-poly tree: trunk + pyramid foliage
+			auto tree = [&](float cx, float cy, float cz)
+				{
+					float tW = 0.015f, tD = 0.015f, tH = 0.06f;
+					float fW = 0.06f, fD = 0.06f, fH = 0.10f;
+					// trunk as a very thin box
+					box_wire(cx, cy, cz, tW, tD, tH, trunkC, trunkC);
+					// foliage pyramid on top
+					pyramid_roof(cx, cy + tH, cz, fW, fD, fH, treeG0, treeG1);
+				};
+
+			// Ground grid (plaza) — subtle cross hatch so the city sits on something
+			{
+				const int   G = 36;
+				const float W = (GX - 1) * cellW * 0.5f + 0.45f;
+				const float D = (GZ - 1) * cellD * 0.5f + 0.45f;
+				for (int i = 0; i <= G; i++)
+				{
+					float u = i / float(G);
+					float x = -W + 2.0f * W * u;
+					Vec3 c0 = mix3(groundA, groundB, u);
+					// X-lines
+					edge(-W, groundY, -D, W, groundY, -D + 2.0f * D * u, c0, c0, baseTh * 0.25f, baseTh * 0.35f, cubesLo);
+					// Z-lines
+					edge(-W + 2.0f * W * u, groundY, -D, -W + 2.0f * W * u, groundY, D, c0, c0, baseTh * 0.25f, baseTh * 0.35f, cubesLo);
 				}
 			}
 
-			// --------------------------------------------
-			// SEA surface (cross-banded waves; near = bigger, far = flatter)
-			// --------------------------------------------
-			{
-				const int rows = 36;                 // along Z (shore  horizon)
-				const int cols = 140;                // along X
-				for (int i = 0; i < rows; i++)
+			// Roads (thicker dark strokes along every Nth row/col)
+			auto draw_road_strips = [&]()
 				{
-					float v = i / float(rows - 1);
-					float z = mixf(Zshore, Zhorizon, v);
+					float minX = -(GX - 1) * cellW * 0.5f, maxX = (GX - 1) * cellW * 0.5f;
+					float minZ = -(GZ - 1) * cellD * 0.5f, maxZ = (GZ - 1) * cellD * 0.5f;
 
-					// wave amplitude fades with distance
-					float A = mixf(0.085f, 0.020f, v);
-					float kx = 5.6f, kz = 1.7f + 1.2f * v; // slight change with distance
-					float j = 0.25f * std::sin(1.5f * z);   // domain warp
-
-					for (int jx = 0; jx < cols - 1; jx++)
+					for (int gz = 0; gz < GZ; ++gz)
 					{
-						float u0 = jx / float(cols - 1);
-						float u1 = (jx + 1) / float(cols - 1);
-						float x0 = mixf(-Xw, Xw, u0);
-						float x1 = mixf(-Xw, Xw, u1);
-
-						auto seaY = [&](float x, float zz) {
-							float ph = kx * x + kz * zz + 0.7f * std::sin(0.8f * zz + 0.3f * x + j);
-							float w1 = std::sin(ph);
-							float w2 = 0.5f * std::sin(0.6f * ph + 1.9f);
-							float w3 = 0.35f * std::sin(1.7f * x - 0.9f * zz);
-							return seaLevelY + A * (w1 + w2) + 0.03f * w3;
-							};
-
-						float y0 = seaY(x0, z), y1 = seaY(x1, z);
-
-						// color blend by distance & slope hint
-						float dv = v;
-						Vec3 c{ mixf(waterShal.x,waterDeep.x,dv),
-								mixf(waterShal.y,waterDeep.y,dv),
-								mixf(waterShal.z,waterDeep.z,dv) };
-
-						emit(x0, y0, z, x1, y1, z, c, c, 0.0048f, 0.0065f, 20);
-					}
-				}
-
-				// FOAM crests (short dashes where the main sine is high)
-				const int foamRows = 26;
-				const int foamCols = 95;
-				for (int i = 0; i < foamRows; i++)
-				{
-					float v = i / float(foamRows - 1);
-					float z = mixf(Zshore + 0.02f, Zhorizon - 0.08f, v);
-					float A = mixf(0.085f, 0.020f, v);
-					float kx = 5.6f, kz = 1.7f + 1.2f * v;
-
-					for (int jx = 0; jx < foamCols; jx++)
-					{
-						float u = jx / float(foamCols);
-						float x = mixf(-Xw, Xw, u);
-
-						float ph = kx * x + kz * z;
-						float crest = std::sin(ph);
-						if (crest > 0.92f) // threshold for caps
+						if (gz % roadEvery == 0)
 						{
-							float y = seaLevelY + A * (crest + 0.5f * std::sin(0.6f * ph + 1.9f));
-							float dx = 0.035f; // short dash
-							emit(x - dx, y + 0.0025f, z, x + dx, y + 0.0025f, z,
-								foamA, foamB, 0.0040f, 0.0055f, 10);
+							float z = minZ + gz * cellD;
+							edge(minX - 0.25f, groundY, z, maxX + 0.25f, groundY, z, roadC, roadC, roadTh * 0.75f, roadTh, cubesHi);
 						}
 					}
-				}
-
-				// SHORE foam band (scumbled bright line)
-				{
-					const int segs = 180;
-					for (int s = 0; s < segs; s++)
+					for (int gx = 0; gx < GX; ++gx)
 					{
-						float u0 = s / float(segs);
-						float u1 = (s + 1) / float(segs);
-						float x0 = mixf(-Xw, Xw, u0);
-						float x1 = mixf(-Xw, Xw, u1);
-						float n0 = 0.015f * std::sin(5.0f * x0) + 0.008f * std::sin(11.0f * x0 + 1.6f);
-						float n1 = 0.015f * std::sin(5.0f * x1) + 0.008f * std::sin(11.0f * x1 + 1.6f);
-						emit(x0, seaLevelY + 0.002f, Zshore + n0,
-							x1, seaLevelY + 0.002f, Zshore + n1,
-							foamB, foamA, 0.0060f, 0.0075f, 18);
+						if (gx % roadEvery == 0)
+						{
+							float x = minX + gx * cellW;
+							edge(x, groundY, minZ - 0.25f, x, groundY, maxZ + 0.25f, roadC, roadC, roadTh * 0.75f, roadTh, cubesHi);
+						}
+					}
+				};
+			draw_road_strips();
+
+			// Downtown height bias (taller near center, lower toward edges)
+			auto height_bias = [&](float nx, float nz)->float {
+				// nx, nz in [-1,1] roughly
+				float r = std::sqrt(nx * nx + nz * nz); // 0 center .. ~1 edge
+				float t = std::max(0.0f, 1.0f - r);
+				t = std::pow(t, 0.6f);              // sharper center
+				return lerp(minH, maxH, t);
+				};
+
+			// Iterate plots and spawn buildings/parks/trees/tents
+			float startX = -(GX - 1) * cellW * 0.5f;
+			float startZ = -(GZ - 1) * cellD * 0.5f;
+
+			for (int gz = 0; gz < GZ; ++gz)
+			{
+				for (int gx = 0; gx < GX; ++gx)
+				{
+					// skip road cells
+					if (gz % roadEvery == 0 || gx % roadEvery == 0) continue;
+
+					float cx = startX + gx * cellW;
+					float cz = startZ + gz * cellD;
+
+					// plot local normalized for bias
+					float nx = gx / float(GX - 1) * 2.0f - 1.0f;
+					float nz = gz / float(GZ - 1) * 2.0f - 1.0f;
+
+					// base footprint
+					float sx = baseFoot + (Random::generate_random_float_0_to_1() - 0.5f) * footJitter;
+					float sz = baseFoot + (Random::generate_random_float_0_to_1() - 0.5f) * footJitter;
+					// keep a margin for roads
+					sx = std::max(0.06f, sx - roadInset * 0.5f);
+					sz = std::max(0.06f, sz - roadInset * 0.5f);
+
+					// height
+					float H = height_bias(nx, nz);
+					// small randomness
+					H *= (0.85f + 0.30f * Random::generate_random_float_0_to_1());
+
+					// choose a lot type
+					float r = Random::generate_random_float_0_to_1();
+					if (r < 0.08f)
+					{
+						// pocket park with trees
+						Vec3 pc0 = mix3(groundA, groundB, 0.5f);
+						// outline the plot softly
+						box_wire(cx, groundY + 0.001f, cz, sx, sz, 0.0008f, pc0, pc0);
+						// a few trees inside
+						int tcount = 3 + (Random::random_int(0, 99999) % 4);
+						for (int ti = 0; ti < tcount; ++ti)
+						{
+							float ox = (Random::generate_random_float_0_to_1() - 0.5f) * (sx * 1.4f);
+							float oz = (Random::generate_random_float_0_to_1() - 0.5f) * (sz * 1.4f);
+							tree(cx + ox, groundY, cz + oz);
+						}
+						continue;
+					}
+					else if (r < 0.14f)
+					{
+						// kiosk tent (triangle prism)
+						float h = lerp(0.10f, 0.18f, Random::generate_random_float_0_to_1());
+						tent_kiosk(cx, groundY, cz, sx * 0.7f, sz * 0.7f, h, roofA, roofB);
+						continue;
+					}
+
+					// building body (cuboid)
+					Vec3 wall0 = mix3(boxLow, boxHigh, std::min(1.0f, (H - minH) / (maxH - minH + 1e-6f)));
+					Vec3 wall1 = mix3(wall0, glassA, 0.15f);
+					box_wire(cx, groundY, cz, sx, sz, H, wall0, wall1);
+
+					// choose roof: pyramid, gable-X, gable-Z, or flat with glass crown
+					float rr = Random::generate_random_float_0_to_1();
+					if (rr < 0.33f)
+					{
+						float rh = lerp(0.08f, 0.22f, Random::generate_random_float_0_to_1());
+						pyramid_roof(cx, groundY + H, cz, sx, sz, rh, roofA, roofB);
+					}
+					else if (rr < 0.66f)
+					{
+						float rh = lerp(0.06f, 0.18f, Random::generate_random_float_0_to_1());
+						bool alongX = (Random::random_int(0, 9999) % 2) == 0;
+						gable_roof(cx, groundY + H, cz, sx, sz, rh, alongX, roofA, roofB);
+					}
+					else
+					{
+						// flat: add a small glass crown
+						float cw = sx * lerp(0.4f, 0.7f, Random::generate_random_float_0_to_1());
+						float cd = sz * lerp(0.4f, 0.7f, Random::generate_random_float_0_to_1());
+						float ch = lerp(0.06f, 0.14f, Random::generate_random_float_0_to_1());
+						box_wire(cx, groundY + H, cz, cw, cd, ch, glassA, glassB);
+					}
+
+					// occasional skybridge between neighbors (triangular vibe)
+					if (gx + 1 < GX && (Random::generate_random_float_0_to_1() < 0.08f) && (gx + 1) % roadEvery != 0)
+					{
+						float hB = groundY + H * lerp(0.55f, 0.85f, Random::generate_random_float_0_to_1());
+						float xA = cx + sx, xB = cx + cellW + sx * 0.3f;
+						float zM = cz;
+						// a thin “bridge” box
+						box_wire((xA + xB) * 0.5f, hB - 0.02f, zM, 0.03f, sz * 0.3f, 0.04f, glassB, glassA);
+					}
+					if (gz + 1 < GZ && (Random::generate_random_float_0_to_1() < 0.06f) && (gz + 1) % roadEvery != 0)
+					{
+						float hB = groundY + H * lerp(0.55f, 0.85f, Random::generate_random_float_0_to_1());
+						float zA = cz + sz, zB = cz + cellD + sz * 0.3f;
+						float xM = cx;
+						box_wire(xM, hB - 0.02f, (zA + zB) * 0.5f, sx * 0.3f, 0.03f, 0.04f, glassB, glassA);
 					}
 				}
 			}
 
-			// --------------------------------------------
-			// MOUNTAIN RIDGE at the horizon + vertical hatching (depth feel)
-			// --------------------------------------------
+			// A canal slicing the city (low-poly water rectangle with border)
 			{
-				// Ridge silhouette (polyline at Zhorizon)
-				const int segs = 220;
-				auto ridgeY = [&](float x) {
-					// sculpted, multi-frequency ridge w/ soft peaks
-					float r = 0.62f + 0.22f * std::sin(0.65f * x)
-						+ 0.14f * std::sin(1.45f * x + 1.2f)
-						+ 0.10f * std::sin(2.30f * x + 0.4f);
-					r += 0.08f * std::fabs(std::sin(1.9f * x - 0.7f)); // crags
-					return r;
-					};
-
-				for (int s = 0; s < segs; ++s)
+				if (GZ > 8)
 				{
-					float u0 = s / float(segs);
-					float u1 = (s + 1) / float(segs);
-					float x0 = mixf(-Xw, Xw, u0);
-					float x1 = mixf(-Xw, Xw, u1);
-					float y0 = ridgeY(x0), y1 = ridgeY(x1);
+					int rz = GZ / 2 + 1;
+					float z0 = -(GZ - 1) * cellD * 0.5f + (rz - 0.5f) * cellD - cellD * 0.6f;
+					float z1 = z0 + cellD * 1.2f;
+					float x0 = -(GX - 1) * cellW * 0.5f - 0.25f;
+					float x1 = (GX - 1) * cellW * 0.5f + 0.25f;
 
-					emit(x0, y0, Zhorizon, x1, y1, Zhorizon,
-						ridgeDark, ridgeLite, 0.0075f, 0.0100f, 32);
-				}
-
-				// Vertical hatching: from horizon line up to ridge (fills mass)
-				const int hatchCols = 140;
-				for (int i = 0; i < hatchCols; i++)
-				{
-					float u = i / float(hatchCols - 1);
-					float x = mixf(-Xw, Xw, u);
-					float yTop = ridgeY(x);
-					float gaps = 0.85f + 0.15f * std::sin(2.7f * u * TAU);
-					if (i % 2 == 0) // skip some to get airy feel
-						emit(x, mixf(0.50f, yTop, 0.05f), Zhorizon,
-							x, yTop, Zhorizon,
-							ridgeLite, ridgeDark, 0.0035f, 0.0045f, 22);
-				}
-			}
-
-			// --------------------------------------------
-			// SKY: vertical gradient + soft cloud bands
-			// --------------------------------------------
-			{
-				// Gradient columns behind the ridge
-				const int cols = 70;
-				const int layers = 8;
-				for (int c = 0; c < cols; c++)
-				{
-					float u = c / float(cols - 1);
-					float x = mixf(-Xw, Xw, u);
-					for (int k = 0; k < layers; k++)
+					Vec3 wb0{ 0.10f,0.40f,0.65f }, wb1{ 0.15f,0.60f,0.85f };
+					// borders
+					edge(x0, groundY, z0, x1, groundY, z0, wb0, wb1, baseTh, baseTh, cubesMd);
+					edge(x0, groundY, z1, x1, groundY, z1, wb0, wb1, baseTh, baseTh, cubesMd);
+					edge(x0, groundY, z0, x0, groundY, z1, wb0, wb1, baseTh, baseTh, cubesMd);
+					edge(x1, groundY, z0, x1, groundY, z1, wb0, wb1, baseTh, baseTh, cubesMd);
+					// few cross “wave” dashes inside
+					for (int i = 0; i < 28; i++)
 					{
-						float t0 = k / float(layers);
-						float t1 = (k + 1) / float(layers);
-						float y0 = mixf(0.55f, 1.40f, t0);
-						float y1 = mixf(0.55f, 1.40f, t1);
-
-						Vec3 ca{ mixf(skyLow.x,skyHigh.x,t0), mixf(skyLow.y,skyHigh.y,t0), mixf(skyLow.z,skyHigh.z,t0) };
-						Vec3 cb{ mixf(skyLow.x,skyHigh.x,t1), mixf(skyLow.y,skyHigh.y,t1), mixf(skyLow.z,skyHigh.z,t1) };
-
-						emit(x, y0, mixf(Zhorizon + 0.02f, Zfar, 0.25f),
-							x, y1, mixf(Zhorizon + 0.02f, Zfar, 0.25f),
-							ca, cb, 0.0038f, 0.0042f, 26);
+						float u = i / 27.0f;
+						float x = lerp(x0 + 0.06f, x1 - 0.06f, u);
+						float z = lerp(z0 + 0.06f, z1 - 0.06f, 0.5f + 0.45f * std::sin(3.0f * u * TAU));
+						edge(x - 0.035f, groundY + 0.0015f, z, x + 0.035f, groundY + 0.0015f, z, wb1, wb0, baseTh * 0.55f, baseTh * 0.75f, cubesLo);
 					}
-				}
-
-				// Cloud bands (wavy horizontal ribbons)
-				const int bands = 6;
-				const int segs = 160;
-				for (int b = 0; b < bands; b++)
-				{
-					float h = mixf(0.75f, 1.35f, b / float(bands - 1));
-					float z = mixf(Zhorizon + 0.04f, Zfar, 0.35f + 0.1f * b);
-					for (int s = 0; s < segs; s++)
-					{
-						float u0 = s / float(segs);
-						float u1 = (s + 1) / float(segs);
-						float x0 = mixf(-Xw, Xw, u0);
-						float x1 = mixf(-Xw, Xw, u1);
-
-						auto cy = [&](float x) {
-							return h + 0.04f * std::sin(0.9f * x + 0.6f * b) + 0.02f * std::sin(2.2f * x + 1.3f * b);
-							};
-						float y0 = cy(x0), y1 = cy(x1);
-
-						Vec3 c0 = cloudA, c1 = cloudB;
-						emit(x0, y0, z, x1, y1, z, c0, c1, 0.0040f, 0.0060f, 16);
-					}
-				}
-			}
-
-			// --------------------------------------------
-			// SUN: small disk above ridge (partial outline + tiny rays)
-			// --------------------------------------------
-			{
-				float sunR = 0.18f;
-				float sunX = -0.95f;
-				float sunY = 1.05f;
-				float sunZ = Zhorizon + 0.03f;
-
-				// rim
-				const int segs = 72;
-				for (int s = 0; s < segs; s++)
-				{
-					float a0 = (s / float(segs)) * TAU;
-					float a1 = ((s + 1) / float(segs)) * TAU;
-					float x0 = sunX + sunR * std::cos(a0);
-					float y0 = sunY + sunR * std::sin(a0);
-					float x1 = sunX + sunR * std::cos(a1);
-					float y1 = sunY + sunR * std::sin(a1);
-					emit(x0, y0, sunZ, x1, y1, sunZ, sunA, sunB, 0.0065f, 0.0085f, 24);
-				}
-				// small soft rays
-				for (int r = 0; r < 16; r++)
-				{
-					float a = (r / 16.0f) * TAU;
-					float r0 = sunR * 0.75f, r1 = sunR * 1.15f;
-					float x0 = sunX + r0 * std::cos(a), y0 = sunY + r0 * std::sin(a);
-					float x1 = sunX + r1 * std::cos(a), y1 = sunY + r1 * std::sin(a);
-					emit(x0, y0, sunZ, x1, y1, sunZ, sunB, sunA, 0.0035f, 0.0050f, 14);
 				}
 			}
 		}
@@ -5269,12 +5415,7 @@ namespace Universe_
 
 
 
-
-
-
-
-
-
+		// ------
 
 
 
@@ -5454,17 +5595,19 @@ namespace Universe_
 				// lines.init_2010_ocean_glyph_overture();
 				// lines.init_solar_flare();
 				// lines.init_2020_glass_of_water();
+				// lines.init_calculus_morph();
 
 
 
 
 
 
-				lines.init_2011_coast_mountain_sea();
+				
 
+				
+				
 
-
-
+				lines.init_2012_lowpoly_city_world();
 
 				// --
 				
