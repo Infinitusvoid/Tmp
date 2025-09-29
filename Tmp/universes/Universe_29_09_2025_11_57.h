@@ -8003,37 +8003,40 @@ namespace Universe_
 
 
 
-		void init_fractal_storm()
+		void init_fractal_storm_fast()
 		{
 			const float M_PI = 3.14159265359f;
 			static float time_base = 0.0f;
 
-			// =====================
-			// MASTER DENSITY KNOBS
-			// =====================
-			const int   CHORUS_CLONES = 2;     // duplicate whole fractal with phase/rotation offsets
-			const int   TIME_GHOSTS = 2;     // extra "afterimage" layers per clone
-			const float GHOST_DELAY = 0.05f; // time delta between ghosts
+			// ======= perf knobs =======
+			const int   MAX_LINES_PER_FRAME = 12000; // hard cap  guarantees fast first frame
+			const float RAMP_SECONDS = 3.0f;  // time to reach full density
+			const float DT = 0.016f;
 
-			const int   BASE_TRUNKS = 8;     // roots
-			const int   MAX_LEVELS = 8;     // recursion depth (careful!)
+			// ======= wildness knobs (full power targets) =======
+			const int   CHORUS_CLONES_FULL = 2;
+			const int   TIME_GHOSTS_FULL = 2;
+			const float GHOST_DELAY = 0.05f;
+
+			const int   BASE_TRUNKS_FULL = 8;
+			const int   MAX_LEVELS_FULL = 8;
 			const float BASE_LEN = 0.50f;
-			const float SCALE = 0.66f; // length shrink per level
+			const float SCALE = 0.66f;
 
-			const float SPLIT_BASE = 0.60f; // base branch angle
-			const float SPLIT_WOBBLE = 0.35f; // time morph
-			const float TWIST_AROUND = 0.65f; // split-plane twist
+			const float SPLIT_BASE = 0.60f;
+			const float SPLIT_WOBBLE = 0.35f;
+			const float TWIST_AROUND = 0.65f;
 
-			const int   RIBBON_STRANDS = 3;     // extra strand copies around each branch
-			const float RIBBON_RADIUS = 0.025f;// strand radial offset (scaled by segment length)
+			const int   RIBBON_STRANDS_FULL = 3;
+			const float RIBBON_RADIUS = 0.025f;
 
-			const int   HAIRS_PER_SEG = 3;     // perpendicular hairs
-			const float HAIR_FRAC_LEN = 0.20f; // fraction of segment length
+			const int   HAIRS_PER_SEG_FULL = 3;
+			const float HAIR_FRAC_LEN = 0.20f;
 
-			const int   CROSSLINKS_PER_L = 16;    // cross-links per level (lightning-ish)
-			const float CROSSLINK_RANGE = 0.35f; // only link endpoints closer than this
+			const int   CROSSLINKS_PER_L_FULL = 16;
+			const float CROSSLINK_RANGE = 0.35f;
 
-			// Motion feel
+			// motion feel
 			const float ROTATE_SPEED = 0.22f;
 			const float WIND_SWAY = 0.25f;
 			const float WIND_SPEED = 0.90f;
@@ -8088,9 +8091,40 @@ namespace Universe_
 				return lerp(y0, y1, w) * 2.0f - 1.0f;
 				};
 
-			struct Node { float x, y, z; float dx, dy, dz; int level; };
-
+			// ======= density ramp =======
 			float T = time_base;
+			float ramp0 = clampf(T / RAMP_SECONDS, 0.0f, 1.0f);
+			// Start not-from-zero so you see something instantly
+			float ramp = maxf(0.35f, ramp0);
+
+			// scale discrete knobs
+			auto scale_int = [&](int full, float r) {
+				int val = (int)std::floor(lerp(1.0f, (float)full, r) + 1e-4f);
+				if (val < 1) val = 1;
+				return val;
+				};
+			int CHORUS_CLONES = scale_int(CHORUS_CLONES_FULL, ramp);
+			int TIME_GHOSTS = scale_int(TIME_GHOSTS_FULL, ramp);
+			int BASE_TRUNKS = scale_int(BASE_TRUNKS_FULL, ramp);
+			int MAX_LEVELS = scale_int(MAX_LEVELS_FULL, 0.65f + 0.35f * ramp); // levels grow a bit slower
+			int RIBBON_STRANDS = scale_int(RIBBON_STRANDS_FULL, ramp);
+			int HAIRS_PER_SEG = scale_int(HAIRS_PER_SEG_FULL, ramp);
+			int CROSSLINKS_PER_L = scale_int(CROSSLINKS_PER_L_FULL, ramp);
+
+			// ======= line budget =======
+			int budget = MAX_LINES_PER_FRAME;
+			auto try_add = [&](Line*& out)->bool {
+				if (budget <= 0) return false;
+				out = &add_line();
+				--budget;
+				return true;
+				};
+
+			// handy end macro
+#define END_FRAME() do { time_base += DT; return; } while(0)
+
+			struct Node { float x, y, z; float dx, dy, dz; int level; };
+			struct V3E { float x, y, z; };
 
 			for (int clone = 0; clone < CHORUS_CLONES; ++clone) {
 				float clonePhase = clone * 1.37f;
@@ -8116,7 +8150,7 @@ namespace Universe_
 					}
 
 					// per-level endpoints for cross-links
-					std::vector<std::vector<V3>> endpoints(MAX_LEVELS);
+					std::vector<std::vector<V3E>> endpoints(MAX_LEVELS);
 					int segId = 0;
 
 					for (int level = 0; level < MAX_LEVELS; ++level) {
@@ -8125,7 +8159,7 @@ namespace Universe_
 						float windP = t * WIND_SPEED + 0.7f * level + 0.9f * clonePhase;
 
 						for (const Node& n : curr) {
-							// ---- direction with wind + turbulence ----
+							// direction with wind + turbulence
 							float sx = n.x, sy = n.y, sz = n.z;
 							float dx = n.dx, dy = n.dy, dz = n.dz;
 
@@ -8157,36 +8191,34 @@ namespace Universe_
 							float ey = sy + dy * len;
 							float ez = sz + dz * len;
 
-							// compute thickness once (needed in strands too)
 							float th = thick * (0.85f + 0.30f * std::sin(2.3f * t + level + clonePhase));
 
-							// ===== main branch =====
+							// main branch
 							{
-								Line& L = add_line();
-								L.x0.start = sx; L.y0.start = sy; L.z0.start = sz;
-								L.x1.start = ex; L.y1.start = ey; L.z1.start = ez;
+								Line* L; if (!try_add(L)) END_FRAME();
+								L->x0.start = sx; L->y0.start = sy; L->z0.start = sz;
+								L->x1.start = ex; L->y1.start = ey; L->z1.start = ez;
 
 								float flow = 0.016f * std::sin(3.0f * t + segId * 0.23f + clonePhase);
-								L.x1.end = ex + flow * (ex - sx);
-								L.y1.end = ey + 0.4f * flow * (ey - sy);
-								L.z1.end = ez + flow * (ez - sz);
+								L->x1.end = ex + flow * (ex - sx);
+								L->y1.end = ey + 0.4f * flow * (ey - sy);
+								L->z1.end = ez + flow * (ez - sz);
 
 								float hue = 1.0f * t + 0.35f * (sy + ey) + 0.7f * clone + 0.25f * ghost;
 								float sat = 0.65f + 0.35f * std::sin(1.5f * t + 0.13f * segId);
-								L.rgb_t0.x = 0.10f + 0.38f * std::sin(hue) * sat;
-								L.rgb_t0.y = 0.26f + 0.64f * std::sin(hue + 1.05f) * sat;
-								L.rgb_t0.z = 0.80f + 0.20f * std::sin(hue + 2.10f) * sat;
+								L->rgb_t0.x = 0.10f + 0.38f * std::sin(hue) * sat;
+								L->rgb_t0.y = 0.26f + 0.64f * std::sin(hue + 1.05f) * sat;
+								L->rgb_t0.z = 0.80f + 0.20f * std::sin(hue + 2.10f) * sat;
 
-								L.thickness.start = th;
-								L.thickness.end = th * (0.8f + 0.4f * std::sin(4.4f * t + 0.17f * segId));
-								L.number_of_cubes = 8 + (int)(10.0f * len);
+								L->thickness.start = th;
+								L->thickness.end = th * (0.8f + 0.4f * std::sin(4.4f * t + 0.17f * segId));
+								L->number_of_cubes = 8 + (int)(10.0f * len);
 
 								++segId;
 							}
 
-							// ===== ribbon strands =====
+							// ribbon strands (scaled by ramp)
 							{
-								// make perpendicular basis (nx, bx)
 								V3 nrm = cross3(dx, dy, dz, 0.0f, 1.0f, 0.0f);
 								float L = std::sqrt(nrm.x * nrm.x + nrm.y * nrm.y + nrm.z * nrm.z);
 								if (L < 1e-4f) { nrm = V3{ 1.0f,0.0f,0.0f }; L = 1.0f; }
@@ -8196,7 +8228,10 @@ namespace Universe_
 								bxv.x /= L2; bxv.y /= L2; bxv.z /= L2;
 
 								float rr = RIBBON_RADIUS * len * (0.9f + 0.3f * std::sin(0.9f * t + level));
-								int   strands = (RIBBON_STRANDS > 1 ? RIBBON_STRANDS : 1);
+								int   strands = RIBBON_STRANDS;
+
+								// fade in strands: first seconds use only 1 strand
+								if (ramp < 0.6f) strands = 1;
 
 								for (int s = 0; s < strands; ++s) {
 									float ang = (2.0f * M_PI * s) / strands;
@@ -8204,36 +8239,39 @@ namespace Universe_
 									float oy = rr * (nrm.y * std::cos(ang) + bxv.y * std::sin(ang));
 									float oz = rr * (nrm.z * std::cos(ang) + bxv.z * std::sin(ang));
 
-									Line& R = add_line();
-									R.x0.start = sx + ox; R.y0.start = sy + oy; R.z0.start = sz + oz;
-									R.x1.start = ex + ox; R.y1.start = ey + oy; R.z1.start = ez + oz;
+									Line* R; if (!try_add(R)) END_FRAME();
+									R->x0.start = sx + ox; R->y0.start = sy + oy; R->z0.start = sz + oz;
+									R->x1.start = ex + ox; R->y1.start = ey + oy; R->z1.start = ez + oz;
 
 									float hue = 0.8f * t + 2.1f * s + 0.2f * level + 0.4f * clone;
-									R.rgb_t0.x = 0.10f + 0.30f * std::sin(hue);
-									R.rgb_t0.y = 0.58f + 0.36f * std::sin(hue + 1.0f);
-									R.rgb_t0.z = 0.84f + 0.16f * std::sin(hue + 2.0f);
+									R->rgb_t0.x = 0.10f + 0.30f * std::sin(hue);
+									R->rgb_t0.y = 0.58f + 0.36f * std::sin(hue + 1.0f);
+									R->rgb_t0.z = 0.84f + 0.16f * std::sin(hue + 2.0f);
 
 									float base = 0.6f * th;
-									R.thickness.start = 0.6f * maxf(0.0012f, base);
-									R.thickness.end = R.thickness.start * (0.9f + 0.3f * std::sin(3.7f * t + s + segId * 0.07f));
-									R.number_of_cubes = 6 + (int)(6.0f * len);
+									R->thickness.start = 0.6f * maxf(0.0012f, base);
+									R->thickness.end = R->thickness.start * (0.9f + 0.3f * std::sin(3.7f * t + s + segId * 0.07f));
+									R->number_of_cubes = 6 + (int)(6.0f * len);
 
 									float shear = 0.02f * std::sin(2.2f * t + segId * 0.21f + s);
-									R.x1.end = R.x1.start + shear * (R.x1.start - R.x0.start);
-									R.y1.end = R.y1.start + 0.35f * shear;
-									R.z1.end = R.z1.start + shear * (R.z1.start - R.z0.start);
+									R->x1.end = R->x1.start + shear * (R->x1.start - R->x0.start);
+									R->y1.end = R->y1.start + 0.35f * shear;
+									R->z1.end = R->z1.start + shear * (R->z1.start - R->z0.start);
 								}
 							}
 
-							// ===== perpendicular hair filaments =====
+							// hair filaments (scaled by ramp)
 							{
+								int hairs = HAIRS_PER_SEG;
+								if (ramp < 0.5f) hairs = 1;
+
 								V3 nrm = cross3(dx, dy, dz, 0.0f, 1.0f, 0.0f);
 								float L = std::sqrt(nrm.x * nrm.x + nrm.y * nrm.y + nrm.z * nrm.z);
 								if (L < 1e-4f) { nrm = V3{ 1.0f,0.0f,0.0f }; L = 1.0f; }
 								nrm.x /= L; nrm.y /= L; nrm.z /= L;
 
-								for (int h = 0; h < HAIRS_PER_SEG; ++h) {
-									float u = (h + 1.0f) / (HAIRS_PER_SEG + 1.0f);
+								for (int h = 0; h < hairs; ++h) {
+									float u = (h + 1.0f) / (hairs + 1.0f);
 									float px = lerp(sx, ex, u);
 									float py = lerp(sy, ey, u);
 									float pz = lerp(sz, ez, u);
@@ -8241,70 +8279,69 @@ namespace Universe_
 									float hl = HAIR_FRAC_LEN * len * (0.7f + 0.6f * hash11(segId * 0.137f + h));
 									float ox = sign * nrm.x * hl, oy = sign * nrm.y * hl, oz = sign * nrm.z * hl;
 
-									Line& H = add_line();
-									H.x0.start = px;       H.y0.start = py;        H.z0.start = pz;
-									H.x1.start = px + ox;  H.y1.start = py + oy;   H.z1.start = pz + oz;
+									Line* H; if (!try_add(H)) END_FRAME();
+									H->x0.start = px;       H->y0.start = py;        H->z0.start = pz;
+									H->x1.start = px + ox;  H->y1.start = py + oy;   H->z1.start = pz + oz;
 
 									float hue = 0.6f * t + 3.0f * u + 0.5f * level;
-									H.rgb_t0.x = 0.12f + 0.28f * std::sin(hue);
-									H.rgb_t0.y = 0.52f + 0.38f * std::sin(hue + 1.0f);
-									H.rgb_t0.z = 0.86f + 0.14f * std::sin(hue + 2.0f);
+									H->rgb_t0.x = 0.12f + 0.28f * std::sin(hue);
+									H->rgb_t0.y = 0.52f + 0.38f * std::sin(hue + 1.0f);
+									H->rgb_t0.z = 0.86f + 0.14f * std::sin(hue + 2.0f);
 
-									H.thickness.start = 0.0016f;
-									H.thickness.end = 0.0012f;
-									H.number_of_cubes = 4;
+									H->thickness.start = 0.0016f;
+									H->thickness.end = 0.0012f;
+									H->number_of_cubes = 4;
 
 									float curl = 0.02f * std::sin(5.0f * t + segId * 0.33f + h);
-									H.x1.end = H.x1.start + curl * ox;
-									H.y1.end = H.y1.start + 0.4f * curl * oy;
-									H.z1.end = H.z1.start + curl * oz;
+									H->x1.end = H->x1.start + curl * ox;
+									H->y1.end = H->y1.start + 0.4f * curl * oy;
+									H->z1.end = H->z1.start + curl * oz;
 								}
 							}
 
-							// ===== pulses along branch =====
+							// pulses along branch (keep light early)
 							{
 								float seed = segId * 0.173f + 2.1f * level + 0.7f * clone;
 								float uA = fractf(PULSE_SPEED_A * t + hash11(seed) * 4.0f);
-								float uB = fractf(PULSE_SPEED_B * t + hash11(seed + 10.0f) * 5.0f);
 
 								auto pulse = [&](float u, float bright) {
 									float px = sx + dx * len * u, py = sy + dy * len * u, pz = sz + dz * len * u;
 									float q = 0.03f + 0.05f * std::sin(6.28318f * u);
-									Line& P = add_line();
-									P.x0.start = px; P.y0.start = py; P.z0.start = pz;
-									P.x1.start = px + dx * q; P.y1.start = py + dy * q; P.z1.start = pz + dz * q;
-									P.rgb_t0.x = 0.88f * bright; P.rgb_t0.y = 0.95f * bright; P.rgb_t0.z = 1.0f * bright;
-									P.thickness.start = 0.0065f;
-									P.thickness.end = 0.0040f;
-									P.number_of_cubes = 3;
-									// small forward drift for the pulse
-									P.x1.end = P.x1.start + 0.02f * dx;
-									P.y1.end = P.y1.start + 0.008f * dy;
-									P.z1.end = P.z1.start + 0.02f * dz;
+									Line* P; if (!try_add(P)) END_FRAME();
+									P->x0.start = px; P->y0.start = py; P->z0.start = pz;
+									P->x1.start = px + dx * q; P->y1.start = py + dy * q; P->z1.start = pz + dz * q;
+									P->rgb_t0.x = 0.88f * bright; P->rgb_t0.y = 0.95f * bright; P->rgb_t0.z = 1.0f * bright;
+									P->thickness.start = 0.0065f;
+									P->thickness.end = 0.0040f;
+									P->number_of_cubes = 3;
+									P->x1.end = P->x1.start + 0.02f * dx;
+									P->y1.end = P->y1.start + 0.008f * dy;
+									P->z1.end = P->x1.start + 0.02f * dz; // small drift
 									};
-								if (hash11(seed) > 0.35f)     pulse(uA, 1.0f);
-								if (hash11(seed + 5.0f) > 0.65f) pulse(uB, 0.85f);
+								pulse(uA, 1.0f);
+
+								if (ramp > 0.6f) {
+									float uB = fractf(PULSE_SPEED_B * t + hash11(seed + 10.0f) * 5.0f);
+									pulse(uB, 0.85f);
+								}
 							}
 
-							// record endpoint for cross-links
-							endpoints[level].push_back(V3{ ex,ey,ez });
+							// endpoint for cross-links
+							endpoints[level].push_back(V3E{ ex,ey,ez });
 
-							// ===== spawn children (2 or sometimes 3) =====
+							// spawn children (2 or sometimes 3), tri-split only after half ramp
 							if (level + 1 < MAX_LEVELS) {
 								float h = hash11(segId * 0.731f + level * 3.13f + clonePhase);
 
-								// base split plane axis ( to direction)
 								float rx = std::sin(h * 23.0f), ry = std::cos(h * 19.0f), rz = std::sin(h * 17.0f);
 								V3 ax0 = cross3(dx, dy, dz, rx, ry, rz);
 								float L = std::sqrt(ax0.x * ax0.x + ax0.y * ax0.y + ax0.z * ax0.z) + 1e-6f;
 								float ax = ax0.x / L, ay = ax0.y / L, az = ax0.z / L;
 
-								// twist split plane
 								float twist = TWIST_AROUND * (h * 2.0f - 1.0f) + 0.4f * std::sin(0.6f * t + level + clonePhase);
-								V3 ax1 = rodrigues(ax, ay, az, dx, dy, dz, twist);
+								V3 ax1 = rodrigues(dx, dy, dz, ax, ay, az, twist);
 
-								// maybe tri-split on earlier/mid levels
-								int  childCount = 2 + ((level < MAX_LEVELS - 3 && h > 0.72f) ? 1 : 0);
+								int  childCount = 2 + ((ramp > 0.5f && level < MAX_LEVELS - 3 && h > 0.72f) ? 1 : 0);
 								float spread = splitAngle * (0.9f + 0.2f * std::sin(0.4f * t + level));
 
 								if (childCount == 2) {
@@ -8330,41 +8367,44 @@ namespace Universe_
 						next.clear();
 					}
 
-					// ===== level cross-links (lightning lattice) =====
+					// cross-links (scaled by ramp)
 					for (int Lvl = 1; Lvl < MAX_LEVELS; ++Lvl) {
 						auto& pts = endpoints[Lvl];
 						if (pts.size() < 4) continue;
 
 						int half = (int)pts.size() / 2;
 						int links = (CROSSLINKS_PER_L < half ? CROSSLINKS_PER_L : half);
+						if (ramp < 0.6f) links = links / 2 + 1;
+
 						for (int k = 0; k < links; ++k) {
 							int i = (k * 37 + (int)(hash11(T * 53.0f + Lvl * 7.0f + k) * 1e6)) % (int)pts.size();
 							int j = (i + 1 + (int)(hash11((i + Lvl) * 0.77f) * (int)pts.size())) % (int)pts.size();
-							V3 a = pts[i], b = pts[j];
+							V3E a = pts[i], b = pts[j];
 							float dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
 							float d = std::sqrt(dx * dx + dy * dy + dz * dz);
 							if (d > 1e-4f && d < CROSSLINK_RANGE) {
-								Line& C = add_line();
-								C.x0.start = a.x; C.y0.start = a.y; C.z0.start = a.z;
-								C.x1.start = b.x; C.y1.start = b.y; C.z1.start = b.z;
-								C.rgb_t0.x = 0.92f; C.rgb_t0.y = 0.96f; C.rgb_t0.z = 1.0f;
-								C.thickness.start = 0.0028f;
-								C.thickness.end = 0.0022f;
-								C.number_of_cubes = 4;
+								Line* C; if (!try_add(C)) END_FRAME();
+								C->x0.start = a.x; C->y0.start = a.y; C->z0.start = a.z;
+								C->x1.start = b.x; C->y1.start = b.y; C->z1.start = b.z;
+								C->rgb_t0.x = 0.92f; C->rgb_t0.y = 0.96f; C->rgb_t0.z = 1.0f;
+								C->thickness.start = 0.0028f;
+								C->thickness.end = 0.0022f;
+								C->number_of_cubes = 4;
 
 								float jx = 0.03f * std::sin(11.0f * T + i + Lvl);
 								float jy = 0.02f * std::sin(13.0f * T + j + Lvl);
 								float jz = 0.03f * std::sin(17.0f * T + i - j);
-								C.x1.end = b.x + jx; C.y1.end = b.y + jy; C.z1.end = b.z + jz;
+								C->x1.end = b.x + jx; C->y1.end = b.y + jy; C->z1.end = b.z + jz;
 							}
 						}
 					}
 				}
 			}
 
-			// Advance time
-			time_base += 0.016f;
+			// advance time and done
+			time_base += DT;
 		}
+
 
 
 
@@ -8554,7 +8594,443 @@ namespace Universe_
 
 
 
+		
+		void init_celestial_orrery()
+		{
+			// --- General Constants ---
+			const float TAU = 6.28318530718f;
+			const float PI = 3.14159265359f;
 
+			lines.clear();
+
+			// ====================================================================
+			// SECTION 1: ARTISTIC PARAMETERS & CONFIGURATION ("The Observatory Console")
+			// ====================================================================
+
+			const int   num_toruses = 10;
+			const int   torus_ring_segments = 50;   // Resolution of the main ring of the torus
+			const int   torus_tube_segments = 12;   // Resolution of the tube of the torus
+			const int   num_trail_particles = 25;   // Particles left behind by each orbiting core
+
+			// --- Animation & Physics ---
+			const float max_precession_angle = 0.4f; // How much the toruses "wobble" (in radians)
+			const float orbital_distance = 1.8f * PI; // How far along its path each core travels
+
+			// --- Color Palette ---
+			const Vec3 star_color = { 1.0f, 0.9f, 0.7f };
+			const Vec3 orbit_color = { 0.4f, 0.6f, 1.0f };
+			const Vec3 core_color = { 0.8f, 1.0f, 0.9f };
+			const Vec3 trail_color = { 1.0f, 0.7f, 0.9f };
+
+			
+
+			// ====================================================================
+			// SECTION 2: THE CENTRAL STAR
+			// A simple, breathing sphere of light to anchor the scene.
+			// ====================================================================
+			{
+				const int star_lines = 100;
+				const float star_radius_start = 0.0f;
+				const float star_radius_end = 0.15f;
+				for (int i = 0; i < star_lines; ++i) {
+					Line& l = add_line();
+					float theta = Random::generate_random_float_0_to_1() * TAU;
+					float phi = acos(2.f * Random::generate_random_float_0_to_1() - 1.f);
+					Vec3 dir = { sin(phi) * cos(theta), cos(phi), sin(phi) * sin(theta) };
+
+					l.x0.start = 0; l.y0.start = 0; l.z0.start = 0;
+					l.x1.start = 0; l.y1.start = 0; l.z1.start = 0;
+					l.x0.end = dir.x * star_radius_end; l.y0.end = dir.y * star_radius_end; l.z0.end = dir.z * star_radius_end;
+					l.x1.end = dir.x * star_radius_end * 1.1f; l.y1.end = dir.y * star_radius_end * 1.1f; l.z1.end = dir.z * star_radius_end * 1.1f;
+					l.rgb_t0 = star_color; l.rgb_t1 = star_color;
+					l.thickness.start = 0.008f; l.thickness.end = 0.0f;
+					l.number_of_cubes = 20;
+				}
+			}
+
+			// ====================================================================
+			// SECTION 3: THE 10 ORBITAL TORUSES AND THEIR CORES
+			// This is the main loop that generates each of the 10 systems.
+			// ====================================================================
+			for (int i = 0; i < num_toruses; ++i)
+			{
+				float progress = (float)i / (num_toruses - 1);
+
+				// Each torus has a unique size and tilt, creating a layered, 3D structure.
+				float major_radius = 0.5f + progress * 1.0f;
+				float minor_radius = 0.05f + (1.0f - progress) * 0.08f;
+				float tilt_angle_start = 0;
+				float tilt_angle_end = max_precession_angle * sin(progress * PI * 2.f + 1.f); // Precession wobble
+				float axis_angle = progress * PI; // Distribute tilt axes around the circle
+
+				// Helper to apply the tilt transformation to any point
+				auto apply_tilt = [&](Vec3 p, float tilt) -> Vec3 {
+					// First, tilt around X axis
+					p = { p.x, p.y * cos(tilt) - p.z * sin(tilt), p.y * sin(tilt) + p.z * cos(tilt) };
+					// Then, rotate the whole tilted plane around the Y axis
+					return { p.x * cos(axis_angle) - p.z * sin(axis_angle), p.y, p.x * sin(axis_angle) + p.z * cos(axis_angle) };
+					};
+
+				// --- Part 3a: Generate the Torus Wireframe ---
+				for (int j = 0; j < torus_ring_segments; ++j) {
+					for (int k = 0; k < torus_tube_segments; ++k) {
+						float u1 = (float)j / torus_ring_segments * TAU;
+						float u2 = (float)(j + 1) / torus_ring_segments * TAU;
+						float v1 = (float)k / torus_tube_segments * TAU;
+
+						auto get_torus_point = [&](float u, float v) -> Vec3 {
+							return {
+								(major_radius + minor_radius * cos(v)) * cos(u),
+								minor_radius * sin(v),
+								(major_radius + minor_radius * cos(v)) * sin(u)
+							};
+							};
+
+						Vec3 p1_base = get_torus_point(u1, v1);
+						Vec3 p2_base = get_torus_point(u2, v1);
+
+						Line& l = add_line();
+						// ANIMATION: Torus starts as a simple, flat ring and expands/tilts into its final form.
+						l.x0.start = major_radius * cos(u1); l.y0.start = 0; l.z0.start = major_radius * sin(u1);
+						l.x1.start = major_radius * cos(u2); l.y1.start = 0; l.z1.start = major_radius * sin(u2);
+						Vec3 p1_end = apply_tilt(p1_base, tilt_angle_end);
+						Vec3 p2_end = apply_tilt(p2_base, tilt_angle_end);
+						l.x0.end = p1_end.x; l.y0.end = p1_end.y; l.z0.end = p1_end.z;
+						l.x1.end = p2_end.x; l.y1.end = p2_end.y; l.z1.end = p2_end.z;
+
+						l.rgb_t0 = vec_scale(orbit_color, 0.5f); l.rgb_t1 = vec_scale(orbit_color, 1.0f - progress * 0.5f);
+						l.thickness.start = 0.001f; l.thickness.end = 0.003f; l.number_of_cubes = 5;
+					}
+				}
+
+				// --- Part 3b: Generate the Orbiting Energy Core and its Trail ---
+				float core_start_angle = Random::generate_random_float_0_to_1() * TAU;
+				auto get_core_pos = [&](float orbital_angle) -> Vec3 {
+					float u = orbital_angle;
+					float v = orbital_angle * 5.f; // The core also spirals around the tube as it orbits
+					return {
+						(major_radius + minor_radius * cos(v)) * cos(u),
+						minor_radius * sin(v),
+						(major_radius + minor_radius * cos(v)) * sin(u)
+					};
+					};
+
+				Vec3 core_pos_start = apply_tilt(get_core_pos(core_start_angle), tilt_angle_start);
+				Vec3 core_pos_end = apply_tilt(get_core_pos(core_start_angle + orbital_distance / major_radius), tilt_angle_end);
+
+				Line& core = add_line();
+				core.x0.start = core_pos_start.x; core.y0.start = core_pos_start.y; core.z0.start = core_pos_start.z;
+				core.x1.start = core_pos_start.x; core.y1.start = core_pos_start.y; core.z1.start = core_pos_start.z; // Start as point
+				core.x0.end = core_pos_end.x; core.y0.end = core_pos_end.y; core.z0.end = core_pos_end.z;
+				Vec3 trail_dir = vec_normalize(vec_add(core_pos_end, vec_scale(core_pos_start, -1.f)));
+				Vec3 core_tail_end = vec_add(core_pos_end, vec_scale(trail_dir, -0.1f));
+				core.x1.end = core_tail_end.x; core.y1.end = core_tail_end.y; core.z1.end = core_tail_end.z;
+				core.rgb_t0 = core_color; core.rgb_t1 = core_color;
+				core.thickness.start = 0.012f; core.thickness.end = 0.01f;
+				core.number_of_cubes = 15;
+
+				// Generate the stardust trail
+				for (int p = 0; p < num_trail_particles; ++p) {
+					float trail_progress = (float)p / num_trail_particles;
+					Line& trail = add_line();
+					// Start state: All trail particles are at the core's starting position
+					trail.x0.start = core_pos_start.x; trail.y0.start = core_pos_start.y; trail.z0.start = core_pos_start.z;
+					trail.x1.start = core_pos_start.x; trail.y1.start = core_pos_start.y; trail.z1.start = core_pos_start.z;
+
+					// End state: Particles are spread out behind the core's final position
+					float particle_orbital_angle = core_start_angle + (orbital_distance / major_radius) * (1.f - trail_progress);
+					Vec3 particle_pos = apply_tilt(get_core_pos(particle_orbital_angle), tilt_angle_end);
+					trail.x0.end = particle_pos.x; trail.y0.end = particle_pos.y; trail.z0.end = particle_pos.z;
+					trail.x1.end = particle_pos.x; trail.y1.end = particle_pos.y; trail.z1.end = particle_pos.z;
+
+					trail.rgb_t0 = trail_color; trail.rgb_t1 = trail_color;
+					trail.thickness.start = 0.0f; // Start invisible
+					trail.thickness.end = 0.005f * (1.f - trail_progress); // Fade out along the tail
+					trail.number_of_cubes = 5;
+				}
+			}
+		}
+
+
+
+
+		void init_comets_collision_fast()
+		{
+			const float M_PI = 3.14159265359f;
+			static float time_base = 0.0f;
+
+			// ===== perf & timing =====
+			const int   MAX_LINES_PER_FRAME = 9000;  // hard cap so first frame is instant
+			const float DT = 0.016f;
+			const float PERIOD = 6.0f;  // seconds per full approachimpactfade cycle
+			const float APPROACH_PORTION = 0.50f; // 0..1 fraction of cycle spent approaching
+
+			// ===== look & feel =====
+			const float START_DIST = 1.25f; // how far the comets spawn from center
+			const float COMET_SPEED_BIAS = 1.0f;  // 1 = symmetric, >1 makes one faster
+			const float ARC_AMPLITUDE = 0.25f; // path curvature amplitude
+			const float ARC_TWIST = 0.9f;  // extra twist factor
+			const float TAIL_LENGTH = 1.40f; // world units
+			const int   TAIL_SEGMENTS = 26;    // segments used to draw each tail (pre-budget)
+			const float TAIL_SWIRL = 0.11f; // lateral noise of the tail
+			const float TAIL_FADE = 0.78f; // 0..1 (higher = longer bright section)
+
+			const int   SHARD_COUNT = 180;   // explosion shards
+			const float SHARD_MAX_LEN = 1.4f;
+			const float SHARD_SPREAD = 1.6f;  // angular spread
+			const float SHARD_TURB = 0.25f; // curl/noise in shard motion
+
+			const int   RING_COUNT = 3;     // shock rings
+			const int   RING_SEGS = 56;    // segments per ring
+			const float RING_MAX_RADIUS = 1.45f;
+			const float RING_THICK = 0.0065f;
+
+			const float GLOW_THICK = 0.028f; // comet head thickness
+
+			// tiny utils (no std::max/min)
+			auto maxf = [](float a, float b) { return (a > b) ? a : b; };
+			auto minf = [](float a, float b) { return (a < b) ? a : b; };
+			auto clampf = [&](float x, float a, float b) { return maxf(a, minf(b, x)); };
+			auto fractf = [](float x) { return x - std::floor(x); };
+			auto lerp = [](float a, float b, float t) { return a + (b - a) * t; };
+			auto smooth = [&](float x) { x = clampf(x, 0.0f, 1.0f); return x * x * (3.0f - 2.0f * x); };
+
+			// 3D helpers
+			struct V3 { float x, y, z; };
+			auto add = [](V3 a, V3 b) { return V3{ a.x + b.x, a.y + b.y, a.z + b.z }; };
+			auto sub = [](V3 a, V3 b) { return V3{ a.x - b.x, a.y - b.y, a.z - b.z }; };
+			auto mul = [](V3 a, float s) { return V3{ a.x * s, a.y * s, a.z * s }; };
+			auto dot = [](V3 a, V3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; };
+			auto cross = [](V3 a, V3 b) { return V3{ a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x }; };
+			auto norm = [&](V3 v) { float L = std::sqrt(dot(v, v)) + 1e-6f; return mul(v, 1.0f / L); };
+			auto rotY = [&](V3 v, float a) {
+				float c = std::cos(a), s = std::sin(a);
+				return V3{ c * v.x - s * v.z, v.y, s * v.x + c * v.z };
+				};
+
+			// simple hash/noise
+			auto h1 = [&](float p) { return fractf(std::sin(p * 127.1f) * 43758.5453f); };
+			auto vnoise = [&](float x, float y, float z) {
+				float xi = std::floor(x), yi = std::floor(y), zi = std::floor(z);
+				float xf = x - xi, yf = y - yi, zf = z - zi;
+				auto w = [&](float t) { return t * t * (3.0f - 2.0f * t); };
+				auto rnd = [&](float X, float Y, float Z) { return h1(X * 37.0f + Y * 57.0f + Z * 73.0f); };
+				float c000 = rnd(xi, yi, zi), c100 = rnd(xi + 1, yi, zi);
+				float c010 = rnd(xi, yi + 1, zi), c110 = rnd(xi + 1, yi + 1, zi);
+				float c001 = rnd(xi, yi, zi + 1), c101 = rnd(xi + 1, yi, zi + 1);
+				float c011 = rnd(xi, yi + 1, zi + 1), c111 = rnd(xi + 1, yi + 1, zi + 1);
+				float u = w(xf), v = w(yf), wv = w(zf);
+				float x00 = lerp(c000, c100, u), x10 = lerp(c010, c110, u);
+				float x01 = lerp(c001, c101, u), x11 = lerp(c011, c111, u);
+				float y0 = lerp(x00, x10, v), y1 = lerp(x01, x11, v);
+				return lerp(y0, y1, wv) * 2.0f - 1.0f;
+				};
+
+			// line budget helper
+			int budget = MAX_LINES_PER_FRAME;
+			auto try_add = [&](Line*& out)->bool {
+				if (budget <= 0) return false;
+				out = &add_line();
+				--budget;
+				return true;
+				};
+#define END_FRAME() do { time_base += DT; return; } while(0)
+
+			// ===== time staging =====
+			float T = time_base;
+			float phase01 = fractf(T / PERIOD);                // 0..1
+			float approach_u = clampf(phase01 / APPROACH_PORTION, 0.0f, 1.0f); // 0..1 during approach
+			float post_u = clampf((phase01 - APPROACH_PORTION) / (1.0f - APPROACH_PORTION), 0.0f, 1.0f);
+
+			// ease curves
+			float ease_in = smooth(approach_u);              // comets accelerate slightly
+			float ease_post = 1.0f - (1.0f - post_u) * (1.0f - post_u); // fast start, slow end
+
+			// ===== comet parametric paths (mirror-ish, with arc/twist) =====
+			// They start opposite on XZ ring, curve inward with a sinusoidal arc and mild yaw drift.
+			float yaw = 0.3f * std::sin(T * 0.5f);
+			float arc_t = 2.0f * M_PI * approach_u;
+			float tw1 = ARC_TWIST * std::sin(arc_t + 0.7f * T);
+			float tw2 = ARC_TWIST * std::sin(arc_t + 0.7f * T + 2.1f);
+
+			V3 start1 = rotY(V3{ -START_DIST,  0.20f,  0.0f }, yaw);
+			V3 start2 = rotY(V3{ +START_DIST, -0.15f,  0.0f }, -yaw);
+
+			// inward curve
+			V3 arc1 = V3{ 0.0f, ARC_AMPLITUDE * std::sin(arc_t * 1.0f + 0.8f) , ARC_AMPLITUDE * std::cos(arc_t * 1.3f + tw1) };
+			V3 arc2 = V3{ 0.0f, ARC_AMPLITUDE * std::cos(arc_t * 1.2f + 1.6f) , ARC_AMPLITUDE * std::sin(arc_t * 0.9f + tw2) };
+
+			V3 p1 = lerp(start1.x, 0.0f, ease_in) == 0 ? V3{ 0,0,0 } : V3{ lerp(start1.x, 0.0f, ease_in), lerp(start1.y, 0.0f, ease_in), lerp(start1.z, 0.0f, ease_in) };
+			V3 p2 = lerp(start2.x, 0.0f, ease_in) == 0 ? V3{ 0,0,0 } : V3{ lerp(start2.x, 0.0f, ease_in), lerp(start2.y, 0.0f, ease_in), lerp(start2.z, 0.0f, ease_in) };
+			p1 = add(p1, arc1);
+			p2 = add(p2, arc2);
+
+			// velocities (forward direction along the path toward center)
+			V3 v1 = norm(sub(V3{ 0,0,0 }, p1));
+			V3 v2 = norm(sub(V3{ 0,0,0 }, p2));
+			v2 = mul(v2, COMET_SPEED_BIAS);
+
+			// ===== draw comet heads =====
+			auto draw_head = [&](V3 p, V3 v, float hueBias) {
+				Line* L; if (!try_add(L)) END_FRAME();
+				V3 tip = add(p, mul(v, 0.10f));
+				L->x0.start = p.x;   L->y0.start = p.y;   L->z0.start = p.z;
+				L->x1.start = tip.x; L->y1.start = tip.y; L->z1.start = tip.z;
+
+				// bright cyan/white core with slight hue bias
+				float hue = 0.8f * T + hueBias;
+				L->rgb_t0.x = 0.85f + 0.15f * std::sin(hue + 0.1f);
+				L->rgb_t0.y = 0.90f + 0.10f * std::sin(hue + 1.1f);
+				L->rgb_t0.z = 1.00f;
+
+				L->thickness.start = GLOW_THICK;
+				L->thickness.end = GLOW_THICK * 0.75f;
+				L->number_of_cubes = 6;
+
+				// tiny wobble forward to keep it alive
+				V3 adv = mul(v, 0.06f * std::sin(3.0f * T + hueBias * 3.0f));
+				L->x1.end = tip.x + adv.x; L->y1.end = tip.y + adv.y; L->z1.end = tip.z + adv.z;
+				};
+
+			draw_head(p1, v1, 0.0f);
+			draw_head(p2, v2, 1.7f);
+
+			// ===== draw tail ribbons =====
+			auto draw_tail = [&](V3 p, V3 v, float hueShift) {
+				V3 up = V3{ 0,1,0 };
+				V3 n = cross(v, up); float Ln = std::sqrt(dot(n, n)); if (Ln < 1e-5f) n = V3{ 1,0,0 }; else n = mul(n, 1.0f / Ln);
+				V3 b = cross(v, n);  b = norm(b);
+
+				int segs = TAIL_SEGMENTS;
+				float segLen = TAIL_LENGTH / segs;
+
+				V3 prev = p;
+				for (int s = 1; s <= segs; ++s) {
+					float u0 = (s - 1) / float(segs);
+					float u1 = s / float(segs);
+					// decay, swirl and slight lateral advection
+					float fade0 = std::pow(1.0f - u0, TAIL_FADE);
+					float fade1 = std::pow(1.0f - u1, TAIL_FADE);
+
+					float sw0 = TAIL_SWIRL * (0.5f + 0.5f * std::sin(9.0f * u0 + 3.0f * T));
+					float sw1 = TAIL_SWIRL * (0.5f + 0.5f * std::sin(9.0f * u1 + 3.0f * T + 0.3f));
+
+					float sgn = ((s & 1) ? +1.0f : -1.0f);
+					V3 off0 = add(mul(n, sgn * sw0), mul(b, -sgn * sw0 * 0.6f));
+					V3 off1 = add(mul(n, sgn * sw1), mul(b, -sgn * sw1 * 0.6f));
+
+					V3 a = add(p, add(mul(v, -segLen * (s - 1)), off0));
+					V3 c = add(p, add(mul(v, -segLen * (s)), off1));
+
+					Line* L; if (!try_add(L)) END_FRAME();
+					L->x0.start = a.x; L->y0.start = a.y; L->z0.start = a.z;
+					L->x1.start = c.x; L->y1.start = c.y; L->z1.start = c.z;
+
+					float hue = 0.55f * T + hueShift + 2.2f * u0;
+					L->rgb_t0.x = 0.12f + 0.30f * std::sin(hue);
+					L->rgb_t0.y = 0.60f + 0.36f * std::sin(hue + 1.0f);
+					L->rgb_t0.z = 0.86f + 0.14f * std::sin(hue + 2.0f);
+
+					float th0 = 0.010f * fade0;
+					L->thickness.start = maxf(0.0014f, th0);
+					L->thickness.end = L->thickness.start * 0.85f;
+					L->number_of_cubes = 6;
+
+					// advect the tail forward a touch so it shimmers
+					V3 adv = mul(v, 0.02f * std::sin(4.0f * T + s * 0.2f));
+					L->x1.end = c.x + adv.x; L->y1.end = c.y + adv.y; L->z1.end = c.z + adv.z;
+
+					prev = c;
+				}
+				};
+
+			draw_tail(p1, v1, 0.0f);
+			draw_tail(p2, v2, 1.7f);
+
+			// ===== impact FX (second half of cycle) =====
+			if (post_u > 0.0f)
+			{
+				// center jitter so each impact feels unique
+				float jx = 0.04f * std::sin(13.0f * T);
+				float jy = 0.03f * std::sin(17.0f * T);
+				float jz = 0.04f * std::sin(11.0f * T);
+				V3 C = V3{ jx, jy, jz };
+
+				// ----- shards (flying splinters) -----
+				for (int k = 0; k < SHARD_COUNT; ++k) {
+					float a = (2.0f * M_PI * k / SHARD_COUNT) + 0.7f * std::sin(0.7f * T + k * 0.17f);
+					float elev = 0.45f * std::sin(k * 0.19f + 1.3f * T);
+					V3 dir = norm(V3{ std::cos(a) * std::cos(elev), std::sin(elev), std::sin(a) * std::cos(elev) });
+					// curl/turbulence
+					float turb = SHARD_TURB * vnoise(dir.x * 2.0f + T, dir.y * 2.0f - T * 0.7f, dir.z * 2.0f + 0.3f * T);
+					V3 curl = cross(dir, V3{ 0,1,0 });
+					dir = norm(add(dir, mul(curl, turb)));
+
+					float Lnow = SHARD_MAX_LEN * ease_post * (0.6f + 0.4f * std::sin(k * 0.37f + T));
+					V3 P = add(C, mul(dir, Lnow * 0.1f));
+					V3 Q = add(C, mul(dir, Lnow));
+
+					Line* L; if (!try_add(L)) END_FRAME();
+					L->x0.start = P.x; L->y0.start = P.y; L->z0.start = P.z;
+					L->x1.start = Q.x; L->y1.start = Q.y; L->z1.start = Q.z;
+
+					// hot core  cooler tail
+					float hue = 0.9f * T + k * 0.13f;
+					L->rgb_t0.x = 0.95f;                      // strong white/cyan
+					L->rgb_t0.y = 0.98f;
+					L->rgb_t0.z = 1.0f;
+
+					L->thickness.start = 0.006f * (1.2f - ease_post * 0.2f);
+					L->thickness.end = 0.004f;
+					L->number_of_cubes = 3 + (int)(6.0f * ease_post);
+
+					// a bit more outward shove
+					V3 adv = mul(dir, 0.06f);
+					L->x1.end = Q.x + adv.x; L->y1.end = Q.y + adv.y; L->z1.end = Q.z + adv.z;
+				}
+
+				// ----- expanding shock rings -----
+				for (int r = 0; r < RING_COUNT; ++r) {
+					float ring_u = clampf(ease_post - r * 0.12f, 0.0f, 1.0f);
+					if (ring_u <= 0.0f) continue;
+
+					float R = RING_MAX_RADIUS * ring_u;
+					float roll = 0.5f * std::sin(T * 0.8f + r);  // tilt ring a bit
+					// ring basis (tilted circle)
+					V3 ex = norm(rotY(V3{ 1,0,0 }, roll));
+					V3 ez = norm(cross(ex, V3{ 0,1,0 }));
+
+					for (int s = 1; s <= RING_SEGS; ++s) {
+						float a0 = (2.0f * M_PI * (s - 1) / RING_SEGS);
+						float a1 = (2.0f * M_PI * (s) / RING_SEGS);
+						V3 A = add(C, add(mul(ex, R * std::cos(a0)), mul(ez, R * std::sin(a0))));
+						V3 B = add(C, add(mul(ex, R * std::cos(a1)), mul(ez, R * std::sin(a1))));
+
+						Line* L; if (!try_add(L)) END_FRAME();
+						L->x0.start = A.x; L->y0.start = A.y; L->z0.start = A.z;
+						L->x1.start = B.x; L->y1.start = B.y; L->z1.start = B.z;
+
+						float hue = 0.35f * T + r * 1.2f + a0;
+						L->rgb_t0.x = 0.15f + 0.30f * std::sin(hue);
+						L->rgb_t0.y = 0.55f + 0.35f * std::sin(hue + 1.0f);
+						L->rgb_t0.z = 0.90f + 0.10f * std::sin(hue + 2.0f);
+
+						float th = RING_THICK * (1.1f - 0.6f * ring_u);
+						L->thickness.start = th;
+						L->thickness.end = th * 0.85f;
+						L->number_of_cubes = 6;
+
+						// small outward drift
+						V3 nrm = norm(sub(B, C));
+						V3 adv = mul(nrm, 0.015f);
+						L->x1.end = B.x + adv.x; L->y1.end = B.y + adv.y; L->z1.end = B.z + adv.z;
+					}
+				}
+			}
+
+			// advance time
+			time_base += DT;
+		}
 
 
 
@@ -8758,16 +9234,18 @@ namespace Universe_
 				// lines.init_fractal_flow();
 				// lines.init_cube_sphere_morph();
 				// lines.init_fractal_pinwheel_supernova();
+				// lines.init_fractal_storm_fast();
+				// lines.init_celestial_orrery();
+				// lines.init_comets_collision_fast();
+
+				
 				
 
 				
-				// nah lines.init_fractal_storm();
-
-				
 
 
 
-				lines.init_pulsing_neural_mesh();
+				// nah lines.init_pulsing_neural_mesh();
 				
 
 				
