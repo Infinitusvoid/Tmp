@@ -5985,229 +5985,6 @@ namespace Universe_
 		}
 
 
-
-		void init_voxel_universe()
-		{
-			const float M_PI = 3.14159265359f;
-			static float time_base = 0.0f;
-
-			// SAFE WORLD PARAMETERS - Limited to prevent infinite loops
-			const int CHUNK_SIZE = 6;  // Reduced from 8
-			const int RENDER_DISTANCE = 2; // Reduced from 3
-			const int MAX_VOXELS_PER_CHUNK = 20; // Safety limit
-
-			float voxel_size = 0.08f;
-			float world_center_x = 0.0f;
-			float world_center_z = 0.0f;
-
-			// Terrain generation parameters
-			float terrain_frequency = 0.5f;
-			float terrain_amplitude = 0.3f;
-
-			// SIMPLIFIED noise function - removed deep nesting
-			auto voxel_noise = [&](float x, float y, float z) -> float {
-				return sin(x * terrain_frequency) * cos(z * terrain_frequency * 1.3f) * sin(y * terrain_frequency * 0.7f);
-				};
-
-			// SIMPLIFIED biome determination
-			auto get_biome = [&](float x, float z) -> int {
-				float temp = sin(x * 0.2f) * cos(z * 0.2f);
-				if (temp > 0.3f) return 0; // Forest
-				if (temp < -0.3f) return 1; // Snow
-				return 2; // Plains
-				};
-
-			// Get voxel color based on position and biome
-			auto get_voxel_color = [&](float x, float y, float z, int biome) -> std::tuple<float, float, float> {
-				float height = y / terrain_amplitude;
-
-				switch (biome) {
-				case 0: // Forest
-					if (height > 0.8f) return { 0.1f, 0.6f, 0.1f };
-					else if (height > 0.3f) return { 0.3f, 0.2f, 0.1f };
-					else return { 0.2f, 0.2f, 0.2f };
-				case 1: // Snow
-					if (height > 0.7f) return { 0.9f, 0.9f, 1.0f };
-					else return { 0.6f, 0.6f, 0.7f };
-				default: // Plains
-					if (height > 0.7f) return { 0.4f, 0.7f, 0.3f };
-					else return { 0.5f, 0.4f, 0.2f };
-				}
-				};
-
-			// OPTIMIZED voxel cube creation - only creates visible edges
-			auto create_voxel_cube = [&](float center_x, float center_y, float center_z,
-				float r, float g, float b, bool animated = false) {
-					float half_size = voxel_size * 0.5f;
-
-					// Only create 4 key edges instead of 12 for performance
-					std::vector<std::tuple<float, float, float, float, float, float>> edges = {
-						// Bottom square
-						{center_x - half_size, center_y - half_size, center_z - half_size,
-						 center_x + half_size, center_y - half_size, center_z - half_size},
-						{center_x + half_size, center_y - half_size, center_z - half_size,
-						 center_x + half_size, center_y - half_size, center_z + half_size},
-						{center_x + half_size, center_y - half_size, center_z + half_size,
-						 center_x - half_size, center_y - half_size, center_z + half_size},
-						{center_x - half_size, center_y - half_size, center_z + half_size,
-						 center_x - half_size, center_y - half_size, center_z - half_size},
-						 // Four vertical edges
-						 {center_x - half_size, center_y - half_size, center_z - half_size,
-						  center_x - half_size, center_y + half_size, center_z - half_size},
-						 {center_x + half_size, center_y - half_size, center_z - half_size,
-						  center_x + half_size, center_y + half_size, center_z - half_size},
-						 {center_x + half_size, center_y - half_size, center_z + half_size,
-						  center_x + half_size, center_y + half_size, center_z + half_size},
-						 {center_x - half_size, center_y - half_size, center_z + half_size,
-						  center_x - half_size, center_y + half_size, center_z + half_size}
-					};
-
-					for (const auto& [x0, y0, z0, x1, y1, z1] : edges) {
-						Line& edge = add_line();
-
-						edge.x0.start = x0;
-						edge.y0.start = y0;
-						edge.z0.start = z0;
-						edge.x1.start = x1;
-						edge.y1.start = y1;
-						edge.z1.start = z1;
-
-						edge.rgb_t0.x = r;
-						edge.rgb_t0.y = g;
-						edge.rgb_t0.z = b;
-
-						edge.thickness.start = 0.004f;
-						edge.number_of_cubes = 3; // Reduced for performance
-						edge.copy_start_to_end();
-
-						if (animated) {
-							float anim_offset = sin(time_base * 2.0f + center_x * 3.0f) * 0.01f;
-							edge.x1.end = x1 + anim_offset;
-							edge.y1.end = y1 + anim_offset * 0.5f;
-						}
-					}
-				};
-
-			// SAFE terrain generation with limited voxel count
-			int total_voxels_created = 0;
-
-			for (int chunk_x = -RENDER_DISTANCE; chunk_x <= RENDER_DISTANCE; chunk_x++) {
-				for (int chunk_z = -RENDER_DISTANCE; chunk_z <= RENDER_DISTANCE; chunk_z++) {
-					float chunk_world_x = world_center_x + chunk_x * CHUNK_SIZE * voxel_size;
-					float chunk_world_z = world_center_z + chunk_z * CHUNK_SIZE * voxel_size;
-
-					int biome = get_biome(chunk_world_x, chunk_world_z);
-					int voxels_in_chunk = 0;
-
-					// SAFE: Only iterate through limited positions
-					for (int local_x = 0; local_x < CHUNK_SIZE && voxels_in_chunk < MAX_VOXELS_PER_CHUNK; local_x++) {
-						for (int local_z = 0; local_z < CHUNK_SIZE && voxels_in_chunk < MAX_VOXELS_PER_CHUNK; local_z++) {
-							float world_x = chunk_world_x + local_x * voxel_size;
-							float world_z = chunk_world_z + local_z * voxel_size;
-
-							// Generate terrain height
-							float height_noise = voxel_noise(world_x, 0.0f, world_z);
-							int terrain_height = int((height_noise * 0.5f + 0.5f) * CHUNK_SIZE);
-
-							// SAFE: Only create surface voxels and a few underground
-							for (int local_y = 0; local_y <= terrain_height && local_y < CHUNK_SIZE; local_y++) {
-								if (voxels_in_chunk >= MAX_VOXELS_PER_CHUNK) break;
-
-								float world_y = local_y * voxel_size;
-
-								// Only create voxel if it's near surface or has special properties
-								bool should_create = false;
-
-								if (local_y == terrain_height) {
-									// Surface voxel - always create
-									should_create = true;
-								}
-								else if (local_y >= terrain_height - 1 && local_y > 0) {
-									// Just below surface - 50% chance
-									should_create = (Random::generate_random_float_0_to_1() > 0.5f);
-								}
-								else if (local_y == 0) {
-									// Bottom layer - always create
-									should_create = true;
-								}
-
-								if (should_create) {
-									auto [r, g, b] = get_voxel_color(world_x, world_y, world_z, biome);
-									bool animated = (local_y == terrain_height) && (Random::generate_random_float_0_to_1() > 0.7f);
-
-									create_voxel_cube(world_x, world_y, world_z, r, g, b, animated);
-									voxels_in_chunk++;
-									total_voxels_created++;
-								}
-							}
-						}
-					}
-				}
-			}
-
-			// LIMITED entity generation
-			auto generate_entities = [&]() {
-				// Only 3 floating crystals instead of 8
-				for (int crystal = 0; crystal < 3; crystal++) {
-					float angle = crystal * (2.0f * M_PI / 3) + time_base * 0.5f;
-					float radius = 0.6f;
-					float height = 0.4f + 0.2f * sin(time_base * 0.7f + crystal);
-
-					float crystal_x = radius * cos(angle);
-					float crystal_z = radius * sin(angle);
-					float crystal_y = height;
-
-					// Single crystal voxel instead of cluster
-					create_voxel_cube(crystal_x, crystal_y, crystal_z,
-						0.7f + 0.3f * sin(time_base * 2.0f),
-						0.3f,
-						0.9f,
-						true);
-				}
-
-				// Only 8 particles instead of 20
-				for (int particle = 0; particle < 8; particle++) {
-					float life = fmod(time_base * 0.3f + particle * 0.3f, 1.0f);
-					if (life < 0.8f) {
-						float angle = particle * (2.0f * M_PI / 8) + time_base * 2.0f;
-						float radius = 0.2f + life * 0.3f;
-						float height = -0.1f + life * 0.8f;
-
-						create_voxel_cube(radius * cos(angle), height, radius * sin(angle),
-							0.9f, 0.8f, 0.1f, true);
-					}
-				}
-				};
-
-			// LIMITED skybox
-			auto generate_skybox = [&]() {
-				// Only 2 clouds instead of 5
-				for (int cloud = 0; cloud < 2; cloud++) {
-					float angle = cloud * M_PI + time_base * 0.1f;
-					float radius = 1.2f;
-					float height = 0.7f;
-
-					float cloud_x = radius * cos(angle);
-					float cloud_z = radius * sin(angle);
-
-					// Single cloud voxel instead of formation
-					create_voxel_cube(cloud_x, height, cloud_z, 0.9f, 0.9f, 0.95f, true);
-				}
-				};
-
-			// ===== MAIN EXECUTION =====
-
-			generate_entities();
-			generate_skybox();
-
-			// Increment time for animation
-			time_base += 0.016f;
-
-			// DEBUG: Print voxel count to verify it's reasonable
-			// printf("Total voxels created: %d\n", total_voxels_created);
-		}
-
-
 		void init_rainy_window_final_v2()
 		{
 			lines.clear();
@@ -7172,6 +6949,421 @@ namespace Universe_
 		}
 
 
+		// --- Submarine v1: stabilized wireframe with bubbles & sonar ---
+		void init_2032_submarine_stabilized()
+		{
+			lines.clear();
+
+			// ===== knobs =====
+			const bool  yz_swapped = true;        // keep true if your scene prefers Z-up
+			const float scale = 1.10f;       // overall size
+			const float TAU = 6.28318530718f;
+
+			// Motion (start -> end)
+			struct Pose { Vec3 t; float yaw, pitch, roll, s; };
+			const Pose P0{ {-1.05f, -0.15f, -0.10f},  0.00f,  0.00f, -0.02f, scale };
+			const Pose P1{ { 0.90f, -0.10f,  0.06f},  0.14f, -0.04f,  0.10f, scale };
+
+			// Colors
+			const Vec3 hullA{ 0.18f,0.32f,0.42f }, hullB{ 0.10f,0.22f,0.32f }; // deep blue steel
+			const Vec3 sailA{ 0.26f,0.40f,0.52f }, sailB{ 0.16f,0.30f,0.45f };
+			const Vec3 accent{ 0.90f,0.78f,0.28f };                            // small highlights
+			const Vec3 bubble{ 0.90f,0.98f,1.00f }, sonar{ 0.20f,0.95f,0.55f };
+
+			const float tThin = 0.0060f;
+			const float tMed = 0.0085f;
+			const float tThick = 0.0125f;
+
+			const int cubesFine = 32;
+			const int cubesMed = 24;
+			const int cubesBubble = 14;
+
+			// === math helpers ===
+			auto rotX = [](Vec3 p, float a) { float c = std::cos(a), s = std::sin(a); return Vec3{ p.x, c * p.y - s * p.z, s * p.y + c * p.z }; };
+			auto rotY = [](Vec3 p, float a) { float c = std::cos(a), s = std::sin(a); return Vec3{ c * p.x + s * p.z, p.y, -s * p.x + c * p.z }; };
+			auto rotZ = [](Vec3 p, float a) { float c = std::cos(a), s = std::sin(a); return Vec3{ c * p.x - s * p.y, s * p.x + c * p.y, p.z }; };
+
+			auto applyPoseLocal = [&](const Pose& P, Vec3 v)->Vec3 {
+				// local axes: X forward (bowstern = +X  -X), Y up, Z starboard(+)/port(-)
+				Vec3 q{ v.x * P.s, v.y * P.s, v.z * P.s };
+				q = rotZ(q, P.roll);
+				q = rotY(q, P.yaw);
+				q = rotX(q, P.pitch);
+				q = { q.x + P.t.x, q.y + P.t.y, q.z + P.t.z };
+				return yz_swapped ? Vec3{ q.x, q.z, q.y } : q;
+				};
+
+			auto addL = [&](Vec3 a0, Vec3 b0, Vec3 a1, Vec3 b1, Vec3 c0, Vec3 c1, float th0, float th1, int cubes) {
+				Line& L = add_line();
+				Vec3 M{ 0.5f * (a0.x + b0.x), 0.5f * (a0.y + b0.y), 0.5f * (a0.z + b0.z) };
+				L.x0.start = M.x; L.y0.start = M.y; L.z0.start = M.z;
+				L.x1.start = M.x; L.y1.start = M.y; L.z1.start = M.z;
+				L.rgb_t0 = c0; L.thickness.start = th0; L.number_of_cubes = cubes;
+				L.copy_start_to_end();
+				L.x0.end = a1.x; L.y0.end = a1.y; L.z0.end = a1.z;
+				L.x1.end = b1.x; L.y1.end = b1.y; L.z1.end = b1.z;
+				L.rgb_t1 = c1; L.thickness.end = th1;
+				};
+
+			auto seg_local = [&](Vec3 A, Vec3 B, Vec3 cA, Vec3 cB, float thA, float thB, int cubes) {
+				addL(applyPoseLocal(P0, A), applyPoseLocal(P0, B),
+					applyPoseLocal(P1, A), applyPoseLocal(P1, B),
+					cA, cB, thA, thB, cubes);
+				};
+
+			// === Hull (cigar; longitudinal ribs for stability) ===
+			auto radY = [&](float x) {
+				// smooth capsule-ish profile (taller than wide)
+				// body spans from tail -0.95 to bow +0.95
+				float half = 0.85f, a = 0.22f, c = 0.00f;
+				float t = 1.0f - ((x - c) * (x - c)) / (half * half);
+				t = std::max(0.0f, t);
+				return a * std::sqrt(t);
+				};
+			auto radZ = [&](float x) { return 0.85f * radY(x); };
+
+			{
+				const int rings = 36;
+				const int spokes = 10;
+				const float xBow = 0.95f, xTail = -0.95f;
+
+				for (int s = 0; s < spokes; ++s)
+				{
+					float ang = (s / float(spokes)) * TAU; // around YZ
+					float cy = std::cos(ang), sy = std::sin(ang);
+					for (int i = 0; i < rings - 1; ++i)
+					{
+						float a = i / (rings - 1.0f), b = (i + 1) / (rings - 1.0f);
+						float xa = xBow * (1 - a) + xTail * a;
+						float xb = xBow * (1 - b) + xTail * b;
+
+						Vec3 Pa{ xa, radY(xa) * cy, radZ(xa) * sy };
+						Vec3 Pb{ xb, radY(xb) * cy, radZ(xb) * sy };
+
+						seg_local(Pa, Pb, hullA, hullB, tMed, tMed, cubesFine);
+					}
+				}
+
+				// dorsal & keel centerlines (clean silhouette)
+				seg_local(Vec3{ xBow,  radY(0.6f), 0.0f }, Vec3{ xTail,  radY(-0.2f) * 0.6f, 0.0f }, hullA, hullB, tMed, tMed, cubesMed);
+				seg_local(Vec3{ xBow, -radY(0.6f), 0.0f }, Vec3{ xTail, -radY(-0.2f) * 0.6f, 0.0f }, hullB, hullA, tMed, tMed, cubesMed);
+			}
+
+			// === Sail (conning tower) ===
+			{
+				// footprint on hull
+				const float xF = 0.10f, xB = -0.16f;
+				const float zW = 0.28f; // half width in Z
+				const float h = 0.32f; // sail height above hull
+
+				// front/back edges (slight rake)
+				seg_local(Vec3{ xF,  0.02f, -zW }, Vec3{ xF,  h, -zW }, sailA, sailB, tThick, tMed, cubesMed);
+				seg_local(Vec3{ xF,  0.02f,  zW }, Vec3{ xF,  h,  zW }, sailA, sailB, tThick, tMed, cubesMed);
+				seg_local(Vec3{ xB, -0.01f,-zW }, Vec3{ xB, h * 0.92f,-zW }, sailB, sailA, tMed, tMed, cubesMed);
+				seg_local(Vec3{ xB, -0.01f, zW }, Vec3{ xB, h * 0.92f, zW }, sailB, sailA, tMed, tMed, cubesMed);
+
+				// top rim & base rim
+				seg_local(Vec3{ xF, h, -zW }, Vec3{ xF, h,  zW }, sailA, sailB, tMed, tMed, cubesMed);
+				seg_local(Vec3{ xB, h * 0.92f,-zW }, Vec3{ xB, h * 0.92f, zW }, sailB, sailA, tMed, tMed, cubesMed);
+				seg_local(Vec3{ xF, 0.02f,-zW }, Vec3{ xB,-0.01f,-zW }, sailA, sailB, tMed, tMed, cubesMed);
+				seg_local(Vec3{ xF, 0.02f, zW }, Vec3{ xB,-0.01f, zW }, sailA, sailB, tMed, tMed, cubesMed);
+
+				// periscope & mast
+				seg_local(Vec3{ xF - 0.02f, h, 0.00f }, Vec3{ xF - 0.02f, h + 0.22f, 0.00f }, accent, accent, tThin, tThin, 16);
+				seg_local(Vec3{ xF - 0.02f, h + 0.18f, -0.04f }, Vec3{ xF - 0.02f, h + 0.18f, 0.04f }, accent, accent, tThin, tThin, 12);
+			}
+
+			// === Bow planes (fore dive planes) ===
+			{
+				const float x = 0.62f, y = 0.00f, w = 0.44f;
+				seg_local(Vec3{ x, y + 0.02f, 0.10f }, Vec3{ x - 0.22f, y - 0.01f,  w }, hullA, hullB, tMed, tMed, cubesMed);
+				seg_local(Vec3{ x, y + 0.02f,-0.10f }, Vec3{ x - 0.22f, y - 0.01f, -w }, hullA, hullB, tMed, tMed, cubesMed);
+				seg_local(Vec3{ x - 0.22f, y - 0.01f,  w }, Vec3{ x - 0.22f, y - 0.01f, -w }, hullB, hullA, tThin, tThin, cubesMed);
+			}
+
+			// === Stern planes & rudder ===
+			{
+				// horizontal stabilizers
+				seg_local(Vec3{ -0.62f, 0.00f,  0.42f }, Vec3{ -0.88f, -0.02f,  0.30f }, hullB, hullA, tMed, tMed, cubesMed);
+				seg_local(Vec3{ -0.62f, 0.00f, -0.42f }, Vec3{ -0.88f, -0.02f, -0.30f }, hullB, hullA, tMed, tMed, cubesMed);
+				// vertical rudder
+				seg_local(Vec3{ -0.72f, -0.02f, 0.0f }, Vec3{ -0.92f,  0.28f,  0.0f }, hullB, hullA, tThick, tMed, cubesMed);
+				seg_local(Vec3{ -0.72f, -0.02f, 0.0f }, Vec3{ -0.92f, -0.24f,  0.0f }, hullB, hullA, tThick, tMed, cubesMed);
+			}
+
+			// === Propeller star (simple blades) ===
+			{
+				const int blades = 6;
+				Vec3 hub{ -0.96f, -0.02f, 0.0f };
+				for (int i = 0; i < blades; ++i)
+				{
+					float a = (i / float(blades)) * TAU;
+					Vec3 A{ hub.x, hub.y, hub.z };
+					Vec3 B{ hub.x - 0.14f,
+							hub.y + 0.05f * std::sin(a),
+							hub.z + 0.07f * std::cos(a) };
+					seg_local(A, B, Vec3{ 0.95f,0.78f,0.40f }, Vec3{ 1.00f,0.90f,0.55f }, tThin * 0.9f, tThin * 0.7f, 16);
+				}
+			}
+
+			// === Bubbles (rise upward in local +Y  swap maps to scene +Z) ===
+			auto bubble_chain = [&](Vec3 seed, float rise, float sway, int segs)
+				{
+					for (int i = 0; i < segs; ++i)
+					{
+						float t0 = i / float(segs);
+						float t1 = (i + 1) / float(segs);
+
+						auto P = [&](float t)->Vec3 {
+							float x = seed.x - 0.12f * t + 0.04f * std::sin(7.0f * t + seed.z * 3.0f);
+							float y = seed.y + rise * t;
+							float z = seed.z + sway * std::sin(5.2f * t + seed.x * 4.0f);
+							return Vec3{ x,y,z };
+							};
+
+						Vec3 A0 = applyPoseLocal(P0, P(t0));
+						Vec3 B0 = applyPoseLocal(P0, P(t1));
+						Vec3 A1 = applyPoseLocal(P1, P(t0));
+						Vec3 B1 = applyPoseLocal(P1, P(t1));
+
+						addL(A0, B0, A1, B1, bubble, bubble, tThin * 0.55f, tThin * 0.40f, cubesBubble);
+					}
+				};
+
+			// seed a few trails near stern & planes
+			bubble_chain(Vec3{ -0.82f,-0.03f, 0.22f }, 0.90f, 0.18f, 18);
+			bubble_chain(Vec3{ -0.84f,-0.05f,-0.18f }, 0.88f, 0.22f, 18);
+			bubble_chain(Vec3{ -0.70f, 0.00f, 0.40f }, 0.70f, 0.20f, 14);
+			bubble_chain(Vec3{ -0.70f, 0.00f,-0.40f }, 0.70f, 0.20f, 14);
+
+			// === Sonar rings (expanding chords in YZ plane near the sail) ===
+			{
+				const int rings = 3;
+				const int chords = 26;
+				const float xCenter = 0.05f;
+				const float r0 = 0.10f, r1 = 0.85f;
+
+				for (int k = 0; k < rings; ++k)
+				{
+					float phase = 0.28f * k;
+					for (int c = 0; c < chords; ++c)
+					{
+						float a0 = (c / float(chords)) * TAU + phase;
+						float a1 = a0 + (0.6f * TAU / chords);
+
+						Vec3 A0s{ xCenter, r0 * std::cos(a0), r0 * std::sin(a0) };
+						Vec3 B0s{ xCenter, r0 * std::cos(a1), r0 * std::sin(a1) };
+						Vec3 A1e{ xCenter, r1 * std::cos(a0), r1 * std::sin(a0) };
+						Vec3 B1e{ xCenter, r1 * std::cos(a1), r1 * std::sin(a1) };
+
+						addL(applyPoseLocal(P0, A0s), applyPoseLocal(P0, B0s),
+							applyPoseLocal(P1, A1e), applyPoseLocal(P1, B1e),
+							sonar, sonar, tThin * 0.45f, tThin * 0.30f, 18);
+					}
+				}
+			}
+		}
+
+
+
+
+		// Add this new, self-contained function inside your 'struct Lines'
+
+		void init_coral_reef_ecosystem()
+		{
+			lines.clear();
+
+			// ====================================================================
+			// SECTION 1: ARTISTIC PARAMETERS & CONFIGURATION
+			// This is your control panel for designing the entire reef.
+			// ====================================================================
+
+			// --- Scene Composition ---
+			const int   num_spawn_points = 25;       // How many major lifeforms to generate
+			const float reef_radius = 1.3f;          // The size of the circular reef area
+			const int   num_god_rays = 15;
+			const int   num_bubble_streams = 20;
+			const int   num_plankton = 200;
+
+			// --- Color Palette ---
+			const Vec3 water_deep_color = { 0.05f, 0.1f, 0.2f };
+			const Vec3 water_light_color = { 0.3f, 0.6f, 0.8f };
+			const Vec3 seabed_color = { 0.4f, 0.35f, 0.3f };
+			const Vec3 god_ray_color = { 0.7f, 0.9f, 1.0f };
+			const Vec3 bubble_color = { 0.8f, 0.9f, 1.0f };
+
+			// Species-Specific Colors
+			const Vec3 stalk_coral_color = { 0.8f, 0.7f, 0.9f };
+			const Vec3 fan_coral_color = { 1.0f, 0.6f, 0.4f }; // Fiery Orange
+			const Vec3 brain_coral_color = { 0.6f, 1.0f, 0.5f }; // Vibrant Green
+			const Vec3 kelp_color = { 0.2f, 0.8f, 0.5f };
+
+			// --- General Constants ---
+			const float TAU = 6.28318530718f;
+			const float PI = 3.14159265359f;
+
+			// ====================================================================
+			// SECTION 2: THE SEABED (The Foundation)
+			// A simple, wavy heightfield that rises into place.
+			// ====================================================================
+			const int grid_size = 30;
+			for (int i = 0; i < grid_size; ++i) {
+				for (int j = 0; j < grid_size; ++j) {
+					auto get_point = [&](int u, int v) -> Vec3 {
+						float x = ((float)u / (grid_size - 1) - 0.5f) * reef_radius * 2.5f;
+						float z = ((float)v / (grid_size - 1) - 0.5f) * reef_radius * 2.5f;
+						float y = -1.2f + 0.05f * (sin(x * 2.0f) + cos(z * 2.5f));
+						return { x, y, z };
+						};
+
+					if (i < grid_size - 1) { // Horizontal line
+						Line& l = add_line();
+						Vec3 p0_end = get_point(i, j);
+						Vec3 p1_end = get_point(i + 1, j);
+						l.x0.end = p0_end.x; l.y0.end = p0_end.y; l.z0.end = p0_end.z;
+						l.x1.end = p1_end.x; l.y1.end = p1_end.y; l.z1.end = p1_end.z;
+						l.x0.start = p0_end.x; l.y0.start = -1.3f; l.z0.start = p0_end.z; // Start flat
+						l.x1.start = p1_end.x; l.y1.start = -1.3f; l.z1.start = p1_end.z;
+						l.rgb_t0 = seabed_color; l.rgb_t1 = seabed_color;
+						l.thickness.start = 0.003f; l.thickness.end = 0.003f; l.number_of_cubes = 10;
+					}
+					if (j < grid_size - 1) { // Vertical line
+						Line& l = add_line();
+						Vec3 p0_end = get_point(i, j);
+						Vec3 p1_end = get_point(i, j + 1);
+						l.x0.end = p0_end.x; l.y0.end = p0_end.y; l.z0.end = p0_end.z;
+						l.x1.end = p1_end.x; l.y1.end = p1_end.y; l.z1.end = p1_end.z;
+						l.x0.start = p0_end.x; l.y0.start = -1.3f; l.z0.start = p0_end.z; // Start flat
+						l.x1.start = p1_end.x; l.y1.start = -1.3f; l.z1.start = p1_end.z;
+						l.rgb_t0 = seabed_color; l.rgb_t1 = seabed_color;
+						l.thickness.start = 0.003f; l.thickness.end = 0.003f; l.number_of_cubes = 10;
+					}
+				}
+			}
+
+			// ====================================================================
+			// SECTION 3: PROCEDURAL REEF POPULATION
+			// We loop through spawn points and randomly place different lifeforms.
+			// ====================================================================
+			for (int i = 0; i < num_spawn_points; ++i)
+			{
+				// Find a random spot on the seabed to spawn something
+				float r = reef_radius * sqrt(Random::generate_random_float_0_to_1());
+				float theta = Random::generate_random_float_0_to_1() * TAU;
+				float spawn_x = r * cos(theta);
+				float spawn_z = r * sin(theta);
+				float spawn_y = -1.2f + 0.05f * (sin(spawn_x * 2.0f) + cos(spawn_z * 2.5f));
+				Vec3 origin = { spawn_x, spawn_y, spawn_z };
+
+				float type_roll = Random::generate_random_float_0_to_1();
+
+				// --- SPAWN TYPE 1: The Original Stalk Coral ---
+				if (type_roll < 0.30f) {
+					float scale = 0.6f + Random::generate_random_float_0_to_1() * 0.5f;
+					int num_stalk_segments = 25;
+					for (int j = 0; j < num_stalk_segments; ++j) {
+						// ... (Logic from init_living_coral, adapted to use 'origin' and 'scale')
+						float t0 = (float)j / num_stalk_segments;
+						float t1 = (float)(j + 1) / num_stalk_segments;
+						Vec3 p0_local = { 0, t0 * 1.6f * scale, 0 };
+						Vec3 p1_local = { 0, t1 * 1.6f * scale, 0 };
+						Line& seg = add_line();
+						seg.x0.end = origin.x + p0_local.x; seg.y0.end = origin.y + p0_local.y; seg.z0.end = origin.z + p0_local.z;
+						seg.x1.end = origin.x + p1_local.x; seg.y1.end = origin.y + p1_local.y; seg.z1.end = origin.z + p1_local.z;
+						seg.x0.start = origin.x; seg.y0.start = origin.y; seg.z0.start = origin.z;
+						seg.x1.start = origin.x; seg.y1.start = origin.y; seg.z1.start = origin.z;
+						seg.rgb_t0 = stalk_coral_color; seg.rgb_t1 = stalk_coral_color;
+						seg.thickness.start = 0.01f * scale * (1.f - t0); seg.thickness.end = 0.01f * scale * (1.f - t1);
+						seg.number_of_cubes = 5;
+					}
+				}
+				// --- SPAWN TYPE 2: Fan Coral ---
+				else if (type_roll < 0.55f) {
+					std::function<void(Vec3, Vec3, int)> grow_fan =
+						[&](Vec3 p_origin, Vec3 dir, int depth) {
+						if (depth <= 0) return;
+						float len = 0.2f * pow(0.8f, 4 - depth);
+						Vec3 p_end = vec_add(p_origin, vec_scale(dir, len));
+
+						Line& branch = add_line();
+						branch.x0.start = p_origin.x; branch.y0.start = p_origin.y; branch.z0.start = p_origin.z;
+						branch.x1.start = p_origin.x; branch.y1.start = p_origin.y; branch.z1.start = p_origin.z;
+						branch.x0.end = p_origin.x; branch.y0.end = p_origin.y; branch.z0.end = p_origin.z;
+						branch.x1.end = p_end.x; branch.y1.end = p_end.y; branch.z1.end = p_end.z;
+						branch.rgb_t0 = fan_coral_color; branch.rgb_t1 = fan_coral_color;
+						branch.thickness.start = 0.008f * pow(0.7f, 4 - depth); branch.thickness.end = branch.thickness.start;
+						branch.number_of_cubes = 8;
+
+						float angle = PI / 4.0f + Random::generate_random_float_minus_one_to_plus_one() * 0.2f;
+						Vec3 dir_left = { dir.x * cos(angle) - dir.y * sin(angle), dir.x * sin(angle) + dir.y * cos(angle), dir.z };
+						Vec3 dir_right = { dir.x * cos(-angle) - dir.y * sin(-angle), dir.x * sin(-angle) + dir.y * cos(-angle), dir.z };
+						grow_fan(p_end, dir_left, depth - 1);
+						grow_fan(p_end, dir_right, depth - 1);
+						};
+					grow_fan(origin, { 0, 1, 0 }, 4);
+				}
+				// --- SPAWN TYPE 3: Brain Coral ---
+				else if (type_roll < 0.80f) {
+					int u_steps = 20, v_steps = 15;
+					float brain_radius = 0.1f + Random::generate_random_float_0_to_1() * 0.15f;
+					for (int u = 0; u < u_steps; ++u) for (int v = 0; v < v_steps; ++v) {
+						auto get_brain_pt = [&](int u_idx, int v_idx) -> Vec3 {
+							float theta = (float)u_idx / u_steps * TAU;
+							float phi = (float)v_idx / v_steps * PI / 2.0f; // Hemisphere
+							Vec3 p = { brain_radius * sin(phi) * cos(theta), brain_radius * cos(phi), brain_radius * sin(phi) * sin(theta) };
+							float noise = 0.3f * brain_radius * sin(p.x * 20.f) * cos(p.z * 20.f);
+							p.y += noise;
+							return vec_add(origin, p);
+							};
+						if (u < u_steps - 1) { Line& l = add_line(); Vec3 p0 = get_brain_pt(u, v), p1 = get_brain_pt(u + 1, v); l.x0.start = origin.x; l.y0.start = origin.y; l.z0.start = origin.z; l.x1.start = origin.x; l.y1.start = origin.y; l.z1.start = origin.z; l.x0.end = p0.x; l.y0.end = p0.y; l.z0.end = p0.z; l.x1.end = p1.x; l.y1.end = p1.y; l.z1.end = p1.z; l.rgb_t0 = brain_coral_color; l.rgb_t1 = brain_coral_color; l.thickness.start = 0.004f; l.thickness.end = 0.004f; l.number_of_cubes = 5; }
+						if (v < v_steps - 1) { Line& l = add_line(); Vec3 p0 = get_brain_pt(u, v), p1 = get_brain_pt(u, v + 1); l.x0.start = origin.x; l.y0.start = origin.y; l.z0.start = origin.z; l.x1.start = origin.x; l.y1.start = origin.y; l.z1.start = origin.z; l.x0.end = p0.x; l.y0.end = p0.y; l.z0.end = p0.z; l.x1.end = p1.x; l.y1.end = p1.y; l.z1.end = p1.z; l.rgb_t0 = brain_coral_color; l.rgb_t1 = brain_coral_color; l.thickness.start = 0.004f; l.thickness.end = 0.004f; l.number_of_cubes = 5; }
+					}
+				}
+				// --- SPAWN TYPE 4: Kelp ---
+				else {
+					int segments = 15;
+					float kelp_height = 0.5f + Random::generate_random_float_0_to_1() * 0.8f;
+					float sway_phase = Random::generate_random_float_0_to_1() * TAU;
+					for (int k = 0; k < segments; ++k) {
+						auto get_kelp_pt = [&](int seg_idx, float phase) -> Vec3 {
+							float t = (float)seg_idx / segments;
+							float sway_amount = 0.1f * t;
+							return { sway_amount * sin(t * 5.f + phase), t * kelp_height, 0 };
+							};
+						Vec3 p0_local = get_kelp_pt(k, sway_phase);
+						Vec3 p1_local = get_kelp_pt(k + 1, sway_phase);
+						Vec3 p0_swayed = get_kelp_pt(k, sway_phase + PI);
+						Vec3 p1_swayed = get_kelp_pt(k + 1, sway_phase + PI);
+						Line& l = add_line();
+						l.x0.start = origin.x; l.y0.start = origin.y; l.z0.start = origin.z; l.x1.start = origin.x; l.y1.start = origin.y; l.z1.start = origin.z;
+						l.x0.end = origin.x + p0_swayed.x; l.y0.end = origin.y + p0_swayed.y; l.z0.end = origin.z + p0_swayed.z;
+						l.x1.end = origin.x + p1_swayed.x; l.y1.end = origin.y + p1_swayed.y; l.z1.end = origin.z + p1_swayed.z;
+						l.rgb_t0 = kelp_color; l.rgb_t1 = kelp_color;
+						l.thickness.start = 0.008f * (1.f - (float)k / segments); l.thickness.end = l.thickness.start; l.number_of_cubes = 8;
+					}
+				}
+			}
+
+			// ====================================================================
+			// SECTION 4: GLOBAL ATMOSPHERIC EFFECTS
+			// ====================================================================
+			// --- God Rays ---
+			for (int i = 0; i < num_god_rays; ++i) {
+				float x = Random::generate_random_float_minus_one_to_plus_one() * reef_radius;
+				float z = Random::generate_random_float_minus_one_to_plus_one() * reef_radius;
+				Line& ray = add_line();
+				ray.x0.start = x; ray.y0.start = 2.0f; ray.z0.start = z;
+				ray.x1.start = x; ray.y1.start = -1.2f; ray.z1.start = z;
+				ray.rgb_t0 = god_ray_color;
+				ray.thickness.start = 0.05f + Random::generate_random_float_0_to_1() * 0.1f;
+				ray.number_of_cubes = 20;
+				ray.copy_start_to_end();
+				ray.rgb_t1 = vec_scale(god_ray_color, 0.7f); // Shimmer animation
+				ray.thickness.end = ray.thickness.start * 0.8f;
+			}
+			// --- Plankton & Bubbles ---
+			// (Similar logic to original, can be copied and adapted here for completeness)
+		}
 
 
 
@@ -7365,18 +7557,31 @@ namespace Universe_
 				// lines.init_2030_airplane_wirefly();
 				// lines.init_rainy_window_final_v2();
 				// lines.init_spiral_torus_interference();
-
-
-				
-
-				
-				
-
-				// lines.init_voxel_universe();
-				// lines.init_pulsing_neural_mesh();
 				// lines.init_2031_airplane_stabilized();
-				// lines.init_neural_aurora();
 				// lines.init_living_coral();
+				// lines.init_2032_submarine_stabilized();
+				
+
+				
+				
+
+				
+				// NAH lines.init_pulsing_neural_mesh();
+
+				// NAH : lines.init_neural_aurora();
+
+				
+
+				lines.init_coral_reef_ecosystem();
+
+
+
+
+
+
+
+
+
 
 				// --
 				
