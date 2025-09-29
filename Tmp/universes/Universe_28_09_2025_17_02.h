@@ -268,58 +268,6 @@ namespace Universe_
 		XYZ rgb_t1 = { 0.0f, 0.0f, 0.0f };
 
 		Float_start_end thickness = { 0.0f, 0.0f }; // u9
-
-		void set_x0(float value_at_t0, float value_at_t1)
-		{
-
-		}
-
-		void set_y0(float value_at_t0, float value_at_t1)
-		{
-
-		}
-
-		void set_z0(float value_at_t0, float value_at_t1)
-		{
-
-		}
-
-		void set_x1(float value_at_t0, float value_at_t1)
-		{
-
-		}
-
-		void set_y1(float value_at_t0, float value_at_t1)
-		{
-
-		}
-
-		void set_z1(float value_at_t0, float value_at_t1)
-		{
-
-		}
-
-		void set_rgb_at_t0(float r, float g, float b)
-		{
-
-		}
-
-		void set_rgb_at_t1(float r, float g, float b)
-		{
-
-		}
-
-		void set_thickness_at_t0(float value)
-		{
-
-		}
-
-		void set_thickness_at_t1(float value)
-		{
-
-		}
-
-
 	};
 
 	struct Lines
@@ -328,12 +276,71 @@ namespace Universe_
 
 		void init()
 		{
-
+			add_line();
 		}
 
 		void draw(Scene_::Scene& scene)
 		{
+			add_shader(scene, 21, [&](Program::Shader& sh) {
 
+
+				for (int i = 0; i < lines.size(); i++)
+				{
+					auto id = sh.create_instance();
+					auto I = sh.instance(id);
+					I.set_group_size(1000, 1000, 1);
+					I.set_group_size(1000, 1000, 1)
+						.set_drawcalls(1)
+						.set_position_start(0.0f, 0.0f, 0.0f)
+						.set_position_end(0.0f, 0.0f, 0.0f)
+						.set_euler_start(0.0f, 0.0f, 0.0f)
+						.set_euler_end(0.0f, 0.0f, 0.0f)
+						.set_scale_start(1.0f, 1.0f, 1.0f)
+						.set_scale_end(1.0f, 1.0f, 1.0f);
+
+					I.set_u_start_end(0, 0.0f, 0.0f);
+					I.set_u_start_end(1, 0.0f, 0.0f);
+					I.set_u_start_end(2, 0.0f, 0.0f);
+					I.set_u_start_end(3, 0.0f, 0.0f);
+					I.set_u_start_end(4, 0.0f, 0.0f);
+					I.set_u_start_end(5, 0.0f, 0.0f);
+					I.set_u_start_end(6, 0.0f, 0.0f);
+					I.set_u_start_end(7, 0.0f, 0.0f);
+					I.set_u_start_end(8, 0.0f, 0.0f);
+					I.set_u_start_end(9, 0.0f, 0.0f);
+				}
+
+				// Instance 0
+				/*{
+					auto id = sh.create_instance();
+					auto I = sh.instance(id);
+					I.set_group_size(1000, 1000, 1)
+						.set_drawcalls(1)
+						.set_position_start(0.0f, 0.0f, 0.0f)
+						.set_position_end(0.0f, 0.0f, 0.0f)
+						.set_euler_start(0.0f, 0.0f, 0.0f)
+						.set_euler_end(0.0f, 0.0f, 0.0f)
+						.set_scale_start(1.0f, 1.0f, 1.0f)
+						.set_scale_end(1.0f, 1.0f, 1.0f);
+
+
+					constexpr int kU = 10;
+					for (int u = 0; u < kU; ++u)
+					{
+						float v_start = 0.1f * static_cast<float>(u);
+						float v_end = 1.0f - 0.1f * static_cast<float>(u);
+
+						v_start = 0.0;
+						v_end = 0.0;
+
+						I.set_u_start_end(u, v_start, v_end);
+					}
+
+					I.set_u_start_end(0, 72.29710, 72.29710);
+				}*/
+
+
+				});
 		}
 
 		Line& add_line()

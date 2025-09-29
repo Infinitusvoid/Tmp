@@ -107,6 +107,12 @@ void main()
 
     id =  id + (uGrid.x * uGrid.y * uGrid.z) * int(uDrawcallNumber);
 
+
+    // well could be calculate the id max ? 
+    // well yea well if we are going to have just one draw call per line which is kinda resonable as we will only have up to 1 million cube per one line which can be drawn in one drawcall 
+    // than sure we can calculate that
+    // the maximum is (uGrid.x * uGrid.y * uGrid.z) 
+
     
     // Per-instance randomness
         // uint s0 = uSeed + uint(id + 23);
@@ -145,6 +151,10 @@ void main()
 
     
 
+    /*
+    
+    
+*/
     
     
     // u0 color_r
@@ -158,29 +168,35 @@ void main()
     // u8 radius_scale
     // u9 jitter_scale
     
-    float color_r = u0;
-    float color_g = u1;
-    float color_b = u2;
-    float scale_cube = u3;
-    float rnd_x_min = u4;
-    float rnd_x_max = u5;
-    float rnd_y_min = u6;
-    float rnd_y_max = u7;
-    float thickness = u8;
-    float jitter_scale = u9;
+    float color_r = 1.0; // u0;
+    float color_g = 1.0; // u1;
+    float color_b = 1.0;// u2;
+    float scale_cube = 0.000001; // u3;
+    // float rnd_x_min = u4;
+    // float rnd_x_max = u5;
+    // float rnd_y_min = u6;
+    // float rnd_y_max = u7;
+    // float thickness = u8;
+    float jitter_scale = 1.0; // u9;
 
     
     // Sphere
-    rnd_x = rnd_x_min + rnd_x * (rnd_x_max - rnd_x_min);
-    rnd_y = rnd_y_min + rnd_y * (rnd_y_max - rnd_y_min);
+    // rnd_x = rnd_x_min + rnd_x * (rnd_x_max - rnd_x_min);
+    // rnd_y = rnd_y_min + rnd_y * (rnd_y_max - rnd_y_min);
     
-    radius *= (1.0 - rnd_z * thickness);
+    // radius *= (1.0 - rnd_z * thickness);
 
-
+    radius = 0.001;
 
     // radius -= 0.5 * fract(float(int(rnd_z * n)) * inv_n - uTime * 0.1);
 
-    vec3 sphere_position = spherical01(radius, rnd_x, rnd_y * 1.0);
+    vec3 position_0 = vec3(0.0, 0.0, 0.0);
+    vec3 position_1 = vec3(0.0, 0.5, 0.5);
+    vec3 position = mix(position_0, position_1, rnd_z);
+
+    
+
+    vec3 sphere_position = spherical01(radius, rnd_x, rnd_y) + position;
     float px = sphere_position.x;
     float py = sphere_position.y;
     float pz = sphere_position.z;
