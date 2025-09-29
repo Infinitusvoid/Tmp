@@ -2318,222 +2318,7 @@ namespace Universe_
 			}
 		}
 
-		void init_neural_energy_tree()
-		{
-			const float M_PI = 3.14159265359f;
-			int max_depth = 7;
-			float time_base = 0.0f; // Imagine this animates over time
-
-			// Enhanced glowing particle with energy trails
-			auto add_energy_particle = [&](float x, float y, float z, int depth, float energy) {
-				// Create multiple lines for each particle to make it glow
-				for (int trail = 0; trail < 3; trail++) {
-					Line& particle = add_line();
-
-					float trail_offset = trail * 0.02f;
-					float pulse = sin(time_base * 3.0f + depth * 2.0f + trail);
-
-					particle.x0.start = x + trail_offset * sin(energy);
-					particle.y0.start = y + trail_offset * cos(energy * 1.3f);
-					particle.z0.start = z + trail_offset * sin(energy * 0.7f);
-
-					particle.x1.start = particle.x0.start + 0.005f + 0.01f * pulse;
-					particle.y1.start = particle.y0.start + 0.005f * cos(energy);
-					particle.z1.start = particle.z0.start + 0.005f * sin(energy);
-
-					// Electric plasma colors
-					float hue = energy * 5.0f + depth + trail;
-					particle.rgb_t0.x = 0.8f + 0.2f * sin(hue);
-					particle.rgb_t0.y = 0.3f + 0.7f * sin(hue + M_PI * 0.66f);
-					particle.rgb_t0.z = 0.9f + 0.1f * sin(hue + M_PI * 1.33f);
-
-					particle.thickness.start = 0.015f * (1.0f - depth * 0.1f) * (0.8f + 0.4f * pulse);
-					particle.number_of_cubes = 8 + trail * 3;
-
-					particle.copy_start_to_end();
-
-					// Wild energy movement
-					float move = time_base * 2.0f + depth + trail;
-					particle.x1.end = particle.x0.start + 0.1f * sin(move * 2.0f);
-					particle.y1.end = particle.y0.start + 0.1f * cos(move * 1.7f);
-					particle.z1.end = particle.z0.start + 0.1f * sin(move * 1.3f);
-				}
-				};
-
-			// Add energy arcs between points
-			auto add_energy_arc = [&](float x1, float y1, float z1, float x2, float y2, float z2, int depth) {
-				int arc_segments = 5 + depth * 2;
-				for (int i = 0; i <= arc_segments; i++) {
-					float t = float(i) / arc_segments;
-					float arc_height = 0.2f * sin(t * M_PI) * (0.3f + 0.2f * sin(depth * 3.0f));
-
-					// Bezier-like curve
-					float mid_x = (x1 + x2) * 0.5f + arc_height * sin(depth * 2.0f);
-					float mid_y = (y1 + y2) * 0.5f + arc_height * cos(depth * 2.5f);
-					float mid_z = (z1 + z2) * 0.5f + arc_height * sin(depth * 1.7f);
-
-					// Quadratic bezier
-					float bx = (1 - t) * (1 - t) * x1 + 2 * (1 - t) * t * mid_x + t * t * x2;
-					float by = (1 - t) * (1 - t) * y1 + 2 * (1 - t) * t * mid_y + t * t * y2;
-					float bz = (1 - t) * (1 - t) * z1 + 2 * (1 - t) * t * mid_z + t * t * z2;
-
-					if (i > 0) {
-						Line& arc = add_line();
-						float prev_t = float(i - 1) / arc_segments;
-						float prev_bx = (1 - prev_t) * (1 - prev_t) * x1 + 2 * (1 - prev_t) * prev_t * mid_x + prev_t * prev_t * x2;
-						float prev_by = (1 - prev_t) * (1 - prev_t) * y1 + 2 * (1 - prev_t) * prev_t * mid_y + prev_t * prev_t * y2;
-						float prev_bz = (1 - prev_t) * (1 - prev_t) * z1 + 2 * (1 - prev_t) * prev_t * mid_z + prev_t * prev_t * z2;
-
-						arc.x0.start = prev_bx;
-						arc.y0.start = prev_by;
-						arc.z0.start = prev_bz;
-						arc.x1.start = bx;
-						arc.y1.start = by;
-						arc.z1.start = bz;
-
-						// Electric arc colors
-						float arc_hue = depth * 2.0f + t * 5.0f;
-						arc.rgb_t0.x = 0.9f * (0.5f + 0.5f * sin(arc_hue));
-						arc.rgb_t0.y = 0.7f * (0.5f + 0.5f * sin(arc_hue + 1.0f));
-						arc.rgb_t0.z = 1.0f * (0.5f + 0.5f * sin(arc_hue + 2.0f));
-
-						arc.thickness.start = 0.008f * (1.0f - t * 0.5f);
-						arc.number_of_cubes = 12;
-
-						arc.copy_start_to_end();
-
-						// Animate the arc
-						float arc_move = time_base * 4.0f + depth + t;
-						arc.x1.end = bx + 0.05f * sin(arc_move);
-						arc.y1.end = by + 0.05f * cos(arc_move * 1.3f);
-					}
-				}
-				};
-
-			// Main recursive tree builder with insane parameters
-			std::function<void(float, float, float, float, float, float, int, float)> buildBranch;
-			buildBranch = [&](float x, float y, float z, float angle_xy, float angle_z, float length, int depth, float energy) {
-				if (depth > max_depth) return;
-
-				// Calculate end point with 3D rotation
-				float end_x = x + length * sin(angle_xy) * cos(angle_z);
-				float end_y = y + length * cos(angle_xy);
-				float end_z = z + length * sin(angle_xy) * sin(angle_z);
-
-				// Create main branch with pulsing energy
-				Line& branch = add_line();
-				branch.x0.start = x;
-				branch.y0.start = y;
-				branch.z0.start = z;
-				branch.x1.start = end_x;
-				branch.y1.start = end_y;
-				branch.z1.start = end_z;
-
-				// Dynamic plasma colors based on energy and depth
-				float color_pulse = sin(time_base * 5.0f + energy * 3.0f);
-				branch.rgb_t0.x = 0.2f + 0.5f * sin(energy * 4.0f) + 0.3f * color_pulse;
-				branch.rgb_t0.y = 0.1f + 0.6f * sin(energy * 4.0f + 1.0f) + 0.3f * cos(color_pulse);
-				branch.rgb_t0.z = 0.3f + 0.7f * sin(energy * 4.0f + 2.0f) + 0.3f * sin(color_pulse * 1.5f);
-
-				branch.thickness.start = 0.025f * pow(0.65f, depth) * (1.0f + 0.3f * sin(energy * 2.0f));
-				branch.number_of_cubes = 25 + depth * 8;
-
-				branch.copy_start_to_end();
-
-				// Wild branch animation
-				float branch_move = time_base * 2.0f + depth * 0.7f + energy;
-				branch.x1.end = end_x + 0.1f * sin(branch_move * 3.0f);
-				branch.y1.end = end_y + 0.08f * cos(branch_move * 2.7f);
-				branch.z1.end = end_z + 0.12f * sin(branch_move * 2.3f);
-
-				// Add tons of energy particles
-				int particles_per_branch = 5 + depth * 2;
-				for (int i = 0; i < particles_per_branch; i++) {
-					float t = float(i) / particles_per_branch;
-					float particle_x = x + t * (end_x - x);
-					float particle_y = y + t * (end_y - y);
-					float particle_z = z + t * (end_z - z);
-
-					add_energy_particle(particle_x, particle_y, particle_z, depth, energy + t);
-				}
-
-				// Add energy arcs between major branches
-				if (depth > 0 && depth < max_depth - 1) {
-					add_energy_arc(x, y, z, end_x, end_y, end_z, depth);
-				}
-
-				// Recursive branching with chaotic patterns
-				int num_children = 2 + (depth % 4);
-				for (int i = 0; i < num_children; i++) {
-					float chaos = sin(depth * 7.0f + i * 3.0f) * 0.4f;
-					float child_energy = energy + 1.0f + chaos;
-
-					float child_angle_xy = angle_xy + (M_PI / 3.0f) * (i - (num_children - 1) / 2.0f) + chaos;
-					float child_angle_z = angle_z + (M_PI / 4.0f) * sin(i * 1.5f) + chaos * 0.5f;
-					float child_length = length * (0.5f + 0.3f * sin(depth * 2.0f + i)) * 1.5f;
-
-					// Sometimes create cross-connections between branches
-					if (depth > 1 && i % 2 == 0) {
-						buildBranch(end_x, end_y, end_z,
-							child_angle_xy + M_PI * 0.8f,
-							child_angle_z + M_PI * 0.6f,
-							child_length * 0.7f, depth + 1, child_energy);
-					}
-
-					buildBranch(end_x, end_y, end_z, child_angle_xy, child_angle_z, child_length, depth + 1, child_energy);
-				}
-
-				// Add floating energy orbs at deepest branches
-				if (depth == max_depth - 1) {
-					for (int orb = 0; orb < 3; orb++) {
-						float orb_angle = orb * (2.0f * M_PI / 3.0f) + energy;
-						float orb_radius = 0.1f + 0.05f * sin(energy * 2.0f);
-
-						Line& orb_line = add_line();
-						orb_line.x0.start = end_x;
-						orb_line.y0.start = end_y;
-						orb_line.z0.start = end_z;
-						orb_line.x1.start = end_x + orb_radius * sin(orb_angle);
-						orb_line.y1.start = end_y + orb_radius * cos(orb_angle);
-						orb_line.z1.start = end_z + orb_radius * sin(orb_angle * 1.3f);
-
-						orb_line.rgb_t0.x = 1.0f;
-						orb_line.rgb_t0.y = 0.8f + 0.2f * sin(energy);
-						orb_line.rgb_t0.z = 0.2f + 0.3f * cos(energy);
-
-						orb_line.thickness.start = 0.02f;
-						orb_line.number_of_cubes = 15;
-						orb_line.copy_start_to_end();
-
-						// Orbiting motion
-						float orb_move = time_base * 3.0f + energy + orb;
-						orb_line.x1.end = end_x + orb_radius * sin(orb_angle + orb_move);
-						orb_line.y1.end = end_y + orb_radius * cos(orb_angle + orb_move);
-						orb_line.z1.end = end_z + orb_radius * sin(orb_angle * 1.3f + orb_move);
-					}
-				}
-				};
-
-			// Build multiple trees from different starting points for maximum chaos
-			int num_trees = 3;
-			for (int tree = 0; tree < num_trees; tree++) {
-				float tree_angle = tree * (2.0f * M_PI / num_trees);
-				float start_x = 0.3f * sin(tree_angle);
-				float start_z = 0.3f * cos(tree_angle);
-
-				buildBranch(start_x, -0.8f, start_z, 0.0f, tree_angle, 0.4f, 0, tree * 10.0f);
-			}
-
-			// Add connecting energy webs between trees
-			for (int i = 0; i < 20; i++) {
-				float angle1 = i * (2.0f * M_PI / 20.0f);
-				float angle2 = (i + 5) * (2.0f * M_PI / 20.0f);
-
-				add_energy_arc(0.3f * sin(angle1), -0.6f, 0.3f * cos(angle1),
-					0.3f * sin(angle2), -0.4f, 0.3f * cos(angle2), 2);
-			}
-		}
-
+		
 		
 
 
@@ -2999,9 +2784,244 @@ namespace Universe_
 			}
 		}
 
+		void init_0007_tesseract_warp()
+		{
+			lines.clear();
 
+			const float baseThick = 0.007f;
+			const int   cubesPerEdge = 40;
 
+			// 4D helpers
+			struct V4 { float x, y, z, w; };
+			auto rot2 = [](float& a, float& b, float ang) {
+				float c = std::cos(ang), s = std::sin(ang);
+				float A = c * a - s * b;
+				float B = s * a + c * b;
+				a = A; b = B;
+				};
+			auto project4 = [](V4 v, float dist)->Vec3 {
+				float k = dist / (dist - 0.8f * v.w); // perspective by w
+				return Vec3{ k * v.x, k * v.y, k * v.z };
+				};
 
+			// Build 16 vertices of a 4D cube at 1 in each coord
+			std::vector<V4> verts(16);
+			for (int i = 0; i < 16; ++i) {
+				verts[i] = V4{
+					(i & 1) ? 1.f : -1.f,
+					(i & 2) ? 1.f : -1.f,
+					(i & 4) ? 1.f : -1.f,
+					(i & 8) ? 1.f : -1.f
+				};
+			}
+
+			// Start/end rotation & scale
+			const float s0 = 0.45f, s1 = 0.70f;
+			const float dist = 3.2f;
+
+			const float ax0 = 0.10f, ay0 = 0.00f, az0 = 0.05f, aw0 = 0.00f;
+			const float ax1 = 0.95f, ay1 = 0.65f, az1 = 0.45f, aw1 = 0.80f;
+			// Well rotate in planes: (x,w)=ax, (y,z)=ay, (x,y)=az, (z,w)=aw
+
+			auto pose = [&](bool endPose) { // returns 16 projected 3D points
+				std::vector<Vec3> P(16);
+				float ax = endPose ? ax1 : ax0;
+				float ay = endPose ? ay1 : ay0;
+				float az = endPose ? az1 : az0;
+				float aw = endPose ? aw1 : aw0;
+				float s = endPose ? s1 : s0;
+
+				for (int i = 0; i < 16; ++i) {
+					V4 v = verts[i];
+					rot2(v.x, v.w, ax);
+					rot2(v.y, v.z, ay);
+					rot2(v.x, v.y, az);
+					rot2(v.z, v.w, aw);
+					Vec3 p = project4(v, dist);
+					p.x *= s; p.y *= s; p.z *= s;
+					P[i] = p;
+				}
+				return P;
+				};
+
+			auto P0 = pose(false);
+			auto P1 = pose(true);
+
+			auto add_edge = [&](int a, int b, int dimColor) {
+				Line& L = add_line();
+
+				// start/end endpoints
+				Vec3 A0 = P0[a], B0 = P0[b];
+				Vec3 A1 = P1[a], B1 = P1[b];
+
+				// start: a subtle reveal from the midpoint
+				Vec3 M0{ 0.5f * (A0.x + B0.x), 0.5f * (A0.y + B0.y), 0.5f * (A0.z + B0.z) };
+				L.x0.start = M0.x; L.y0.start = M0.y; L.z0.start = M0.z;
+				L.x1.start = M0.x; L.y1.start = M0.y; L.z1.start = M0.z;
+
+				// simple RGB by dimension (x,y,z,w)  (R,G,B,purple)
+				Vec3 cstart{}, cend{};
+				switch (dimColor) {
+				case 0: cstart = { 0.95f,0.35f,0.35f }; cend = { 1.00f,0.65f,0.50f }; break; // X
+				case 1: cstart = { 0.35f,0.95f,0.45f }; cend = { 0.55f,1.00f,0.65f }; break; // Y
+				case 2: cstart = { 0.35f,0.55f,0.95f }; cend = { 0.55f,0.75f,1.00f }; break; // Z
+				case 3: cstart = { 0.80f,0.45f,0.95f }; cend = { 0.95f,0.65f,1.00f }; break; // W-link
+				}
+				L.rgb_t0 = cstart;
+				L.thickness.start = baseThick * 0.30f;
+				L.number_of_cubes = cubesPerEdge;
+
+				L.copy_start_to_end();
+
+				L.x0.end = A1.x; L.y0.end = A1.y; L.z0.end = A1.z;
+				L.x1.end = B1.x; L.y1.end = B1.y; L.z1.end = B1.z;
+				L.rgb_t1 = cend;
+				L.thickness.end = baseThick;
+				};
+
+			// Connect edges: for each vertex, flip one bit (one dimension)
+			for (int i = 0; i < 16; ++i) {
+				for (int d = 0; d < 4; ++d) {
+					if (!(i & (1 << d))) {
+						int j = i | (1 << d);
+						add_edge(i, j, d);
+					}
+				}
+			}
+		}
+
+		void init_0008_supershape_ribbons()
+		{
+			lines.clear();
+
+			const int   nLat = 46;    // latitude bands
+			const int   nLon = 68;    // longitude bands
+			const int   segs = 68;    // segments per band
+			const float R = 0.85f; // overall size
+			const int   cubesPerSeg = 22;
+			const float baseThick = 0.0065f;
+			const float TAU = 6.28318530718f;
+
+			// superformula (a=b=1)
+			auto sform = [](float ang, float m, float n1, float n2, float n3) {
+				float t = 0.5f * m * ang;
+				float c = std::pow(std::fabs(std::cos(t)), n2);
+				float s = std::pow(std::fabs(std::sin(t)), n3);
+				float d = std::pow(c + s, 1.0f / std::max(1e-6f, n1));
+				return (d == 0.0f) ? 0.0f : (1.0f / d);
+				};
+
+			// parameter set (pleasant spiky flower sphere)
+			const float m1 = 7.0f, n1a = 0.25f, n2a = 1.7f, n3a = 1.7f; // latitude supershape
+			const float m2 = 3.0f, n1b = 0.20f, n2b = 0.80f, n3b = 1.6f; // longitude supershape
+
+			auto surf = [&](float theta, float phi) { // theta in [-,], phi in [-/2, /2]
+				float r1 = sform(theta, m1, n1a, n2a, n3a);
+				float r2 = sform(phi, m2, n1b, n2b, n3b);
+				float x = R * r1 * std::cos(theta) * r2 * std::cos(phi);
+				float y = R * r1 * std::sin(theta) * r2 * std::cos(phi);
+				float z = R * r2 * std::sin(phi);
+				return Vec3{ x, y, z };
+				};
+
+			auto hue = [&](float t)->Vec3 {
+				return Vec3{
+					0.5f + 0.5f * std::cos(TAU * (t + 0.00f)),
+					0.5f + 0.5f * std::cos(TAU * (t + 0.33f)),
+					0.5f + 0.5f * std::cos(TAU * (t + 0.66f))
+				};
+				};
+
+			auto add_seg = [&](const Vec3& A_start, const Vec3& B_start,
+				const Vec3& A_end, const Vec3& B_end,
+				const Vec3& C0, const Vec3& C1, float thickEnd)
+				{
+					Line& L = add_line();
+
+					// start collapsed at midpoint for a clean reveal
+					Vec3 M{ 0.5f * (A_start.x + B_start.x),
+							0.5f * (A_start.y + B_start.y),
+							0.5f * (A_start.z + B_start.z) };
+
+					L.x0.start = M.x; L.y0.start = M.y; L.z0.start = M.z;
+					L.x1.start = M.x; L.y1.start = M.y; L.z1.start = M.z;
+
+					L.rgb_t0 = C0;
+					L.thickness.start = baseThick * 0.35f;
+					L.number_of_cubes = cubesPerSeg;
+
+					L.copy_start_to_end();
+
+					L.x0.end = A_end.x; L.y0.end = A_end.y; L.z0.end = A_end.z;
+					L.x1.end = B_end.x; L.y1.end = B_end.y; L.z1.end = B_end.z;
+
+					L.rgb_t1 = C1;
+					L.thickness.end = thickEnd;
+				};
+
+			// animate: start at smaller radius, end at full + slight twist
+			auto twist = [](Vec3 p, float ang)->Vec3 {
+				float c = std::cos(ang), s = std::sin(ang);
+				return Vec3{ c * p.x - s * p.y, s * p.x + c * p.y, p.z };
+				};
+			const float twistEnd = 0.35f;
+
+			// ----- latitude ribbons (phi fixed, vary theta) -----
+			for (int i = 0; i < nLat; ++i)
+			{
+				float v0 = (i / float(nLat - 1)) * TAU - (TAU * 0.5f); // map to [-,] for theta span when we use bands look
+				float phi = ((i / float(nLat - 1)) - 0.5f) * TAU * 0.5f; // [-/2, /2]
+				float colPhase = i / float(nLat);
+
+				Vec3 C0 = hue(0.10f + 0.55f * colPhase);
+				Vec3 C1 = hue(0.18f + 0.55f * colPhase);
+
+				for (int j = 0; j < segs; ++j)
+				{
+					float t0 = -3.14159265f + (j / float(segs)) * TAU;
+					float t1 = -3.14159265f + ((j + 1) / float(segs)) * TAU;
+
+					Vec3 A = surf(t0, phi);
+					Vec3 B = surf(t1, phi);
+
+					// start small & end with a twist
+					Vec3 As = Vec3{ A.x * 0.35f, A.y * 0.35f, A.z * 0.35f };
+					Vec3 Bs = Vec3{ B.x * 0.35f, B.y * 0.35f, B.z * 0.35f };
+					Vec3 Ae = twist(A, twistEnd);
+					Vec3 Be = twist(B, twistEnd);
+
+					float thick = baseThick * (0.75f + 0.25f * std::sin(4.0f * phi + 2.0f * t0));
+					add_seg(As, Bs, Ae, Be, C0, C1, thick);
+				}
+			}
+
+			// ----- longitude ribbons (theta fixed, vary phi) -----
+			for (int i = 0; i < nLon; ++i)
+			{
+				float theta = -3.14159265f + (i / float(nLon)) * TAU;
+				float colPhase = i / float(nLon);
+
+				Vec3 C0 = hue(0.60f + 0.40f * colPhase);
+				Vec3 C1 = hue(0.68f + 0.40f * colPhase);
+
+				for (int j = 0; j < segs; ++j)
+				{
+					float p0 = -1.57079633f + (j / float(segs)) * 3.14159265f;      // [-/2, /2]
+					float p1 = -1.57079633f + ((j + 1) / float(segs)) * 3.14159265f;
+
+					Vec3 A = surf(theta, p0);
+					Vec3 B = surf(theta, p1);
+
+					Vec3 As = Vec3{ A.x * 0.35f, A.y * 0.35f, A.z * 0.35f };
+					Vec3 Bs = Vec3{ B.x * 0.35f, B.y * 0.35f, B.z * 0.35f };
+					Vec3 Ae = twist(A, -twistEnd);
+					Vec3 Be = twist(B, -twistEnd);
+
+					float thick = baseThick * (0.75f + 0.25f * std::sin(3.0f * theta + 2.5f * p0));
+					add_seg(As, Bs, Ae, Be, C0, C1, thick);
+				}
+			}
+		}
 
 
 
@@ -3174,11 +3194,15 @@ namespace Universe_
 				// lines.init_fractal_tree_3d();
 				// lines.init_crystal_fractal_tree();
 
-				lines.init_neural_energy_tree();
+				
 
 				
-				// lines.init_0006_wavy_dune_landscape();
+				lines.init_0006_wavy_dune_landscape();
 				// lines.init_brutalist_monolith();
+				// lines.init_0007_tesseract_warp();
+				// lines.init_0008_supershape_ribbons();
+
+
 
 				
 
