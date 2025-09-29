@@ -1305,6 +1305,823 @@ namespace Universe_
 			}
 		}
 
+		// inside struct Lines
+		void init_0003_floating_text()
+		{
+			lines.clear();
+
+			// --- knobs ---
+			const char* msg = "FLOATING";   // change me
+			const float letterHeight = 0.70f;
+			const float letterSpacing = 0.58f; // in letter-heights
+			const float baseY = 0.0f;
+			const float baseZ = 0.0f;
+			const float floatLift = 0.18f;  // how much letters rise by end
+			const float windAmp = 0.06f;    // sideways drift at end
+			const float baseThick = 0.008f;
+			const int   cubesPerStroke = 28;
+			const float TAU = 6.28318530718f;
+
+			auto hueColor = [&](float h)->Vec3 {
+				return Vec3{
+					0.5f + 0.5f * std::cos(TAU * (h + 0.00f)),
+					0.5f + 0.5f * std::cos(TAU * (h + 0.33f)),
+					0.5f + 0.5f * std::cos(TAU * (h + 0.66f))
+				};
+				};
+
+			struct V2 { float x, y; };
+			using Stroke = std::pair<V2, V2>;
+
+			auto push_vert = [](std::vector<Stroke>& S, float x, float y0, float y1) {
+				S.push_back({ {x,y0},{x,y1} });
+				};
+			auto push_horz = [](std::vector<Stroke>& S, float y, float x0, float x1) {
+				S.push_back({ {x0,y},{x1,y} });
+				};
+			auto push_diag = [](std::vector<Stroke>& S, float x0, float y0, float x1, float y1) {
+				S.push_back({ {x0,y0},{x1,y1} });
+				};
+
+			// normalized [0,1] vector strokes for a few letters
+			auto strokesFor = [&](char c)->std::vector<Stroke>
+				{
+					std::vector<Stroke> S;
+					const float m = 0.10f;           // margin
+					const float l = m, r = 1.0f - m;
+					const float b = m, t = 1.0f - m;
+					const float mid = 0.5f, midHi = 0.62f, midLo = 0.38f;
+
+					switch (c)
+					{
+					case 'F':
+						push_vert(S, l, b, t);
+						push_horz(S, t, l, r);
+						push_horz(S, mid, l, 0.75f);
+						break;
+					case 'L':
+						push_vert(S, l, b, t);
+						push_horz(S, b, l, r);
+						break;
+					case 'O':
+						push_horz(S, t, l, r);
+						push_horz(S, b, l, r);
+						push_vert(S, l, b, t);
+						push_vert(S, r, b, t);
+						break;
+					case 'A': {
+						float ax = 0.5f, ay = t;
+						push_diag(S, l, b, ax, ay);
+						push_diag(S, r, b, ax, ay);
+						push_horz(S, midHi, l + 0.15f, r - 0.15f);
+						break;
+					}
+					case 'T':
+						push_horz(S, t, l, r);
+						push_vert(S, mid, b, t);
+						break;
+					case 'I':
+						push_vert(S, mid, b, t);
+						push_horz(S, t, l + 0.2f, r - 0.2f);
+						push_horz(S, b, l + 0.2f, r - 0.2f);
+						break;
+					case 'N':
+						push_vert(S, l, b, t);
+						push_vert(S, r, b, t);
+						push_diag(S, l, b, r, t);
+						break;
+					case 'G':
+						// like O, but open bite + inner arm
+						push_horz(S, t, l, r);
+						push_horz(S, b, l, r);
+						push_vert(S, l, b, t);
+						push_vert(S, r, mid, t);
+						push_horz(S, mid, l + 0.40f, r);      // inner arm
+						break;
+					case ' ':
+						break;
+					default:
+						// fallback: simple box
+						push_horz(S, t, l, r);
+						push_horz(S, b, l, r);
+						push_vert(S, l, b, t);
+						push_vert(S, r, b, t);
+						break;
+					}
+					return S;
+				};
+
+			// center text horizontally
+			int len = 0; while (msg[len] != '\0') ++len;
+			const float totalW = (len - 1) * letterSpacing * letterHeight;
+
+			for (int i = 0; i < len; ++i)
+			{
+				char c = std::toupper(msg[i]);
+				auto strokes = strokesFor(c);
+
+				// per-letter placement & vibe
+				float xOffset = -0.5f * totalW + i * (letterSpacing * letterHeight);
+				float zJitter = baseZ + 0.02f * Random::generate_random_float_minus_one_to_plus_one();
+				float wind = windAmp * (0.5f + 0.5f * std::sin(0.7f * i)); // steady sideways drift at end
+				float hue = std::fmod(0.12f * i + 0.02f * (c == ' ' ? 0 : 1), 1.0f);
+
+				Vec3 col0 = hueColor(hue);
+				Vec3 col1 = hueColor(std::fmod(hue + 0.10f, 1.0f));
+
+				for (const auto& st : strokes)
+				{
+					// map normalized glyph to world
+					auto mapPt = [&](V2 p)->Vec3 {
+						float X = xOffset + (p.x - 0.5f) * letterHeight;
+						float Y = baseY + (p.y - 0.5f) * letterHeight;
+						return Vec3{ X, Y, zJitter };
+						};
+
+					Vec3 P0 = mapPt(st.first);
+					Vec3 P1 = mapPt(st.second);
+					Vec3 M = { 0.5f * (P0.x + P1.x), 0.5f * (P0.y + P1.y) - 0.22f * letterHeight, 0.5f * (P0.z + P1.z) }; // start collapsed & slightly low
+
+					Line& L = add_line();
+
+					// START collapsed
+					L.x0.start = M.x; L.y0.start = M.y; L.z0.start = M.z;
+					L.x1.start = M.x; L.y1.start = M.y; L.z1.start = M.z;
+
+					L.rgb_t0 = col0;
+					L.thickness.start = baseThick * 0.25f;
+					L.number_of_cubes = cubesPerStroke;
+
+					L.copy_start_to_end();
+
+					// END at actual stroke positions, with rise + wind
+					L.x0.end = P0.x + wind; L.y0.end = P0.y + floatLift; L.z0.end = P0.z;
+					L.x1.end = P1.x + wind; L.y1.end = P1.y + floatLift; L.z1.end = P1.z;
+
+					L.rgb_t1 = col1;
+					L.thickness.end = baseThick;
+				}
+			}
+		}
+
+		void init_spiral_galaxy()
+		{
+			int number_of_lines = 200;
+			const float TAU = 6.2831853071795864769252867665590f;
+
+			for (int i = 0; i < number_of_lines; i++)
+			{
+				Line& line = add_line();
+				float angle = i * (TAU / number_of_lines);
+				float radius = 0.1f + 0.4f * (i / float(number_of_lines));
+
+				// Start at center, end at spiral position
+				line.x0.start = 0.0f;
+				line.y0.start = 0.0f;
+				line.z0.start = 0.0f;
+
+				line.x1.start = radius * sin(angle);
+				line.y1.start = 0.0f;
+				line.z1.start = radius * cos(angle);
+
+				// End points create spiral arms
+				line.x1.end = (radius + 0.1f) * sin(angle + 0.3f);
+				line.y1.end = 0.0f;
+				line.z1.end = (radius + 0.1f) * cos(angle + 0.3f);
+
+				// Color gradient from center (white) to edges (blue/purple)
+				float t = i / float(number_of_lines);
+				line.rgb_t0.x = 0.8f * (1.0f - t);
+				line.rgb_t0.y = 0.6f * (1.0f - t);
+				line.rgb_t0.z = 0.9f;
+
+				line.thickness.start = 0.005f + 0.01f * (1.0f - t);
+				line.number_of_cubes = 50;
+			}
+		}
+
+		void init_wireframe_sphere()
+		{
+			int rings = 20;
+			int sectors = 40;
+
+			const float PI = 3.14159265359f;
+
+			for (int r = 0; r < rings; r++) {
+				for (int s = 0; s < sectors; s++) {
+					Line& line = add_line();
+
+					// Calculate spherical coordinates
+					float theta1 = r * PI / rings;
+					float theta2 = (r + 1) * PI / rings;
+					float phi = s * 2 * PI / sectors;
+
+					// Latitude lines (horizontal rings)
+					line.x0.start = sin(theta1) * cos(phi);
+					line.y0.start = cos(theta1);
+					line.z0.start = sin(theta1) * sin(phi);
+
+					line.x1.start = sin(theta1) * cos(phi + 2 * PI / sectors);
+					line.y1.start = cos(theta1);
+					line.z1.start = sin(theta1) * sin(phi + 2 * PI / sectors);
+
+					// Longitude lines (vertical meridians)
+					line.x1.end = sin(theta2) * cos(phi);
+					line.y1.end = cos(theta2);
+					line.z1.end = sin(theta2) * sin(phi);
+
+					line.copy_start_to_end(); // For the horizontal part
+
+					// Rainbow colors based on position
+					line.rgb_t0.x = 0.5f + 0.5f * sin(phi);
+					line.rgb_t0.y = 0.5f + 0.5f * cos(theta1);
+					line.rgb_t0.z = 0.5f + 0.5f * sin(theta1 + phi);
+
+					line.thickness.start = 0.008f;
+					line.number_of_cubes = 30;
+				}
+			}
+		}
+
+		void init_particle_fountain()
+		{
+			int number_of_particles = 150;
+
+			const float M_PI = 3.14159265359f;
+
+			for (int i = 0; i < number_of_particles; i++)
+			{
+				Line& line = add_line();
+
+				// All particles start at fountain base
+				line.x0.start = 0.0f;
+				line.y0.start = -0.5f;
+				line.z0.start = 0.0f;
+
+				// Random upward trajectory with spread
+				float angle = Random::generate_random_float_0_to_1() * 2 * M_PI;
+				float spread = 0.3f + 0.7f * Random::generate_random_float_0_to_1();
+				float height = 0.8f + 0.4f * Random::generate_random_float_0_to_1();
+
+				line.x1.start = spread * cos(angle);
+				line.y1.start = height;
+				line.z1.start = spread * sin(angle);
+
+				// End points create falling effect
+				line.x1.end = spread * 1.5f * cos(angle + 0.2f);
+				line.y1.end = -0.2f;
+				line.z1.end = spread * 1.5f * sin(angle + 0.2f);
+
+				// Fire-like colors (orange to yellow)
+				float fire_t = Random::generate_random_float_0_to_1();
+				line.rgb_t0.x = 0.8f + 0.2f * fire_t;
+				line.rgb_t0.y = 0.4f + 0.4f * fire_t;
+				line.rgb_t0.z = 0.1f + 0.1f * fire_t;
+
+				line.thickness.start = 0.005f;
+				line.number_of_cubes = 80;
+			}
+		}
+
+
+		void init_dna_helix()
+		{
+			int number_of_lines = 120;
+			const float TAU = 6.2831853071795864769252867665590f;
+			const float M_PI = 3.14159265359f;;
+
+			for (int i = 0; i < number_of_lines; i++)
+			{
+				Line& line = add_line();
+				float t = i / float(number_of_lines);
+				float angle = t * TAU * 4.0f; // 4 full rotations
+				float height = -0.8f + 1.6f * t;
+
+				// First strand
+				line.x0.start = 0.3f * cos(angle);
+				line.y0.start = height;
+				line.z0.start = 0.3f * sin(angle);
+
+				// Second strand (offset by 180 degrees)
+				line.x1.start = 0.3f * cos(angle + M_PI);
+				line.y1.start = height;
+				line.z1.start = 0.3f * sin(angle + M_PI);
+
+				// Connect to next rung
+				float next_angle = (t + 1.0f / number_of_lines) * TAU * 4.0f;
+				float next_height = -0.8f + 1.6f * (t + 1.0f / number_of_lines);
+
+				line.x1.end = 0.3f * cos(next_angle + M_PI);
+				line.y1.end = next_height;
+				line.z1.end = 0.3f * sin(next_angle + M_PI);
+
+				line.copy_start_to_end(); // This might need adjustment
+
+				// Alternating red/blue for base pairs
+				if (i % 2 == 0) {
+					line.rgb_t0 = { 0.8f, 0.2f, 0.2f }; // Red
+				}
+				else {
+					line.rgb_t0 = { 0.2f, 0.2f, 0.8f }; // Blue
+				}
+
+				line.thickness.start = 0.012f;
+				line.number_of_cubes = 20;
+			}
+		}
+
+
+		void init_0004_letter_matrix_fly()
+		{
+			lines.clear();
+
+			// ===== knobs =====
+			const char* msg = "FLOATING  "; // tiled across the grid (add spaces to vary)
+			const int   rows = 10;
+			const int   cols = 18;
+			const float letterH = 0.22f;   // letter height
+			const float spacing = 0.26f;   // cell spacing in world units (relative to letterH)
+			const float jitterXY = 0.03f;  // small start jitter
+			const float baseZ = 0.0f;
+
+			const float rise = 0.80f;  // how high letters lift by end
+			const float scatterR = 1.40f;  // how far they scatter radially
+			const float swirlAmp = 1.60f;  // swirl intensity around Y
+			const float yawSpin = 1.10f;  // extra per-letter yaw at end (radians)
+			const float rollSpin = 0.45f;  // subtle Z roll for fun
+
+			const float baseThick = 0.0075f;
+			const int   cubesPerStroke = 24;
+			const float TAU = 6.28318530718f;
+
+			// tiny helpers
+			auto hueColor = [&](float h)->Vec3 {
+				return Vec3{
+					0.5f + 0.5f * std::cos(TAU * (h + 0.00f)),
+					0.5f + 0.5f * std::cos(TAU * (h + 0.33f)),
+					0.5f + 0.5f * std::cos(TAU * (h + 0.66f))
+				};
+				};
+			auto rotY = [](const Vec3& p, float a)->Vec3 {
+				float c = std::cos(a), s = std::sin(a);
+				return Vec3{ c * p.x + s * p.z, p.y, -s * p.x + c * p.z };
+				};
+			auto rotZ = [](const Vec3& p, float a)->Vec3 {
+				float c = std::cos(a), s = std::sin(a);
+				return Vec3{ c * p.x - s * p.y, s * p.x + c * p.y, p.z };
+				};
+
+			struct V2 { float x, y; };
+			using Stroke = std::pair<V2, V2>;
+
+			auto push_v = [](std::vector<Stroke>& S, float x, float y0, float y1) {
+				S.push_back({ {x,y0},{x,y1} });
+				};
+			auto push_h = [](std::vector<Stroke>& S, float y, float x0, float x1) {
+				S.push_back({ {x0,y},{x1,y} });
+				};
+			auto push_d = [](std::vector<Stroke>& S, float x0, float y0, float x1, float y1) {
+				S.push_back({ {x0,y0},{x1,y1} });
+				};
+
+			// minimalist vector strokes (normalized [0,1]) for common letters; others = box fallback
+			auto strokesFor = [&](char c)->std::vector<Stroke> {
+				std::vector<Stroke> S;
+				const float m = 0.10f, l = m, r = 1.0f - m, b = m, t = 1.0f - m, mid = 0.5f, hi = 0.62f;
+				switch (std::toupper(c))
+				{
+				case 'F': push_v(S, l, b, t); push_h(S, t, l, r); push_h(S, mid, l, 0.75f); break;
+				case 'L': push_v(S, l, b, t); push_h(S, b, l, r); break;
+				case 'O': push_h(S, t, l, r); push_h(S, b, l, r); push_v(S, l, b, t); push_v(S, r, b, t); break;
+				case 'A': push_d(S, l, b, 0.5f, t); push_d(S, r, b, 0.5f, t); push_h(S, hi, l + 0.15f, r - 0.15f); break;
+				case 'T': push_h(S, t, l, r); push_v(S, mid, b, t); break;
+				case 'I': push_v(S, mid, b, t); push_h(S, t, l + 0.2f, r - 0.2f); push_h(S, b, l + 0.2f, r - 0.2f); break;
+				case 'N': push_v(S, l, b, t); push_v(S, r, b, t); push_d(S, l, b, r, t); break;
+				case 'G': push_h(S, t, l, r); push_h(S, b, l, r); push_v(S, l, b, t); push_v(S, r, 0.45f, t); push_h(S, 0.45f, l + 0.40f, r); break;
+				case 'X': push_d(S, l, b, r, t); push_d(S, l, t, r, b); break;
+				case 'Y': push_d(S, l, t, mid, 0.58f); push_d(S, r, t, mid, 0.58f); push_v(S, mid, b, 0.58f); break;
+				case 'H': push_v(S, l, b, t); push_v(S, r, b, t); push_h(S, mid, l, r); break;
+				case 'E': push_v(S, l, b, t); push_h(S, t, l, r); push_h(S, mid, l, 0.75f); push_h(S, b, l, r); break;
+				case 'S': push_h(S, t, l, r); push_h(S, mid, l, 0.65f); push_h(S, b, l, r); push_v(S, l, mid, b); push_v(S, r, t, mid); break;
+				case 'M': push_v(S, l, b, t); push_v(S, r, b, t); push_d(S, l, t, mid, b + 0.25f); push_d(S, r, t, mid, b + 0.25f); break;
+				case 'W': push_v(S, l, b, t); push_v(S, r, b, t); push_d(S, l, b, mid, t - 0.25f); push_d(S, r, b, mid, t - 0.25f); break;
+				case 'U': push_v(S, l, b, t); push_v(S, r, b, t); push_h(S, b, l, r); break;
+				case 'V': push_d(S, l, t, 0.5f, b); push_d(S, r, t, 0.5f, b); break;
+				case 'Z': push_h(S, t, l, r); push_h(S, b, l, r); push_d(S, l, b, r, t); break;
+				case ' ': break;
+				default:  // box fallback
+					push_h(S, t, l, r); push_h(S, b, l, r); push_v(S, l, b, t); push_v(S, r, b, t);
+				}
+				return S;
+				};
+
+			// layout
+			int msgLen = 0; while (msg[msgLen] != '\0') ++msgLen;
+			const float cell = letterH / spacing;       // spacing normalized to height
+			const float gridW = (cols - 1) * cell;
+			const float gridH = (rows - 1) * cell;
+
+			// build letters
+			int idx = 0;
+			for (int r = 0; r < rows; ++r)
+				for (int c = 0; c < cols; ++c)
+				{
+					char ch = msg[idx++ % msgLen];
+					auto strokes = strokesFor(ch);
+
+					// center grid around origin
+					float cx = -0.5f * gridW + c * cell;
+					float cy = 0.5f * gridH - r * cell;
+
+					// per-letter jitter & seeds
+					float jx = jitterXY * Random::generate_random_float_minus_one_to_plus_one();
+					float jy = jitterXY * Random::generate_random_float_minus_one_to_plus_one();
+					float jz = 0.02f * Random::generate_random_float_minus_one_to_plus_one();
+
+					// color by grid position
+					float hue = std::fmod(0.12f * r + 0.07f * c, 1.0f);
+					Vec3 c0 = hueColor(hue);
+					Vec3 c1 = hueColor(std::fmod(hue + 0.10f, 1.0f));
+
+					// compute end (flight) transform for this letter
+					Vec3 centerStart{ cx + jx, cy + jy, baseZ + jz };
+
+					// radial direction from origin (xz uses cx, z based on c; y handled via rise)
+					Vec3 radial{ centerStart.x, 0.0f, 0.35f * (c - (cols - 1) * 0.5f) * cell };
+					float rl = std::sqrt(radial.x * radial.x + radial.z * radial.z) + 1e-6f;
+					radial.x /= rl; radial.z /= rl;
+
+					float swirl = swirlAmp * (0.35f * r);           // more swirl higher up
+					float yaw = yawSpin * (0.3f + 0.7f * (r / (float)rows)); // more spin for upper rows
+					float roll = rollSpin * (Random::generate_random_float_minus_one_to_plus_one());
+
+					// END transform: translate (scatter + rise) and rotate (yaw around Y, then roll in-plane)
+					auto toEnd = [&](const Vec3& p, const Vec3& letterCenter)->Vec3 {
+						// move to local
+						Vec3 q{ p.x - letterCenter.x, p.y - letterCenter.y, p.z - letterCenter.z };
+						// in-plane roll (Z)
+						q = rotZ(q, roll);
+						// yaw around Y (gives 3D parallax)
+						q = rotY(q, yaw + swirl);
+						// translate: rise and radial scatter
+						Vec3 t{
+							letterCenter.x + q.x + radial.x * scatterR,
+							letterCenter.y + q.y + rise,
+							letterCenter.z + q.z + radial.z * scatterR
+						};
+						return t;
+						};
+
+					// draw strokes
+					for (const auto& st : strokes)
+					{
+						// map glyph [0,1]^2 to world in this cell
+						auto mapPt = [&](V2 p)->Vec3 {
+							float X = centerStart.x + (p.x - 0.5f) * letterH;
+							float Y = centerStart.y + (p.y - 0.5f) * letterH;
+							float Z = centerStart.z;
+							return Vec3{ X, Y, Z };
+							};
+
+						Vec3 P0 = mapPt(st.first);
+						Vec3 P1 = mapPt(st.second);
+						Vec3 M = { 0.5f * (P0.x + P1.x), 0.5f * (P0.y + P1.y), 0.5f * (P0.z + P1.z) };
+
+						Line& L = add_line();
+
+						// START: exactly on grid (legible)
+						L.x0.start = P0.x; L.y0.start = P0.y; L.z0.start = P0.z;
+						L.x1.start = P1.x; L.y1.start = P1.y; L.z1.start = P1.z;
+
+						L.rgb_t0 = c0;
+						L.thickness.start = baseThick;
+						L.number_of_cubes = cubesPerStroke;
+
+						L.copy_start_to_end();
+
+						// END: flown & spun
+						Vec3 Cend = toEnd(M, centerStart); // move midpoint, but we need endpoints transformed about center
+						// transform endpoints relative to letterCenter for consistent rotation
+						Vec3 E0 = toEnd(P0, centerStart);
+						Vec3 E1 = toEnd(P1, centerStart);
+
+						L.x0.end = E0.x; L.y0.end = E0.y; L.z0.end = E0.z;
+						L.x1.end = E1.x; L.y1.end = E1.y; L.z1.end = E1.z;
+
+						L.rgb_t1 = c1;
+						L.thickness.end = baseThick * 0.75f; // slight taper on fly
+					}
+				}
+		}
+
+		void init_quantum_foam_nebula()
+		{
+			// Self-contained constants
+			const float TAU = 6.283185307179586476925286766559f; // 2 * PI
+			const float PI = 3.141592653589793238462643383279f;
+
+			const int total_lines = 1200;
+			const int octaves = 4; // Noise complexity layers
+
+			for (int i = 0; i < total_lines; ++i)
+			{
+				Line& line = add_line();
+
+				// Random base direction on unit sphere (using rejection sampling for uniformity)
+				float x, y, z, len;
+				do {
+					x = Random::generate_random_float_minus_one_to_plus_one();
+					y = Random::generate_random_float_minus_one_to_plus_one();
+					z = Random::generate_random_float_minus_one_to_plus_one();
+					len = x * x + y * y + z * z;
+				} while (len > 1.0f || len < 1e-6f);
+				len = sqrtf(len);
+				x /= len; y /= len; z /= len;
+
+				// Base radius and phase
+				float base_radius = 0.3f + 0.5f * Random::generate_random_float_0_to_1();
+				float global_phase = TAU * Random::generate_random_float_0_to_1();
+
+				// Multi-octave displacement (procedural turbulence)
+				float dx_start = 0.0f, dy_start = 0.0f, dz_start = 0.0f;
+				float dx_end = 0.0f, dy_end = 0.0f, dz_end = 0.0f;
+				float amplitude = 1.0f;
+				float frequency = 1.0f;
+
+				for (int o = 0; o < octaves; ++o)
+				{
+					float angle_start = frequency * (i * 0.13f + global_phase);
+					float angle_end = frequency * (i * 0.17f + global_phase + PI * 0.5f);
+
+					// Use different axes for richer 3D motion
+					dx_start += amplitude * sinf(angle_start) * cosf(angle_start * 1.618f);
+					dy_start += amplitude * cosf(angle_start * 2.414f);
+					dz_start += amplitude * sinf(angle_start * 3.141f + PI / 3.0f);
+
+					dx_end += amplitude * cosf(angle_end) * sinf(angle_end * 1.618f);
+					dy_end += amplitude * sinf(angle_end * 2.414f + PI / 4.0f);
+					dz_end += amplitude * cosf(angle_end * 3.141f);
+
+					amplitude *= 0.5f;
+					frequency *= 2.1f; // Non-integer for non-repeating patterns
+				}
+
+				// Normalize displacement magnitude
+				float disp_scale = 0.12f;
+				dx_start *= disp_scale; dy_start *= disp_scale; dz_start *= disp_scale;
+				dx_end *= disp_scale; dy_end *= disp_scale; dz_end *= disp_scale;
+
+				// Start point: origin + radial base + displacement
+				line.x0.start = dx_start;
+				line.y0.start = dy_start;
+				line.z0.start = dz_start;
+
+				// End point: sphere surface + animated displacement
+				line.x1.start = base_radius * x + dx_start;
+				line.y1.start = base_radius * y + dy_start;
+				line.z1.start = base_radius * z + dz_start;
+
+				// Animated end position (pulsing + swirling)
+				float pulse = 0.8f + 0.2f * sinf(global_phase + i * 0.01f);
+				float swirl_factor = 0.3f + 0.7f * Random::generate_random_float_0_to_1();
+
+				// Rotate around Y-axis over "time" (encoded in phase)
+				float cos_swirl = cosf(swirl_factor * global_phase);
+				float sin_swirl = sinf(swirl_factor * global_phase);
+				float x_rot = x * cos_swirl - z * sin_swirl;
+				float z_rot = x * sin_swirl + z * cos_swirl;
+
+				line.x1.end = pulse * base_radius * x_rot + dx_end;
+				line.y1.end = pulse * base_radius * y + dy_end;
+				line.z1.end = pulse * base_radius * z_rot + dz_end;
+
+				// Color: based on 3D position + harmonic phase (vivid nebula palette)
+				float hue = fmodf(global_phase + (x + y + z) * 2.0f, TAU);
+				float saturation = 0.7f + 0.3f * Random::generate_random_float_0_to_1();
+				float value = 0.4f + 0.5f * (sinf(hue * 3.0f) * 0.5f + 0.5f);
+
+				// Simple HSV  RGB (approximate, but fast and colorful)
+				float h = hue / TAU * 6.0f;
+				float c = value * saturation;
+				float x_col = c * (1.0f - fabsf(fmodf(h, 2.0f) - 1.0f));
+				float m = value - c;
+
+				float r = 0, g = 0, b = 0;
+				if (h < 1.0f) { r = c; g = x_col; }
+				else if (h < 2.0f) { r = x_col; g = c; }
+				else if (h < 3.0f) { g = c; b = x_col; }
+				else if (h < 4.0f) { g = x_col; b = c; }
+				else if (h < 5.0f) { r = x_col; b = c; }
+				else { r = c; b = x_col; }
+
+				line.rgb_t0.x = r + m;
+				line.rgb_t0.y = g + m;
+				line.rgb_t0.z = b + m;
+
+				// Thickness varies with depth and energy
+				float depth_factor = 0.5f + 0.5f * (y + 1.0f) * 0.5f; // Brighter near "equator"
+				line.thickness.start = 0.004f + 0.008f * depth_factor * (1.0f + sinf(global_phase * 2.0f)) * 0.5f;
+
+				line.number_of_cubes = 60 + int(40.0f * Random::generate_random_float_0_to_1());
+			}
+		}
+
+
+		// inside struct Lines
+		void init_0005_letter_layers_fly_yz_swapped()
+		{
+			lines.clear();
+
+			// ===== knobs =====
+			const char* msg = "MATH  "; // tiled across the grid
+			const int   rows = 9;
+			const int   cols = 16;
+			const int   layers = 5;          // stacked depth layers along Y
+			const float layerGap = 0.24f;    // spacing between layers (Y axis)
+
+			const float letterH = 0.20f;     // letter height (now along Z)
+			const float spacing = 0.26f;     // grid spacing factor
+			const float jitterXZ = 0.02f;    // small start jitter in X/Z
+			const float jitterY = 0.02f;    // small start jitter in Y
+
+			const float riseZ = 0.80f;   // how high letters lift by end (Z axis)
+			const float scatterR = 1.25f;   // radial scatter in X–Y plane
+			const float swirlAmpZ = 1.50f;   // swirl intensity around Z
+			const float yawY = 0.90f;   // yaw around Y per letter at end
+			const float rollX = 0.35f;   // subtle roll around X
+
+			const float baseThick = 0.0070f;
+			const int   cubesPerStroke = 24;
+			const float TAU = 6.28318530718f;
+
+			// helpers
+			auto hueColor = [&](float h)->Vec3 {
+				return Vec3{
+					0.5f + 0.5f * std::cos(TAU * (h + 0.00f)),
+					0.5f + 0.5f * std::cos(TAU * (h + 0.33f)),
+					0.5f + 0.5f * std::cos(TAU * (h + 0.66f))
+				};
+				};
+			auto rotZ = [](const Vec3& p, float a)->Vec3 {
+				float c = std::cos(a), s = std::sin(a);
+				return Vec3{ c * p.x - s * p.y, s * p.x + c * p.y, p.z };
+				};
+			auto rotY = [](const Vec3& p, float a)->Vec3 {
+				float c = std::cos(a), s = std::sin(a);
+				return Vec3{ c * p.x + s * p.z, p.y, -s * p.x + c * p.z };
+				};
+			auto rotX = [](const Vec3& p, float a)->Vec3 {
+				float c = std::cos(a), s = std::sin(a);
+				return Vec3{ p.x, c * p.y - s * p.z, s * p.y + c * p.z };
+				};
+
+			struct V2 { float x, y; };
+			using Stroke = std::pair<V2, V2>;
+
+			auto push_v = [](std::vector<Stroke>& S, float x, float y0, float y1) {
+				S.push_back({ {x,y0},{x,y1} });
+				};
+			auto push_h = [](std::vector<Stroke>& S, float y, float x0, float x1) {
+				S.push_back({ {x0,y},{x1,y} });
+				};
+			auto push_d = [](std::vector<Stroke>& S, float x0, float y0, float x1, float y1) {
+				S.push_back({ {x0,y0},{x1,y1} });
+				};
+
+			// vector strokes (normalized [0,1]); add more as needed
+			auto strokesFor = [&](char c)->std::vector<Stroke> {
+				std::vector<Stroke> S;
+				// uppercase without <cctype>
+				char C = (c >= 'a' && c <= 'z') ? char(c - 'a' + 'A') : c;
+				const float m = 0.10f, l = m, r = 1.0f - m, b = m, t = 1.0f - m, mid = 0.5f, hi = 0.62f;
+				switch (C)
+				{
+				case 'M': push_v(S, l, b, t); push_v(S, r, b, t); push_d(S, l, t, mid, b + 0.25f); push_d(S, r, t, mid, b + 0.25f); break;
+				case 'A': push_d(S, l, b, 0.5f, t); push_d(S, r, b, 0.5f, t); push_h(S, hi, l + 0.15f, r - 0.15f); break;
+				case 'T': push_h(S, t, l, r); push_v(S, mid, b, t); break;
+				case 'H': push_v(S, l, b, t); push_v(S, r, b, t); push_h(S, mid, l, r); break;
+				case 'F': push_v(S, l, b, t); push_h(S, t, l, r); push_h(S, mid, l, 0.75f); break;
+				case 'L': push_v(S, l, b, t); push_h(S, b, l, r); break;
+				case 'O': push_h(S, t, l, r); push_h(S, b, l, r); push_v(S, l, b, t); push_v(S, r, b, t); break;
+				case 'I': push_v(S, mid, b, t); push_h(S, t, l + 0.2f, r - 0.2f); push_h(S, b, l + 0.2f, r - 0.2f); break;
+				case 'N': push_v(S, l, b, t); push_v(S, r, b, t); push_d(S, l, b, r, t); break;
+				case 'G': push_h(S, t, l, r); push_h(S, b, l, r); push_v(S, l, b, t); push_v(S, r, 0.45f, t); push_h(S, 0.45f, l + 0.40f, r); break;
+				case ' ': break;
+				default:  // box fallback
+					push_h(S, t, l, r); push_h(S, b, l, r); push_v(S, l, b, t); push_v(S, r, b, t);
+				}
+				return S;
+				};
+
+			// grid layout in X–Z plane (Z is vertical)
+			int msgLen = 0; while (msg[msgLen] != '\0') ++msgLen;
+			const float cell = letterH / spacing;
+			const float gridW = (cols - 1) * cell;
+			const float gridH = (rows - 1) * cell;
+
+			int idx = 0;
+			for (int L = 0; L < layers; ++L)
+			{
+				float layerY = (L - 0.5f * (layers - 1)) * layerGap;
+
+				for (int r = 0; r < rows; ++r)
+					for (int c = 0; c < cols; ++c)
+					{
+						char ch = msg[idx++ % msgLen];
+						auto strokes = strokesFor(ch);
+
+						// center grid around origin in X–Z
+						float cx = -0.5f * gridW + c * cell;
+						float cz = 0.5f * gridH - r * cell; // Z up
+
+						// per-letter jitter
+						float jx = jitterXZ * Random::generate_random_float_minus_one_to_plus_one();
+						float jy = jitterY * Random::generate_random_float_minus_one_to_plus_one();
+						float jz = jitterXZ * Random::generate_random_float_minus_one_to_plus_one();
+
+						// start center (plane X–Z, layered in Y)
+						Vec3 centerStart{ cx + jx, layerY + jy, cz + jz };
+
+						// color by layer/row/col
+						float hue = std::fmod(0.09f * L + 0.08f * r + 0.05f * c, 1.0f);
+						Vec3 c0 = hueColor(hue);
+						Vec3 c1 = hueColor(std::fmod(hue + 0.10f, 1.0f));
+
+						// end transform: swirl around Z, then yaw around Y, roll around X; rise on Z; scatter in X–Y
+						float swirl = swirlAmpZ * (0.25f + 0.75f * (r / float(std::max(1, rows - 1))));
+						float yaw = yawY * (0.35f + 0.65f * (L / float(std::max(1, layers - 1))));
+						float roll = rollX * Random::generate_random_float_minus_one_to_plus_one();
+
+						// radial in X–Y plane
+						Vec3 radial{ centerStart.x, centerStart.y, 0.0f };
+						float rl = std::sqrt(radial.x * radial.x + radial.y * radial.y) + 1e-6f;
+						radial.x /= rl; radial.y /= rl;
+
+						auto toEnd = [&](const Vec3& p, const Vec3& letterCenter)->Vec3 {
+							Vec3 q{ p.x - letterCenter.x, p.y - letterCenter.y, p.z - letterCenter.z };
+							q = rotZ(q, swirl);
+							q = rotY(q, yaw);
+							q = rotX(q, roll);
+							return Vec3{
+								letterCenter.x + q.x + radial.x * scatterR,
+								letterCenter.y + q.y + radial.y * scatterR,
+								letterCenter.z + q.z + riseZ
+							};
+							};
+
+						// draw strokes (glyph plane is X–Z; map V2.y to Z)
+						for (const auto& st : strokes)
+						{
+							auto mapPt = [&](V2 p)->Vec3 {
+								float X = centerStart.x + (p.x - 0.5f) * letterH;
+								float Z = centerStart.z + (p.y - 0.5f) * letterH; // Z is vertical on glyph
+								float Y = centerStart.y;                           // layer depth
+								return Vec3{ X, Y, Z };
+								};
+
+							Vec3 P0 = mapPt(st.first);
+							Vec3 P1 = mapPt(st.second);
+
+							Line& Ln = add_line();
+
+							// START: legible matrix in X–Z plane, layered in Y
+							Ln.x0.start = P0.x; Ln.y0.start = P0.y; Ln.z0.start = P0.z;
+							Ln.x1.start = P1.x; Ln.y1.start = P1.y; Ln.z1.start = P1.z;
+
+							Ln.rgb_t0 = c0;
+							Ln.thickness.start = baseThick;
+							Ln.number_of_cubes = cubesPerStroke;
+
+							Ln.copy_start_to_end();
+
+							// END: fly & swirl
+							Vec3 E0 = toEnd(P0, centerStart);
+							Vec3 E1 = toEnd(P1, centerStart);
+
+							Ln.x0.end = E0.x; Ln.y0.end = E0.y; Ln.z0.end = E0.z;
+							Ln.x1.end = E1.x; Ln.y1.end = E1.y; Ln.z1.end = E1.z;
+
+							Ln.rgb_t1 = c1;
+							Ln.thickness.end = baseThick * 0.75f;
+						}
+					}
+			}
+		}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1457,9 +2274,17 @@ namespace Universe_
 				// lines.init_random_walk_filaments();
 				// lines.init_0001_random_walk_bloom();
 				// lines.init_abstract_cityscape();
-				lines.init_0002_trefoil_weave();
-
+				// lines.init_0002_trefoil_weave();
 				// lines.init_letter_morph();
+				// lines.init_0003_floating_text();
+				// lines.init_spiral_galaxy();
+				// lines.init_wireframe_sphere();
+				// lines.init_particle_fountain();
+				// lines.init_dna_helix();
+				// lines.init_0004_letter_matrix_fly();
+				// lines.init_quantum_foam_nebula();
+				lines.init_0005_letter_layers_fly_yz_swapped();
+
 
 				lines.draw(scene);
 			}
