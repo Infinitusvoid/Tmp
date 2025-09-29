@@ -4958,7 +4958,312 @@ namespace Universe_
 			}
 		}
 
+		void init_2011_coast_mountain_sea()
+		{
+			lines.clear();
 
+			const float TAU = 6.28318530718f;
+
+			// Flip this to render with Y/Z swapped
+			const bool yz_swapped = false;
+
+			// ---- tiny helpers ----
+			auto mixf = [](float a, float b, float t) { return a + (b - a) * t; };
+			auto clamp01 = [](float v) { return std::max(0.0f, std::min(1.0f, v)); };
+
+			// Emit a line with midpoint-reveal and optional Y/Z swap
+			auto emit = [&](float x0, float y0, float z0,
+				float x1, float y1, float z1,
+				Vec3 c0, Vec3 c1, float t0, float t1, int cubes)
+				{
+					Line& L = add_line();
+
+					auto map = [&](float X, float Y, float Z)->Vec3 {
+						return yz_swapped ? Vec3{ X, Z, Y } : Vec3{ X, Y, Z };
+						};
+					Vec3 A = map(x0, y0, z0), B = map(x1, y1, z1);
+					Vec3 M{ 0.5f * (A.x + B.x), 0.5f * (A.y + B.y), 0.5f * (A.z + B.z) };
+
+					L.x0.start = M.x; L.y0.start = M.y; L.z0.start = M.z;
+					L.x1.start = M.x; L.y1.start = M.y; L.z1.start = M.z;
+					L.rgb_t0 = c0; L.thickness.start = t0; L.number_of_cubes = cubes;
+					L.copy_start_to_end();
+					L.x0.end = A.x; L.y0.end = A.y; L.z0.end = A.z;
+					L.x1.end = B.x; L.y1.end = B.y; L.z1.end = B.z;
+					L.rgb_t1 = c1; L.thickness.end = t1;
+				};
+
+			// --------------------------------------------
+			// SCENE LAYOUT (tweak here first)
+			// --------------------------------------------
+			const float Xw = 3.2f;       // world half-width (X)
+			const float Znear = -0.50f;  // near depth
+			const float Zshore = 0.00f;  // shoreline (water meets sand)
+			const float Zhorizon = 1.85f;// horizon band (mountain sits here)
+			const float Zfar = 2.30f;    // sky/sea far limit
+
+			const float seaLevelY = -0.18f;
+			const float beachBaseY = -0.24f;
+
+			// palettes
+			const Vec3 sandA{ 0.78f,0.68f,0.52f }, sandB{ 0.90f,0.80f,0.62f };
+			const Vec3 waterDeep{ 0.10f,0.36f,0.62f }, waterShal{ 0.18f,0.60f,0.86f };
+			const Vec3 foamA{ 0.95f,0.98f,1.00f }, foamB{ 0.85f,0.95f,1.00f };
+			const Vec3 ridgeDark{ 0.26f,0.28f,0.32f }, ridgeLite{ 0.40f,0.44f,0.50f };
+			const Vec3 skyLow{ 0.98f,0.78f,0.56f }, skyHigh{ 0.38f,0.60f,0.92f };
+			const Vec3 cloudA{ 0.95f,0.92f,0.90f }, cloudB{ 0.88f,0.90f,0.94f };
+			const Vec3 sunA{ 1.00f,0.86f,0.55f }, sunB{ 1.00f,0.74f,0.38f };
+
+			// --------------------------------------------
+			// BEACH (sand ripples toward the viewer)
+			// --------------------------------------------
+			{
+				const int rows = 28;                 // along Z (near  shore)
+				const int cols = 120;                // along X
+				const float baseTh = 0.0060f;
+				for (int i = 0; i < rows; i++)
+				{
+					float v = i / float(rows - 1);
+					float z = mixf(Znear, Zshore, v);
+
+					for (int j = 0; j < cols - 1; j++)
+					{
+						float u0 = j / float(cols - 1);
+						float u1 = (j + 1) / float(cols - 1);
+						float x0 = mixf(-Xw, Xw, u0);
+						float x1 = mixf(-Xw, Xw, u1);
+
+						// gentle beach slope + small ripples (cross & long)
+						auto sandY = [&](float x, float zz) {
+							float slope = 0.08f * (Zshore - zz); // rises slightly toward camera
+							float r1 = 0.015f * std::sin(8.0f * zz + 1.8f * x);
+							float r2 = 0.010f * std::sin(12.0f * x + 0.7f * zz);
+							return beachBaseY + slope + r1 + r2;
+							};
+						float y0 = sandY(x0, z), y1 = sandY(x1, z);
+
+						float t = clamp01(0.5f + 0.5f * ((z - Znear) / (Zshore - Znear)));
+						Vec3 c0{ mixf(sandA.x,sandB.x,t), mixf(sandA.y,sandB.y,t), mixf(sandA.z,sandB.z,t) };
+
+						emit(x0, y0, z, x1, y1, z, c0, c0, baseTh * 0.6f, baseTh, 18);
+					}
+				}
+			}
+
+			// --------------------------------------------
+			// SEA surface (cross-banded waves; near = bigger, far = flatter)
+			// --------------------------------------------
+			{
+				const int rows = 36;                 // along Z (shore  horizon)
+				const int cols = 140;                // along X
+				for (int i = 0; i < rows; i++)
+				{
+					float v = i / float(rows - 1);
+					float z = mixf(Zshore, Zhorizon, v);
+
+					// wave amplitude fades with distance
+					float A = mixf(0.085f, 0.020f, v);
+					float kx = 5.6f, kz = 1.7f + 1.2f * v; // slight change with distance
+					float j = 0.25f * std::sin(1.5f * z);   // domain warp
+
+					for (int jx = 0; jx < cols - 1; jx++)
+					{
+						float u0 = jx / float(cols - 1);
+						float u1 = (jx + 1) / float(cols - 1);
+						float x0 = mixf(-Xw, Xw, u0);
+						float x1 = mixf(-Xw, Xw, u1);
+
+						auto seaY = [&](float x, float zz) {
+							float ph = kx * x + kz * zz + 0.7f * std::sin(0.8f * zz + 0.3f * x + j);
+							float w1 = std::sin(ph);
+							float w2 = 0.5f * std::sin(0.6f * ph + 1.9f);
+							float w3 = 0.35f * std::sin(1.7f * x - 0.9f * zz);
+							return seaLevelY + A * (w1 + w2) + 0.03f * w3;
+							};
+
+						float y0 = seaY(x0, z), y1 = seaY(x1, z);
+
+						// color blend by distance & slope hint
+						float dv = v;
+						Vec3 c{ mixf(waterShal.x,waterDeep.x,dv),
+								mixf(waterShal.y,waterDeep.y,dv),
+								mixf(waterShal.z,waterDeep.z,dv) };
+
+						emit(x0, y0, z, x1, y1, z, c, c, 0.0048f, 0.0065f, 20);
+					}
+				}
+
+				// FOAM crests (short dashes where the main sine is high)
+				const int foamRows = 26;
+				const int foamCols = 95;
+				for (int i = 0; i < foamRows; i++)
+				{
+					float v = i / float(foamRows - 1);
+					float z = mixf(Zshore + 0.02f, Zhorizon - 0.08f, v);
+					float A = mixf(0.085f, 0.020f, v);
+					float kx = 5.6f, kz = 1.7f + 1.2f * v;
+
+					for (int jx = 0; jx < foamCols; jx++)
+					{
+						float u = jx / float(foamCols);
+						float x = mixf(-Xw, Xw, u);
+
+						float ph = kx * x + kz * z;
+						float crest = std::sin(ph);
+						if (crest > 0.92f) // threshold for caps
+						{
+							float y = seaLevelY + A * (crest + 0.5f * std::sin(0.6f * ph + 1.9f));
+							float dx = 0.035f; // short dash
+							emit(x - dx, y + 0.0025f, z, x + dx, y + 0.0025f, z,
+								foamA, foamB, 0.0040f, 0.0055f, 10);
+						}
+					}
+				}
+
+				// SHORE foam band (scumbled bright line)
+				{
+					const int segs = 180;
+					for (int s = 0; s < segs; s++)
+					{
+						float u0 = s / float(segs);
+						float u1 = (s + 1) / float(segs);
+						float x0 = mixf(-Xw, Xw, u0);
+						float x1 = mixf(-Xw, Xw, u1);
+						float n0 = 0.015f * std::sin(5.0f * x0) + 0.008f * std::sin(11.0f * x0 + 1.6f);
+						float n1 = 0.015f * std::sin(5.0f * x1) + 0.008f * std::sin(11.0f * x1 + 1.6f);
+						emit(x0, seaLevelY + 0.002f, Zshore + n0,
+							x1, seaLevelY + 0.002f, Zshore + n1,
+							foamB, foamA, 0.0060f, 0.0075f, 18);
+					}
+				}
+			}
+
+			// --------------------------------------------
+			// MOUNTAIN RIDGE at the horizon + vertical hatching (depth feel)
+			// --------------------------------------------
+			{
+				// Ridge silhouette (polyline at Zhorizon)
+				const int segs = 220;
+				auto ridgeY = [&](float x) {
+					// sculpted, multi-frequency ridge w/ soft peaks
+					float r = 0.62f + 0.22f * std::sin(0.65f * x)
+						+ 0.14f * std::sin(1.45f * x + 1.2f)
+						+ 0.10f * std::sin(2.30f * x + 0.4f);
+					r += 0.08f * std::fabs(std::sin(1.9f * x - 0.7f)); // crags
+					return r;
+					};
+
+				for (int s = 0; s < segs; ++s)
+				{
+					float u0 = s / float(segs);
+					float u1 = (s + 1) / float(segs);
+					float x0 = mixf(-Xw, Xw, u0);
+					float x1 = mixf(-Xw, Xw, u1);
+					float y0 = ridgeY(x0), y1 = ridgeY(x1);
+
+					emit(x0, y0, Zhorizon, x1, y1, Zhorizon,
+						ridgeDark, ridgeLite, 0.0075f, 0.0100f, 32);
+				}
+
+				// Vertical hatching: from horizon line up to ridge (fills mass)
+				const int hatchCols = 140;
+				for (int i = 0; i < hatchCols; i++)
+				{
+					float u = i / float(hatchCols - 1);
+					float x = mixf(-Xw, Xw, u);
+					float yTop = ridgeY(x);
+					float gaps = 0.85f + 0.15f * std::sin(2.7f * u * TAU);
+					if (i % 2 == 0) // skip some to get airy feel
+						emit(x, mixf(0.50f, yTop, 0.05f), Zhorizon,
+							x, yTop, Zhorizon,
+							ridgeLite, ridgeDark, 0.0035f, 0.0045f, 22);
+				}
+			}
+
+			// --------------------------------------------
+			// SKY: vertical gradient + soft cloud bands
+			// --------------------------------------------
+			{
+				// Gradient columns behind the ridge
+				const int cols = 70;
+				const int layers = 8;
+				for (int c = 0; c < cols; c++)
+				{
+					float u = c / float(cols - 1);
+					float x = mixf(-Xw, Xw, u);
+					for (int k = 0; k < layers; k++)
+					{
+						float t0 = k / float(layers);
+						float t1 = (k + 1) / float(layers);
+						float y0 = mixf(0.55f, 1.40f, t0);
+						float y1 = mixf(0.55f, 1.40f, t1);
+
+						Vec3 ca{ mixf(skyLow.x,skyHigh.x,t0), mixf(skyLow.y,skyHigh.y,t0), mixf(skyLow.z,skyHigh.z,t0) };
+						Vec3 cb{ mixf(skyLow.x,skyHigh.x,t1), mixf(skyLow.y,skyHigh.y,t1), mixf(skyLow.z,skyHigh.z,t1) };
+
+						emit(x, y0, mixf(Zhorizon + 0.02f, Zfar, 0.25f),
+							x, y1, mixf(Zhorizon + 0.02f, Zfar, 0.25f),
+							ca, cb, 0.0038f, 0.0042f, 26);
+					}
+				}
+
+				// Cloud bands (wavy horizontal ribbons)
+				const int bands = 6;
+				const int segs = 160;
+				for (int b = 0; b < bands; b++)
+				{
+					float h = mixf(0.75f, 1.35f, b / float(bands - 1));
+					float z = mixf(Zhorizon + 0.04f, Zfar, 0.35f + 0.1f * b);
+					for (int s = 0; s < segs; s++)
+					{
+						float u0 = s / float(segs);
+						float u1 = (s + 1) / float(segs);
+						float x0 = mixf(-Xw, Xw, u0);
+						float x1 = mixf(-Xw, Xw, u1);
+
+						auto cy = [&](float x) {
+							return h + 0.04f * std::sin(0.9f * x + 0.6f * b) + 0.02f * std::sin(2.2f * x + 1.3f * b);
+							};
+						float y0 = cy(x0), y1 = cy(x1);
+
+						Vec3 c0 = cloudA, c1 = cloudB;
+						emit(x0, y0, z, x1, y1, z, c0, c1, 0.0040f, 0.0060f, 16);
+					}
+				}
+			}
+
+			// --------------------------------------------
+			// SUN: small disk above ridge (partial outline + tiny rays)
+			// --------------------------------------------
+			{
+				float sunR = 0.18f;
+				float sunX = -0.95f;
+				float sunY = 1.05f;
+				float sunZ = Zhorizon + 0.03f;
+
+				// rim
+				const int segs = 72;
+				for (int s = 0; s < segs; s++)
+				{
+					float a0 = (s / float(segs)) * TAU;
+					float a1 = ((s + 1) / float(segs)) * TAU;
+					float x0 = sunX + sunR * std::cos(a0);
+					float y0 = sunY + sunR * std::sin(a0);
+					float x1 = sunX + sunR * std::cos(a1);
+					float y1 = sunY + sunR * std::sin(a1);
+					emit(x0, y0, sunZ, x1, y1, sunZ, sunA, sunB, 0.0065f, 0.0085f, 24);
+				}
+				// small soft rays
+				for (int r = 0; r < 16; r++)
+				{
+					float a = (r / 16.0f) * TAU;
+					float r0 = sunR * 0.75f, r1 = sunR * 1.15f;
+					float x0 = sunX + r0 * std::cos(a), y0 = sunY + r0 * std::sin(a);
+					float x1 = sunX + r1 * std::cos(a), y1 = sunY + r1 * std::sin(a);
+					emit(x0, y0, sunZ, x1, y1, sunZ, sunB, sunA, 0.0035f, 0.0050f, 14);
+				}
+			}
+		}
 
 
 
@@ -5146,11 +5451,22 @@ namespace Universe_
 				// lines.init_hyperbolic_gyroid_lattice();
 				// lines.init_0013_sea_and_sky_zup();
 				// lines.init_temporal_echo_cascade();
-
-				lines.init_2010_ocean_glyph_overture();
+				// lines.init_2010_ocean_glyph_overture();
 				// lines.init_solar_flare();
 				// lines.init_2020_glass_of_water();
 
+
+
+
+
+
+				lines.init_2011_coast_mountain_sea();
+
+
+
+
+
+				// --
 				
 
 				
