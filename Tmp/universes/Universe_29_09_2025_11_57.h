@@ -8524,74 +8524,6 @@ namespace Universe_
 		}
 
 
-		void init_pulsing_neural_mesh()
-		{
-			lines.clear();
-
-			const float TAU = 6.283185307179586f;
-
-			// Use a consistent time base (e.g., seconds since epoch)
-			double base_time = static_cast<double>(time(nullptr));
-			float t_now = static_cast<float>(fmod(base_time, 100.0));      // Current time
-			float t_next = t_now + 0.016f;                                 // ~1 frame ahead (60 FPS)
-
-			const int num_lines = 24;
-
-			for (int i = 0; i < num_lines; ++i) {
-				Line& line = add_line();
-
-				float phase = (float)i / num_lines * TAU;
-
-				// --- START: where the line is NOW ---
-				float radius_start = 0.2f + sin(t_now * 2.0f + phase) * 0.1f;
-				float angle_start = phase + t_now * 1.5f;
-				float height_start = sin(t_now * 3.0f + phase) * 0.3f;
-
-				line.x0.start = cos(angle_start) * radius_start;
-				line.y0.start = height_start;
-				line.z0.start = sin(angle_start) * radius_start;
-
-				// End point of the line (e.g., outer ring)
-				float outer_radius_start = 0.6f;
-				float outer_angle_start = phase + t_now * 0.8f;
-				line.x1.start = cos(outer_angle_start) * outer_radius_start;
-				line.y1.start = height_start * 0.5f;
-				line.z1.start = sin(outer_angle_start) * outer_radius_start;
-
-				// --- END: where the line will be NEXT FRAME ---
-				float radius_end = 0.2f + sin(t_next * 2.0f + phase) * 0.1f;
-				float angle_end = phase + t_next * 1.5f;
-				float height_end = sin(t_next * 3.0f + phase) * 0.3f;
-
-				line.x0.end = cos(angle_end) * radius_end;
-				line.y0.end = height_end;
-				line.z0.end = sin(angle_end) * radius_end;
-
-				float outer_radius_end = 0.6f;
-				float outer_angle_end = phase + t_next * 0.8f;
-				line.x1.end = cos(outer_angle_end) * outer_radius_end;
-				line.y1.end = height_end * 0.5f;
-				line.z1.end = sin(outer_angle_end) * outer_radius_end;
-
-				// --- Color & thickness (also animated) ---
-				float pulse = (sin(t_now * 4.0f + phase) + 1.0f) * 0.5f;
-				Vec3 color = {
-					0.2f + pulse * 0.8f,
-					0.4f + pulse * 0.4f,
-					0.9f
-				};
-
-				line.rgb_t0.x = color.x; line.rgb_t0.y = color.y; line.rgb_t0.z = color.z;
-				line.rgb_t1.x = color.x * 0.8f; line.rgb_t1.y = color.y * 0.8f; line.rgb_t1.z = color.z * 1.2f;
-
-				line.thickness.start = 0.002f + pulse * 0.006f;
-				line.thickness.end = line.thickness.start * 1.1f;
-
-				line.number_of_cubes = 10;
-			}
-		}
-
-
 
 
 		
@@ -9317,6 +9249,92 @@ namespace Universe_
 
 
 
+
+		void init_pulsing_neural_mesh()
+		{
+			lines.clear();
+
+			const float TAU = 6.283185307179586f;
+
+			// Use a fast, obvious time base
+			float t = static_cast<float>(fmod(time(nullptr), 1000)) * 0.1f; // Fast and visible
+
+			const int num_lines = 16;
+
+			for (int i = 0; i < num_lines; ++i) {
+				Line& line = add_line();
+
+				float phase = (float)i / num_lines * TAU;
+
+				// >>> START: Dramatic positions at time T <<<
+				float start_radius_inner = 0.1f;
+				float start_angle_inner = phase + t * 3.0f; // Fast spin
+				float start_y_inner = sin(t * 5.0f + phase) * 0.8f; // Huge vertical sweep
+
+				line.x0.start = cos(start_angle_inner) * start_radius_inner;
+				line.y0.start = start_y_inner; // From -0.8 to +0.8 — full screen!
+				line.z0.start = sin(start_angle_inner) * start_radius_inner;
+
+				// Outer point: sweeping wildly around the edges
+				float start_radius_outer = 0.9f; // Almost to edge of unit cube
+				float start_angle_outer = -phase + t * 2.0f; // Opposite direction!
+				float start_y_outer = cos(t * 4.0f + phase * 2.0f) * 0.7f;
+
+				line.x1.start = cos(start_angle_outer) * start_radius_outer;
+				line.y1.start = start_y_outer;
+				line.z1.start = sin(start_angle_outer) * start_radius_outer;
+
+				// >>> END: Where it will be in NEXT FRAME (16ms ahead) <<<
+				float t_next = t + 0.016f * 20.0f; // Exaggerate motion for clarity
+
+				float end_radius_inner = 0.1f;
+				float end_angle_inner = phase + t_next * 3.0f;
+				float end_y_inner = sin(t_next * 5.0f + phase) * 0.8f;
+
+				line.x0.end = cos(end_angle_inner) * end_radius_inner;
+				line.y0.end = end_y_inner;
+				line.z0.end = sin(end_angle_inner) * end_radius_inner;
+
+				float end_radius_outer = 0.9f;
+				float end_angle_outer = -phase + t_next * 2.0f;
+				float end_y_outer = cos(t_next * 4.0f + phase * 2.0f) * 0.7f;
+
+				line.x1.end = cos(end_angle_outer) * end_radius_outer;
+				line.y1.end = end_y_outer;
+				line.z1.end = sin(end_angle_outer) * end_radius_outer;
+
+				// >>> Extreme pulsing color <<<
+				float pulse = (sin(t * 8.0f + phase * 3.0f) + 1.0f) * 0.5f;
+				Vec3 color;
+				if (i % 3 == 0) {
+					color = { 1.0f, 0.2f, 0.2f }; // Red
+				}
+				else if (i % 3 == 1) {
+					color = { 0.2f, 1.0f, 0.2f }; // Green
+				}
+				else {
+					color = { 0.2f, 0.5f, 1.0f }; // Blue
+				}
+
+				line.rgb_t0.x = color.x * (0.3f + pulse * 0.7f);
+				line.rgb_t0.y = color.y * (0.3f + pulse * 0.7f);
+				line.rgb_t0.z = color.z * (0.3f + pulse * 0.7f);
+
+				line.rgb_t1.x = color.x * (0.5f + (1.0f - pulse) * 0.5f);
+				line.rgb_t1.y = color.y * (0.5f + (1.0f - pulse) * 0.5f);
+				line.rgb_t1.z = color.z * (0.5f + (1.0f - pulse) * 0.5f);
+
+				// >>> Thick, dramatic lines <<<
+				line.thickness.start = 0.008f + pulse * 0.012f; // Very thick!
+				line.thickness.end = 0.008f + (1.0f - pulse) * 0.012f;
+
+				line.number_of_cubes = 16; // More cubes = smoother curves
+			}
+		}
+
+
+
+
 		void init_vast_sea_and_sky()
 		{
 			lines.clear();
@@ -9493,9 +9511,141 @@ namespace Universe_
 		}
 
 
+		void init_pulsing_neural_mesh_2()
+		{
+			lines.clear();
 
+			const float TAU = 6.283185307179586f;
+			float t = static_cast<float>(fmod(time(nullptr), 1000)) * 0.1f; // Fast, visible time
 
+			const int num_spokes = 20;      // More lines = denser web
+			const int cubes_per_line = 32;  // Ultra-smooth curves
 
+			for (int i = 0; i < num_spokes; ++i) {
+				Line& line = add_line();
+
+				float phase = (float)i / num_spokes * TAU;
+
+				// >>> WAVE 1: Vertical sine wave (ocean-like) <<<
+				float wave1_offset = sin(t * 1.5f + phase) * 0.6f;           // Slow big wave
+				float wave2_offset = sin(t * 4.0f + phase * 2.3f) * 0.3f;    // Faster ripple
+				float total_y = wave1_offset + wave2_offset;                 // Combined wave
+
+				// >>> WAVE 2: Radial pulsing (breathing effect) <<<
+				float radial_pulse = 0.3f + sin(t * 2.0f + phase * 0.7f) * 0.2f; // Inner core breathing
+				float outer_radius = 0.85f + sin(t * 1.2f + phase * 1.1f) * 0.1f; // Outer edge undulating
+
+				// >>> START positions (current frame) <<<
+				// Inner point: pulsing core with wave motion
+				line.x0.start = cos(phase) * radial_pulse;
+				line.y0.start = total_y;
+				line.z0.start = sin(phase) * radial_pulse;
+
+				// Outer point: sweeping wave on expanding/contracting ring
+				float outer_angle = phase + t * 1.8f; // Rotating outer ring
+				line.x1.start = cos(outer_angle) * outer_radius;
+				line.y1.start = total_y * 0.7f; // Dampened wave at edges
+				line.z1.start = sin(outer_angle) * outer_radius;
+
+				// >>> END positions (next frame - exaggerated for clarity) <<<
+				float t_next = t + 0.016f * 15.0f; // Big time step = obvious motion
+
+				// Recompute all with t_next
+				float wave1_next = sin(t_next * 1.5f + phase) * 0.6f;
+				float wave2_next = sin(t_next * 4.0f + phase * 2.3f) * 0.3f;
+				float total_y_next = wave1_next + wave2_next;
+
+				float radial_pulse_next = 0.3f + sin(t_next * 2.0f + phase * 0.7f) * 0.2f;
+				float outer_radius_next = 0.85f + sin(t_next * 1.2f + phase * 1.1f) * 0.1f;
+				float outer_angle_next = phase + t_next * 1.8f;
+
+				line.x0.end = cos(phase) * radial_pulse_next;
+				line.y0.end = total_y_next;
+				line.z0.end = sin(phase) * radial_pulse_next;
+
+				line.x1.end = cos(outer_angle_next) * outer_radius_next;
+				line.y1.end = total_y_next * 0.7f;
+				line.z1.end = sin(outer_angle_next) * outer_radius_next;
+
+				// >>> Dynamic color with wave-based hue shift <<<
+				float hue_shift = fmod(t * 0.3f + phase * 0.2f, 1.0f);
+				Vec3 color;
+				if (hue_shift < 0.33f) {
+					// Blue-cyan (ocean)
+					float blend = hue_shift / 0.33f;
+					color = { 0.1f, 0.7f + blend * 0.3f, 1.0f };
+				}
+				else if (hue_shift < 0.66f) {
+					// Cyan-green
+					float blend = (hue_shift - 0.33f) / 0.33f;
+					color = { 0.1f + blend * 0.4f, 1.0f, 0.7f - blend * 0.2f };
+				}
+				else {
+					// Green-yellow
+					float blend = (hue_shift - 0.66f) / 0.34f;
+					color = { 0.5f + blend * 0.5f, 1.0f, 0.2f + blend * 0.3f };
+				}
+
+				// Add wave intensity to brightness
+				float wave_brightness = 0.6f + (fabs(total_y) / 0.9f) * 0.4f; // Higher wave = brighter
+
+				line.rgb_t0.x = color.x * wave_brightness;
+				line.rgb_t0.y = color.y * wave_brightness;
+				line.rgb_t0.z = color.z * wave_brightness;
+
+				// End color: slightly shifted for motion trail effect
+				line.rgb_t1.x = color.x * (wave_brightness * 0.9f + 0.1f);
+				line.rgb_t1.y = color.y * (wave_brightness * 0.9f + 0.1f);
+				line.rgb_t1.z = color.z * (wave_brightness * 1.1f); // Blue trail
+
+				// >>> Thick, wave-responsive lines <<<
+				float base_thickness = 0.006f;
+				float wave_thickness = base_thickness + (fabs(total_y) / 0.9f) * 0.01f; // Thicker at wave peaks
+				line.thickness.start = wave_thickness;
+				line.thickness.end = wave_thickness * 0.9f; // Slight taper
+
+				line.number_of_cubes = cubes_per_line;
+			}
+
+			// >>> Add a central wave ring for extra energy <<<
+			int ring_segments = 24;
+			for (int i = 0; i < ring_segments; ++i) {
+				Line& line = add_line();
+				float seg_phase = (float)i / ring_segments * TAU;
+				float next_phase = (float)(i + 1) / ring_segments * TAU;
+
+				// Ring undulates vertically like a jellyfish
+				float ring_radius = 0.25f;
+				float ring_y = sin(t * 3.0f + seg_phase * 4.0f) * 0.2f;
+
+				line.x0.start = cos(seg_phase) * ring_radius;
+				line.y0.start = ring_y;
+				line.z0.start = sin(seg_phase) * ring_radius;
+
+				line.x1.start = cos(next_phase) * ring_radius;
+				line.y1.start = sin(t * 3.0f + next_phase * 4.0f) * 0.2f;
+				line.z1.start = sin(next_phase) * ring_radius;
+
+				// Next frame for ring
+				float t_ring_next = t + 0.016f * 10.0f;
+				float ring_y0_next = sin(t_ring_next * 3.0f + seg_phase * 4.0f) * 0.2f;
+				float ring_y1_next = sin(t_ring_next * 3.0f + next_phase * 4.0f) * 0.2f;
+
+				line.x0.end = cos(seg_phase) * ring_radius;
+				line.y0.end = ring_y0_next;
+				line.z0.end = sin(seg_phase) * ring_radius;
+
+				line.x1.end = cos(next_phase) * ring_radius;
+				line.y1.end = ring_y1_next;
+				line.z1.end = sin(next_phase) * ring_radius;
+
+				line.rgb_t0 = { 0.0f, 0.9f, 1.0f }; // Electric cyan
+				line.rgb_t1 = { 0.2f, 1.0f, 0.8f };
+				line.thickness.start = 0.008f;
+				line.thickness.end = 0.008f;
+				line.number_of_cubes = 24;
+			}
+		}
 
 
 		// ------
@@ -9697,18 +9847,18 @@ namespace Universe_
 				// lines.init_celestial_orrery();
 				// lines.init_comets_collision_fast();
 				// lines.init_spiral_duet_fast();
+				// lines.init_spiral_duet_fast();
+				// lines.init_pulsing_neural_mesh();
+				// lines.init_vast_sea_and_sky();
+
+				
+				
 				
 				
 
 				
-				
 
-
-				// nah lines.init_pulsing_neural_mesh();
-				
-				lines.init_spiral_duet_fast();
-
-				
+				lines.init_pulsing_neural_mesh_2();
 				
 				// --
 				
