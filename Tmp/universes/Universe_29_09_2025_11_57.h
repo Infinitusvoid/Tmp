@@ -2219,95 +2219,7 @@ namespace Universe_
 		
 		
 
-		void init_glowing_fractal_tree()
-		{
-			const float M_PI = 3.14159265359f;
-			int max_depth = 5;
-
-			auto add_glowing_particle = [&](float x, float y, float z, int depth)
-				{
-					Line& particle = add_line();
-
-					// Very short line to represent a glowing point
-					particle.x0.start = x;
-					particle.y0.start = y;
-					particle.z0.start = z;
-					particle.x1.start = x + 0.001f;
-					particle.y1.start = y;
-					particle.z1.start = z;
-
-					// Bright, saturated colors
-					float hue = depth * 0.8f + x * 3.0f;
-					particle.rgb_t0.x = 0.7f + 0.3f * sin(hue);
-					particle.rgb_t0.y = 0.5f + 0.5f * sin(hue + 2.1f);
-					particle.rgb_t0.z = 0.8f + 0.2f * sin(hue + 4.2f);
-
-					particle.thickness.start = 0.02f * (1.0f - depth * 0.1f);
-					particle.number_of_cubes = 5;
-
-					particle.copy_start_to_end();
-
-					// Particle animation - gentle floating
-					particle.x1.end = x + 0.001f + 0.05f * sin(hue);
-					particle.y1.end = y + 0.03f * cos(hue * 2.0f);
-				};
-
-			// Generate fractal structure
-			std::function<void(float, float, float, float, float, int)> buildBranch;
-			buildBranch = [&](float x, float y, float z, float angle, float length, int depth) {
-				if (depth > max_depth) return;
-
-				float end_x = x + length * sin(angle);
-				float end_y = z + length * 0.2f * sin(angle * 2.0f);
-				float end_z = y + length * cos(angle);
-
-				// Create glowing branch
-				Line& branch = add_line();
-				branch.x0.start = x;
-				branch.y0.start = y;
-				branch.z0.start = z;
-				branch.x1.start = end_x;
-				branch.y1.start = end_y;
-				branch.z1.start = end_z;
-
-				// Electric glow colors
-				float pulse = sin(depth * 2.0f + x * 10.0f);
-				branch.rgb_t0.x = 0.1f + 0.4f * (1.0f + pulse) * 0.5f;
-				branch.rgb_t0.y = 0.3f + 0.6f * (1.0f + sin(pulse + 2.0f)) * 0.5f;
-				branch.rgb_t0.z = 0.8f + 0.2f * (1.0f + cos(pulse + 4.0f)) * 0.5f;
-
-				branch.thickness.start = 0.015f * pow(0.7f, depth);
-				branch.number_of_cubes = 20 + depth * 5;
-
-				// Animate with pulsing motion
-				branch.copy_start_to_end();
-				float sway = 0.3f * sin(depth * 3.0f + y * 5.0f);
-				branch.x1.end = end_x + sway * 0.08f;
-				branch.y1.end = end_y + sway * 0.04f;
-
-				// Add glowing particles along branch
-				for (int i = 1; i <= 3; i++) {
-					float t = i / 4.0f;
-					add_glowing_particle(
-						x + t * (end_x - x),
-						y + t * (end_y - y),
-						z + t * (end_z - z),
-						depth
-					);
-				}
-
-				// Recursive branches with variation
-				int num_children = 2 + (depth % 3);
-				for (int i = 0; i < num_children; i++) {
-					float child_angle = angle + (M_PI / 4.0f) * (i - (num_children - 1) / 2.0f) + 0.2f * sin(depth + i);
-					float child_length = length * (0.6f + 0.1f * cos(depth * 2.0f + i)) * 2.0;
-					buildBranch(end_x, end_y, end_z, child_angle, child_length, depth + 1);
-				}
-				};
-
-			// Start building from base
-			buildBranch(0.0f, -0.8f, 0.0f, 0.0f, 0.3f, 0);
-		}
+		
 
 		
 		void init_crystal_fractal_tree()
@@ -2360,7 +2272,7 @@ namespace Universe_
 						int branches = 4; // Square/crystal pattern
 						for (int j = 0; j < branches; j++) {
 							float branch_angle = angle + (j * M_PI / 2.0f) + (M_PI / 8.0f) * sin(depth);
-							float branch_length = length * (0.5f + 0.2f * cos(depth + j));
+							float branch_length = length * (0.5f + 0.2f * cos(depth + j)) * 2.7;
 							float branch_rotation = rot + (M_PI / 4.0f) * (j % 2);
 
 							crystals.push_back({ x, y, z, branch_angle, branch_length, depth + 1, branch_rotation });
@@ -2406,9 +2318,689 @@ namespace Universe_
 			}
 		}
 
-		
+		void init_neural_energy_tree()
+		{
+			const float M_PI = 3.14159265359f;
+			int max_depth = 7;
+			float time_base = 0.0f; // Imagine this animates over time
+
+			// Enhanced glowing particle with energy trails
+			auto add_energy_particle = [&](float x, float y, float z, int depth, float energy) {
+				// Create multiple lines for each particle to make it glow
+				for (int trail = 0; trail < 3; trail++) {
+					Line& particle = add_line();
+
+					float trail_offset = trail * 0.02f;
+					float pulse = sin(time_base * 3.0f + depth * 2.0f + trail);
+
+					particle.x0.start = x + trail_offset * sin(energy);
+					particle.y0.start = y + trail_offset * cos(energy * 1.3f);
+					particle.z0.start = z + trail_offset * sin(energy * 0.7f);
+
+					particle.x1.start = particle.x0.start + 0.005f + 0.01f * pulse;
+					particle.y1.start = particle.y0.start + 0.005f * cos(energy);
+					particle.z1.start = particle.z0.start + 0.005f * sin(energy);
+
+					// Electric plasma colors
+					float hue = energy * 5.0f + depth + trail;
+					particle.rgb_t0.x = 0.8f + 0.2f * sin(hue);
+					particle.rgb_t0.y = 0.3f + 0.7f * sin(hue + M_PI * 0.66f);
+					particle.rgb_t0.z = 0.9f + 0.1f * sin(hue + M_PI * 1.33f);
+
+					particle.thickness.start = 0.015f * (1.0f - depth * 0.1f) * (0.8f + 0.4f * pulse);
+					particle.number_of_cubes = 8 + trail * 3;
+
+					particle.copy_start_to_end();
+
+					// Wild energy movement
+					float move = time_base * 2.0f + depth + trail;
+					particle.x1.end = particle.x0.start + 0.1f * sin(move * 2.0f);
+					particle.y1.end = particle.y0.start + 0.1f * cos(move * 1.7f);
+					particle.z1.end = particle.z0.start + 0.1f * sin(move * 1.3f);
+				}
+				};
+
+			// Add energy arcs between points
+			auto add_energy_arc = [&](float x1, float y1, float z1, float x2, float y2, float z2, int depth) {
+				int arc_segments = 5 + depth * 2;
+				for (int i = 0; i <= arc_segments; i++) {
+					float t = float(i) / arc_segments;
+					float arc_height = 0.2f * sin(t * M_PI) * (0.3f + 0.2f * sin(depth * 3.0f));
+
+					// Bezier-like curve
+					float mid_x = (x1 + x2) * 0.5f + arc_height * sin(depth * 2.0f);
+					float mid_y = (y1 + y2) * 0.5f + arc_height * cos(depth * 2.5f);
+					float mid_z = (z1 + z2) * 0.5f + arc_height * sin(depth * 1.7f);
+
+					// Quadratic bezier
+					float bx = (1 - t) * (1 - t) * x1 + 2 * (1 - t) * t * mid_x + t * t * x2;
+					float by = (1 - t) * (1 - t) * y1 + 2 * (1 - t) * t * mid_y + t * t * y2;
+					float bz = (1 - t) * (1 - t) * z1 + 2 * (1 - t) * t * mid_z + t * t * z2;
+
+					if (i > 0) {
+						Line& arc = add_line();
+						float prev_t = float(i - 1) / arc_segments;
+						float prev_bx = (1 - prev_t) * (1 - prev_t) * x1 + 2 * (1 - prev_t) * prev_t * mid_x + prev_t * prev_t * x2;
+						float prev_by = (1 - prev_t) * (1 - prev_t) * y1 + 2 * (1 - prev_t) * prev_t * mid_y + prev_t * prev_t * y2;
+						float prev_bz = (1 - prev_t) * (1 - prev_t) * z1 + 2 * (1 - prev_t) * prev_t * mid_z + prev_t * prev_t * z2;
+
+						arc.x0.start = prev_bx;
+						arc.y0.start = prev_by;
+						arc.z0.start = prev_bz;
+						arc.x1.start = bx;
+						arc.y1.start = by;
+						arc.z1.start = bz;
+
+						// Electric arc colors
+						float arc_hue = depth * 2.0f + t * 5.0f;
+						arc.rgb_t0.x = 0.9f * (0.5f + 0.5f * sin(arc_hue));
+						arc.rgb_t0.y = 0.7f * (0.5f + 0.5f * sin(arc_hue + 1.0f));
+						arc.rgb_t0.z = 1.0f * (0.5f + 0.5f * sin(arc_hue + 2.0f));
+
+						arc.thickness.start = 0.008f * (1.0f - t * 0.5f);
+						arc.number_of_cubes = 12;
+
+						arc.copy_start_to_end();
+
+						// Animate the arc
+						float arc_move = time_base * 4.0f + depth + t;
+						arc.x1.end = bx + 0.05f * sin(arc_move);
+						arc.y1.end = by + 0.05f * cos(arc_move * 1.3f);
+					}
+				}
+				};
+
+			// Main recursive tree builder with insane parameters
+			std::function<void(float, float, float, float, float, float, int, float)> buildBranch;
+			buildBranch = [&](float x, float y, float z, float angle_xy, float angle_z, float length, int depth, float energy) {
+				if (depth > max_depth) return;
+
+				// Calculate end point with 3D rotation
+				float end_x = x + length * sin(angle_xy) * cos(angle_z);
+				float end_y = y + length * cos(angle_xy);
+				float end_z = z + length * sin(angle_xy) * sin(angle_z);
+
+				// Create main branch with pulsing energy
+				Line& branch = add_line();
+				branch.x0.start = x;
+				branch.y0.start = y;
+				branch.z0.start = z;
+				branch.x1.start = end_x;
+				branch.y1.start = end_y;
+				branch.z1.start = end_z;
+
+				// Dynamic plasma colors based on energy and depth
+				float color_pulse = sin(time_base * 5.0f + energy * 3.0f);
+				branch.rgb_t0.x = 0.2f + 0.5f * sin(energy * 4.0f) + 0.3f * color_pulse;
+				branch.rgb_t0.y = 0.1f + 0.6f * sin(energy * 4.0f + 1.0f) + 0.3f * cos(color_pulse);
+				branch.rgb_t0.z = 0.3f + 0.7f * sin(energy * 4.0f + 2.0f) + 0.3f * sin(color_pulse * 1.5f);
+
+				branch.thickness.start = 0.025f * pow(0.65f, depth) * (1.0f + 0.3f * sin(energy * 2.0f));
+				branch.number_of_cubes = 25 + depth * 8;
+
+				branch.copy_start_to_end();
+
+				// Wild branch animation
+				float branch_move = time_base * 2.0f + depth * 0.7f + energy;
+				branch.x1.end = end_x + 0.1f * sin(branch_move * 3.0f);
+				branch.y1.end = end_y + 0.08f * cos(branch_move * 2.7f);
+				branch.z1.end = end_z + 0.12f * sin(branch_move * 2.3f);
+
+				// Add tons of energy particles
+				int particles_per_branch = 5 + depth * 2;
+				for (int i = 0; i < particles_per_branch; i++) {
+					float t = float(i) / particles_per_branch;
+					float particle_x = x + t * (end_x - x);
+					float particle_y = y + t * (end_y - y);
+					float particle_z = z + t * (end_z - z);
+
+					add_energy_particle(particle_x, particle_y, particle_z, depth, energy + t);
+				}
+
+				// Add energy arcs between major branches
+				if (depth > 0 && depth < max_depth - 1) {
+					add_energy_arc(x, y, z, end_x, end_y, end_z, depth);
+				}
+
+				// Recursive branching with chaotic patterns
+				int num_children = 2 + (depth % 4);
+				for (int i = 0; i < num_children; i++) {
+					float chaos = sin(depth * 7.0f + i * 3.0f) * 0.4f;
+					float child_energy = energy + 1.0f + chaos;
+
+					float child_angle_xy = angle_xy + (M_PI / 3.0f) * (i - (num_children - 1) / 2.0f) + chaos;
+					float child_angle_z = angle_z + (M_PI / 4.0f) * sin(i * 1.5f) + chaos * 0.5f;
+					float child_length = length * (0.5f + 0.3f * sin(depth * 2.0f + i)) * 1.5f;
+
+					// Sometimes create cross-connections between branches
+					if (depth > 1 && i % 2 == 0) {
+						buildBranch(end_x, end_y, end_z,
+							child_angle_xy + M_PI * 0.8f,
+							child_angle_z + M_PI * 0.6f,
+							child_length * 0.7f, depth + 1, child_energy);
+					}
+
+					buildBranch(end_x, end_y, end_z, child_angle_xy, child_angle_z, child_length, depth + 1, child_energy);
+				}
+
+				// Add floating energy orbs at deepest branches
+				if (depth == max_depth - 1) {
+					for (int orb = 0; orb < 3; orb++) {
+						float orb_angle = orb * (2.0f * M_PI / 3.0f) + energy;
+						float orb_radius = 0.1f + 0.05f * sin(energy * 2.0f);
+
+						Line& orb_line = add_line();
+						orb_line.x0.start = end_x;
+						orb_line.y0.start = end_y;
+						orb_line.z0.start = end_z;
+						orb_line.x1.start = end_x + orb_radius * sin(orb_angle);
+						orb_line.y1.start = end_y + orb_radius * cos(orb_angle);
+						orb_line.z1.start = end_z + orb_radius * sin(orb_angle * 1.3f);
+
+						orb_line.rgb_t0.x = 1.0f;
+						orb_line.rgb_t0.y = 0.8f + 0.2f * sin(energy);
+						orb_line.rgb_t0.z = 0.2f + 0.3f * cos(energy);
+
+						orb_line.thickness.start = 0.02f;
+						orb_line.number_of_cubes = 15;
+						orb_line.copy_start_to_end();
+
+						// Orbiting motion
+						float orb_move = time_base * 3.0f + energy + orb;
+						orb_line.x1.end = end_x + orb_radius * sin(orb_angle + orb_move);
+						orb_line.y1.end = end_y + orb_radius * cos(orb_angle + orb_move);
+						orb_line.z1.end = end_z + orb_radius * sin(orb_angle * 1.3f + orb_move);
+					}
+				}
+				};
+
+			// Build multiple trees from different starting points for maximum chaos
+			int num_trees = 3;
+			for (int tree = 0; tree < num_trees; tree++) {
+				float tree_angle = tree * (2.0f * M_PI / num_trees);
+				float start_x = 0.3f * sin(tree_angle);
+				float start_z = 0.3f * cos(tree_angle);
+
+				buildBranch(start_x, -0.8f, start_z, 0.0f, tree_angle, 0.4f, 0, tree * 10.0f);
+			}
+
+			// Add connecting energy webs between trees
+			for (int i = 0; i < 20; i++) {
+				float angle1 = i * (2.0f * M_PI / 20.0f);
+				float angle2 = (i + 5) * (2.0f * M_PI / 20.0f);
+
+				add_energy_arc(0.3f * sin(angle1), -0.6f, 0.3f * cos(angle1),
+					0.3f * sin(angle2), -0.4f, 0.3f * cos(angle2), 2);
+			}
+		}
 
 		
+
+
+		// --- abstract dunes: wavy heightfield drawn as crosshatched line segments
+		void init_0006_wavy_dune_landscape()
+		{
+			lines.clear();
+
+			// ======= knobs (play!) =======
+			const int   gridX = 64;              // samples along X (creates ~2*gridX*gridZ segments total)
+			const int   gridZ = 42;              // samples along Z
+			const float extentX = 2.8f;          // world width (X)
+			const float extentZ = 2.0f;          // world depth (Z)
+			const float baseY = -0.25f;        // base plane height (Y)
+			const float ampY = 0.70f;         // vertical amplitude
+			const bool  drawRows = true;         // segments along X direction
+			const bool  drawCols = true;         // segments along Z direction
+			const int   cubesPerSeg = 18;        // resolution per segment
+			const float baseThick = 0.0065f;   // baseline thickness
+			const float windX = 0.08f;     // horizontal wind sway (X) at the end
+			const float windZ = 0.06f;     // horizontal wind sway (Z) at the end
+			const float TAU = 6.28318530718f;
+
+			// If you prefer Z as "up" (Y/Z swapped), set this to true
+			const bool  yz_swapped = false;
+
+			auto saturate = [](float v) { return std::clamp(v, 0.0f, 1.0f); };
+			auto mixf = [](float a, float b, float t) { return a + (b - a) * t; };
+			auto length2 = [](float x, float z) { return std::sqrt(x * x + z * z); };
+
+			// Cosine palette: a + b*cos(2(c*t + d))
+			auto palette = [&](float t)->Vec3 {
+				// tuned for dune at sunset vibes
+				const Vec3 a{ 0.48f, 0.32f, 0.26f };
+				const Vec3 b{ 0.52f, 0.42f, 0.40f };
+				const Vec3 c{ 1.00f, 1.00f, 1.00f };
+				const Vec3 d{ 0.00f, 0.27f, 0.57f };
+				float ct = TAU * t;
+				return Vec3{
+					a.x + b.x * std::cos(ct * c.x + TAU * d.x),
+					a.y + b.y * std::cos(ct * c.y + TAU * d.y),
+					a.z + b.z * std::cos(ct * c.z + TAU * d.z)
+				};
+				};
+
+			// Domain-warped, ridgey heightfield in [-1,1] (roughly)
+			auto hfield = [&](float x, float z)->float {
+				// scale into feature space
+				float sx = 1.10f, sz = 1.20f;
+				float X = x * sx, Z = z * sz;
+
+				// domain warp (folds)
+				float wx = X + 0.35f * std::sin(0.65f * Z) + 0.15f * std::sin(2.15f * Z + 1.1f);
+				float wz = Z + 0.35f * std::sin(0.70f * X) + 0.15f * std::sin(1.75f * X + 0.7f);
+
+				// layered waves
+				float h = 0.60f * std::sin(1.20f * wx + 0.55f * wz);
+				h += 0.35f * std::sin(2.30f * wx - 1.70f * wz);
+				h += 0.20f * std::cos(1.90f * wx + 2.50f * wz);
+				h += 0.15f * std::sin(0.55f * (wx * wx + wz * wz)); // radial wrinkle
+
+				// ridge shaping (absolute + soft clip)
+				float ridge = std::pow(std::fabs(h), 0.75f);
+				h = 0.55f * h + 0.65f * ridge;
+
+				// gentle bowl to keep composition centered
+				float r = length2(x * 0.4f, z * 0.5f);
+				h -= 0.15f * r;
+
+				// clamp-ish
+				return std::max(-1.2f, std::min(1.2f, h));
+				};
+
+			// approximate gradient magnitude for slope-based thickness/color
+			auto slopeMag = [&](float x, float z)->float {
+				const float e = 0.015f;
+				float hx = hfield(x + e, z) - hfield(x - e, z);
+				float hz = hfield(x, z + e) - hfield(x, z - e);
+				return std::sqrt(hx * hx + hz * hz) / (2.0f * e); // ~|h|
+				};
+
+			// map from (i,j) to world (x,z)
+			const float dx = (gridX > 1) ? extentX / float(gridX - 1) : 0.0f;
+			const float dz = (gridZ > 1) ? extentZ / float(gridZ - 1) : 0.0f;
+			auto Xat = [&](int j) { return -0.5f * extentX + j * dx; };
+			auto Zat = [&](int i) { return  0.5f * extentZ - i * dz; };
+
+			// ---- helper to spawn one segment (with start collapsed to plane for reveal) ----
+			auto add_seg = [&](float x0, float z0, float x1, float z1)
+				{
+					float h0 = hfield(x0, z0);
+					float h1 = hfield(x1, z1);
+
+					// normalize height for palette
+					float t0 = saturate(0.5f + 0.5f * (0.85f * h0));
+					float t1 = saturate(0.5f + 0.5f * (0.85f * h1));
+
+					Vec3 c0 = palette(t0);
+					Vec3 c1 = palette(t1);
+
+					// slope influences thickness (ridges pop)
+					float s0 = std::min(1.0f, slopeMag(x0, z0) * 0.9f);
+					float s1 = std::min(1.0f, slopeMag(x1, z1) * 0.9f);
+					float thick0 = baseThick * (0.6f + 0.9f * s0);
+					float thick1 = baseThick * (0.6f + 0.9f * s1);
+
+					// wind sway at the end
+					float wx0 = windX * std::sin(0.7f * z0 + 1.2f * x0);
+					float wz0 = windZ * std::cos(0.8f * x0 - 1.0f * z0);
+					float wx1 = windX * std::sin(0.7f * z1 + 1.2f * x1);
+					float wz1 = windZ * std::cos(0.8f * x1 - 1.0f * z1);
+
+					// Build endpoints in your chosen "up" axis
+					Vec3 P0_start, P1_start, P0_end, P1_end;
+					if (!yz_swapped)
+					{
+						// Y is up
+						P0_start = { x0, baseY, z0 };
+						P1_start = { x1, baseY, z1 };
+						P0_end = { x0 + wx0, baseY + ampY * h0, z0 + wz0 };
+						P1_end = { x1 + wx1, baseY + ampY * h1, z1 + wz1 };
+					}
+					else
+					{
+						// Z is up (Y/Z swapped)
+						P0_start = { x0, z0, baseY };
+						P1_start = { x1, z1, baseY };
+						P0_end = { x0 + wx0, z0 + wz0, baseY + ampY * h0 };
+						P1_end = { x1 + wx1, z1 + wz1, baseY + ampY * h1 };
+					}
+
+					// start collapsed to the mid at base plane  reveals nicely
+					Vec3 M = { 0.5f * (P0_start.x + P1_start.x),
+							   0.5f * (P0_start.y + P1_start.y),
+							   0.5f * (P0_start.z + P1_start.z) };
+
+					Line& L = add_line();
+
+					// START
+					L.x0.start = M.x; L.y0.start = M.y; L.z0.start = M.z;
+					L.x1.start = M.x; L.y1.start = M.y; L.z1.start = M.z;
+					L.rgb_t0 = c0;
+					L.thickness.start = baseThick * 0.35f;
+					L.number_of_cubes = cubesPerSeg;
+
+					L.copy_start_to_end();
+
+					// END
+					L.x0.end = P0_end.x; L.y0.end = P0_end.y; L.z0.end = P0_end.z;
+					L.x1.end = P1_end.x; L.y1.end = P1_end.y; L.z1.end = P1_end.z;
+					L.rgb_t1 = c1;
+					L.thickness.end = 0.5f * (thick0 + thick1);
+				};
+
+			// ---- rows: connect along X (constant Z) ----
+			if (drawRows)
+			{
+				for (int i = 0; i < gridZ; ++i)
+				{
+					float z = Zat(i);
+					for (int j = 0; j < gridX - 1; ++j)
+					{
+						float x0 = Xat(j);
+						float x1 = Xat(j + 1);
+						add_seg(x0, z, x1, z);
+					}
+				}
+			}
+
+			// ---- cols: connect along Z (constant X) ----
+			if (drawCols)
+			{
+				for (int j = 0; j < gridX; ++j)
+				{
+					float x = Xat(j);
+					for (int i = 0; i < gridZ - 1; ++i)
+					{
+						float z0 = Zat(i);
+						float z1 = Zat(i + 1);
+						add_seg(x, z0, x, z1);
+					}
+				}
+			}
+		}
+
+		void init_brutalist_monolith()
+		{
+			// Self-contained constants
+			const float TAU = 6.283185307179586476925286766559f;
+			const float PI = 3.141592653589793238462643383279f;
+
+			// Building dimensions (in world units)
+			const float building_width = 2.0f;
+			const float building_depth = 1.2f;
+			const int   num_floors = 12;
+			const float floor_height = 0.3f;
+			const float base_offset_y = -1.5f; // Sink building into ground slightly
+
+			// Grid parameters
+			const int cols_x = 6; // Columns along width
+			const int cols_z = 4; // Columns along depth
+			const float col_width = building_width / (cols_x - 1);
+			const float col_depth = building_depth / (cols_z - 1);
+
+			// Window grid (smaller than column grid for inset windows)
+			const int win_cols_x = 4;
+			const int win_cols_z = 3;
+			const float win_pad = 0.12f; // Inset from column lines
+
+			// === 1. FLOOR SLABS (horizontal concrete decks) ===
+			for (int floor = 0; floor <= num_floors; ++floor)
+			{
+				float y = base_offset_y + floor * floor_height;
+
+				// Outer perimeter of each floor
+				for (int edge = 0; edge < 4; ++edge)
+				{
+					Line& line = add_line();
+					// Bottom-left, bottom-right, top-right, top-left
+					float corners_x[4] = { -building_width * 0.5f,  building_width * 0.5f,  building_width * 0.5f, -building_width * 0.5f };
+					float corners_z[4] = { -building_depth * 0.5f, -building_depth * 0.5f,  building_depth * 0.5f,  building_depth * 0.5f };
+
+					line.x0.start = corners_x[edge];
+					line.y0.start = y;
+					line.z0.start = corners_z[edge];
+
+					line.x1.start = corners_x[(edge + 1) % 4];
+					line.y1.start = y;
+					line.z1.start = corners_z[(edge + 1) % 4];
+
+					line.copy_start_to_end(); // Static slab
+
+					// Concrete gray with slight random variation (weathering)
+					float gray = 0.25f + 0.08f * Random::generate_random_float_0_to_1();
+					line.rgb_t0.x = gray;
+					line.rgb_t0.y = gray;
+					line.rgb_t0.z = gray;
+
+					line.thickness.start = (floor == 0 || floor == num_floors) ? 0.025f : 0.012f; // Thicker base/roof
+					line.number_of_cubes = 40;
+				}
+
+				// Inner slab texture: cross grid for "poured concrete" look
+				if (floor > 0 && floor < num_floors)
+				{
+					// X-direction ribs
+					for (int i = 1; i < cols_x - 1; ++i)
+					{
+						Line& line = add_line();
+						float x = -building_width * 0.5f + i * col_width;
+						line.x0.start = x; line.y0.start = y; line.z0.start = -building_depth * 0.5f;
+						line.x1.start = x; line.y1.start = y; line.z1.start = building_depth * 0.5f;
+						line.copy_start_to_end();
+						float gray = 0.22f + 0.06f * Random::generate_random_float_0_to_1();
+						line.rgb_t0 = { gray, gray, gray };
+						line.thickness.start = 0.006f;
+						line.number_of_cubes = 30;
+					}
+					// Z-direction ribs
+					for (int i = 1; i < cols_z - 1; ++i)
+					{
+						Line& line = add_line();
+						float z = -building_depth * 0.5f + i * col_depth;
+						line.x0.start = -building_width * 0.5f; line.y0.start = y; line.z0.start = z;
+						line.x1.start = building_width * 0.5f; line.y1.start = y; line.z1.start = z;
+						line.copy_start_to_end();
+						float gray = 0.22f + 0.06f * Random::generate_random_float_0_to_1();
+						line.rgb_t0 = { gray, gray, gray };
+						line.thickness.start = 0.006f;
+						line.number_of_cubes = 30;
+					}
+				}
+			}
+
+			// === 2. STRUCTURAL COLUMNS (vertical load-bearers) ===
+			for (int ix = 0; ix < cols_x; ++ix)
+			{
+				for (int iz = 0; iz < cols_z; ++iz)
+				{
+					// Corner and edge columns are thicker
+					bool is_corner = (ix == 0 || ix == cols_x - 1) && (iz == 0 || iz == cols_z - 1);
+					bool is_edge = (ix == 0 || ix == cols_x - 1) || (iz == 0 || iz == cols_z - 1);
+
+					float thickness = is_corner ? 0.035f : (is_edge ? 0.025f : 0.018f);
+					int segments = is_corner ? 120 : 80;
+
+					float x = -building_width * 0.5f + ix * col_width;
+					float z = -building_depth * 0.5f + iz * col_depth;
+
+					Line& line = add_line();
+					line.x0.start = x;
+					line.y0.start = base_offset_y;
+					line.z0.start = z;
+
+					line.x1.start = x;
+					line.y1.start = base_offset_y + num_floors * floor_height;
+					line.z1.start = z;
+
+					line.copy_start_to_end();
+
+					// Slightly darker gray for columns (shadow effect)
+					float gray = 0.18f + 0.07f * Random::generate_random_float_0_to_1();
+					line.rgb_t0 = { gray, gray, gray };
+					line.thickness.start = thickness;
+					line.number_of_cubes = segments;
+				}
+			}
+
+			// === 3. WINDOW VOIDS (negative space as lines) ===
+			// Brutalist windows are recessed  we draw their inner frames
+			for (int floor = 1; floor < num_floors; ++floor)
+			{
+				float y_bottom = base_offset_y + (floor - 1) * floor_height + 0.04f;
+				float y_top = base_offset_y + floor * floor_height - 0.04f;
+
+				for (int wx = 0; wx < win_cols_x; ++wx)
+				{
+					for (int wz = 0; wz < win_cols_z; ++wz)
+					{
+						// Skip some windows randomly for asymmetry (brutalist imperfection)
+						if (Random::generate_random_float_0_to_1() > 0.85f) continue;
+
+						float win_width = (building_width - 2 * win_pad) / win_cols_x;
+						float win_depth = (building_depth - 2 * win_pad) / win_cols_z;
+
+						float x0 = -building_width * 0.5f + win_pad + wx * win_width;
+						float x1 = x0 + win_width;
+						float z0 = -building_depth * 0.5f + win_pad + wz * win_depth;
+						float z1 = z0 + win_depth;
+
+						// Draw 4 edges of window frame (recessed)
+						float frame_gray = 0.35f + 0.1f * Random::generate_random_float_0_to_1();
+						auto add_window_edge = [&](float x_a, float z_a, float x_b, float z_b, float y_a, float y_b)
+							{
+								Line& line = add_line();
+								line.x0.start = x_a; line.y0.start = y_a; line.z0.start = z_a;
+								line.x1.start = x_b; line.y1.start = y_b; line.z1.start = z_b;
+								line.copy_start_to_end();
+								line.rgb_t0 = { frame_gray, frame_gray, frame_gray };
+								line.thickness.start = 0.004f;
+								line.number_of_cubes = 25;
+							};
+
+						// Vertical edges
+						add_window_edge(x0, z0, x0, z0, y_bottom, y_top);
+						add_window_edge(x1, z0, x1, z0, y_bottom, y_top);
+						add_window_edge(x0, z1, x0, z1, y_bottom, y_top);
+						add_window_edge(x1, z1, x1, z1, y_bottom, y_top);
+
+						// Top/bottom edges (only if not adjacent to floor slab)
+						if (floor < num_floors - 1)
+							add_window_edge(x0, z0, x1, z0, y_top, y_top); // Bottom of upper window
+						if (floor > 1)
+							add_window_edge(x0, z1, x1, z1, y_bottom, y_bottom); // Top of lower window
+					}
+				}
+			}
+
+			// === 4. STAIR TOWER (asymmetrical brutalist element) ===
+			const float stair_width = 0.4f;
+			const float stair_depth = 0.3f;
+			const float stair_x = building_width * 0.5f + 0.05f; // Protruding from main mass
+			const float stair_z = -building_depth * 0.3f;
+
+			// Stair tower outer shell
+			float stair_corners_x[4] = { stair_x, stair_x + stair_width, stair_x + stair_width, stair_x };
+			float stair_corners_z[4] = { stair_z, stair_z, stair_z + stair_depth, stair_z + stair_depth };
+
+			for (int edge = 0; edge < 4; ++edge)
+			{
+				Line& line = add_line();
+				line.x0.start = stair_corners_x[edge];
+				line.y0.start = base_offset_y;
+				line.z0.start = stair_corners_z[edge];
+
+				line.x1.start = stair_corners_x[(edge + 1) % 4];
+				line.y1.start = base_offset_y + num_floors * floor_height;
+				line.z1.start = stair_corners_z[(edge + 1) % 4];
+
+				line.copy_start_to_end();
+				float gray = 0.20f + 0.05f * Random::generate_random_float_0_to_1();
+				line.rgb_t0 = { gray, gray, gray };
+				line.thickness.start = 0.018f;
+				line.number_of_cubes = 100;
+			}
+
+			// Stair landings (every 3 floors)
+			for (int floor = 3; floor <= num_floors; floor += 3)
+			{
+				float y = base_offset_y + floor * floor_height;
+				for (int e = 0; e < 4; ++e)
+				{
+					Line& line = add_line();
+					line.x0.start = stair_corners_x[e];
+					line.y0.start = y;
+					line.z0.start = stair_corners_z[e];
+					line.x1.start = stair_corners_x[(e + 1) % 4];
+					line.y1.start = y;
+					line.z1.start = stair_corners_z[(e + 1) % 4];
+					line.copy_start_to_end();
+					line.rgb_t0 = { 0.28f, 0.28f, 0.28f };
+					line.thickness.start = 0.01f;
+					line.number_of_cubes = 20;
+				}
+			}
+
+			// === 5. SERVICE CORE / VENTS (industrial details) ===
+			// Small protruding boxes on roof
+			for (int i = 0; i < 3; ++i)
+			{
+				float offset_x = (Random::generate_random_float_0_to_1() - 0.5f) * building_width * 0.6f;
+				float offset_z = (Random::generate_random_float_0_to_1() - 0.5f) * building_depth * 0.6f;
+				float core_w = 0.15f + 0.1f * Random::generate_random_float_0_to_1();
+				float core_d = 0.15f + 0.1f * Random::generate_random_float_0_to_1();
+				float roof_y = base_offset_y + num_floors * floor_height;
+
+				// Simple box outline
+				float cx0 = offset_x - core_w * 0.5f, cx1 = offset_x + core_w * 0.5f;
+				float cz0 = offset_z - core_d * 0.5f, cz1 = offset_z + core_d * 0.5f;
+
+				auto add_core_line = [&](float x0, float z0, float x1, float z1)
+					{
+						Line& line = add_line();
+						line.x0.start = x0; line.y0.start = roof_y; line.z0.start = z0;
+						line.x1.start = x1; line.y1.start = roof_y + 0.15f; line.z1.start = z1;
+						line.copy_start_to_end();
+						line.rgb_t0 = { 0.15f, 0.15f, 0.15f };
+						line.thickness.start = 0.008f;
+						line.number_of_cubes = 30;
+					};
+
+				add_core_line(cx0, cz0, cx0, cz0);
+				add_core_line(cx1, cz0, cx1, cz0);
+				add_core_line(cx0, cz1, cx0, cz1);
+				add_core_line(cx1, cz1, cx1, cz1);
+			}
+
+			// Final touch: ground plane (concrete plaza)
+			{
+				const float ground_size = 3.0f;
+				float gray = 0.12f + 0.03f * Random::generate_random_float_0_to_1();
+				for (int axis = 0; axis < 2; ++axis)
+				{
+					for (int i = -10; i <= 10; ++i)
+					{
+						Line& line = add_line();
+						if (axis == 0) // X lines
+						{
+							line.x0.start = -ground_size; line.y0.start = base_offset_y - 0.01f; line.z0.start = i * 0.2f;
+							line.x1.start = ground_size; line.y1.start = base_offset_y - 0.01f; line.z1.start = i * 0.2f;
+						}
+						else // Z lines
+						{
+							line.x0.start = i * 0.2f; line.y0.start = base_offset_y - 0.01f; line.z0.start = -ground_size;
+							line.x1.start = i * 0.2f; line.y1.start = base_offset_y - 0.01f; line.z1.start = ground_size;
+						}
+						line.copy_start_to_end();
+						line.rgb_t0 = { gray, gray, gray };
+						line.thickness.start = 0.002f;
+						line.number_of_cubes = 50;
+					}
+				}
+			}
+		}
+
+
+
 
 
 
@@ -2580,15 +3172,17 @@ namespace Universe_
 				// lines.init_quantum_foam_nebula();
 				// lines.init_0005_letter_layers_fly_yz_swapped();
 				// lines.init_fractal_tree_3d();
-				lines.init_glowing_fractal_tree();
-
-
 				// lines.init_crystal_fractal_tree();
 
+				lines.init_neural_energy_tree();
 
+				
+				// lines.init_0006_wavy_dune_landscape();
+				// lines.init_brutalist_monolith();
 
+				
 
-				// lines.init_glowing_fractal_tree();
+				
 				
 
 				lines.draw(scene);
