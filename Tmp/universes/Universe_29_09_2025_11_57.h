@@ -8003,6 +8003,562 @@ namespace Universe_
 
 
 
+		void init_fractal_storm()
+		{
+			const float M_PI = 3.14159265359f;
+			static float time_base = 0.0f;
+
+			// =====================
+			// MASTER DENSITY KNOBS
+			// =====================
+			const int   CHORUS_CLONES = 2;     // duplicate whole fractal with phase/rotation offsets
+			const int   TIME_GHOSTS = 2;     // extra "afterimage" layers per clone
+			const float GHOST_DELAY = 0.05f; // time delta between ghosts
+
+			const int   BASE_TRUNKS = 8;     // roots
+			const int   MAX_LEVELS = 8;     // recursion depth (careful!)
+			const float BASE_LEN = 0.50f;
+			const float SCALE = 0.66f; // length shrink per level
+
+			const float SPLIT_BASE = 0.60f; // base branch angle
+			const float SPLIT_WOBBLE = 0.35f; // time morph
+			const float TWIST_AROUND = 0.65f; // split-plane twist
+
+			const int   RIBBON_STRANDS = 3;     // extra strand copies around each branch
+			const float RIBBON_RADIUS = 0.025f;// strand radial offset (scaled by segment length)
+
+			const int   HAIRS_PER_SEG = 3;     // perpendicular hairs
+			const float HAIR_FRAC_LEN = 0.20f; // fraction of segment length
+
+			const int   CROSSLINKS_PER_L = 16;    // cross-links per level (lightning-ish)
+			const float CROSSLINK_RANGE = 0.35f; // only link endpoints closer than this
+
+			// Motion feel
+			const float ROTATE_SPEED = 0.22f;
+			const float WIND_SWAY = 0.25f;
+			const float WIND_SPEED = 0.90f;
+			const float BREATH_DEPTH = 0.10f;
+			const float PULSE_SPEED_A = 0.40f;
+			const float PULSE_SPEED_B = 0.23f;
+
+			// -----------------------
+			// Utility (no std::max)
+			// -----------------------
+			auto maxf = [](float a, float b) { return (a > b) ? a : b; };
+			auto minf = [](float a, float b) { return (a < b) ? a : b; };
+			auto clampf = [&](float x, float a, float b) { return maxf(a, minf(b, x)); };
+			auto fractf = [](float x) { return x - std::floor(x); };
+			auto lerp = [](float a, float b, float t) { return a + (b - a) * t; };
+			auto smooth = [&](float x) { x = clampf(x, 0.0f, 1.0f); return x * x * (3.0f - 2.0f * x); };
+			auto hash11 = [&](float p) { return fractf(std::sin(p * 127.1f) * 43758.5453f); };
+
+			struct V3 { float x, y, z; };
+
+			auto dot3 = [](float ax, float ay, float az, float bx, float by, float bz) { return ax * bx + ay * by + az * bz; };
+			auto cross3 = [](float ax, float ay, float az, float bx, float by, float bz) {
+				return V3{ ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx };
+				};
+			auto norm3 = [&](float& x, float& y, float& z) {
+				float L = std::sqrt(x * x + y * y + z * z) + 1e-6f; x /= L; y /= L; z /= L;
+				};
+			auto rodrigues = [&](float vx, float vy, float vz, float nx, float ny, float nz, float ang) {
+				float c = std::cos(ang), s = std::sin(ang), d = dot3(nx, ny, nz, vx, vy, vz);
+				V3 cr = cross3(nx, ny, nz, vx, vy, vz);
+				float rx = vx * c + cr.x * s + nx * d * (1.0f - c);
+				float ry = vy * c + cr.y * s + ny * d * (1.0f - c);
+				float rz = vz * c + cr.z * s + nz * d * (1.0f - c);
+				return V3{ rx,ry,rz };
+				};
+			auto rotateY = [&](float& x, float& z, float a) {
+				float c = std::cos(a), s = std::sin(a);
+				float nx = c * x - s * z, nz = s * x + c * z; x = nx; z = nz;
+				};
+
+			// cheap 3D value noise
+			auto vnoise = [&](float x, float y, float z) {
+				float xi = std::floor(x), yi = std::floor(y), zi = std::floor(z);
+				float xf = x - xi, yf = y - yi, zf = z - zi;
+				float u = smooth(xf), v = smooth(yf), w = smooth(zf);
+				auto h = [&](float X, float Y, float Z) { return hash11(X * 37.0f + Y * 57.0f + Z * 73.0f); };
+				float c000 = h(xi, yi, zi), c100 = h(xi + 1, yi, zi), c010 = h(xi, yi + 1, zi), c110 = h(xi + 1, yi + 1, zi);
+				float c001 = h(xi, yi, zi + 1), c101 = h(xi + 1, yi, zi + 1), c011 = h(xi, yi + 1, zi + 1), c111 = h(xi + 1, yi + 1, zi + 1);
+				float x00 = lerp(c000, c100, u), x10 = lerp(c010, c110, u);
+				float x01 = lerp(c001, c101, u), x11 = lerp(c011, c111, u);
+				float y0 = lerp(x00, x10, v), y1 = lerp(x01, x11, v);
+				return lerp(y0, y1, w) * 2.0f - 1.0f;
+				};
+
+			struct Node { float x, y, z; float dx, dy, dz; int level; };
+
+			float T = time_base;
+
+			for (int clone = 0; clone < CHORUS_CLONES; ++clone) {
+				float clonePhase = clone * 1.37f;
+				float cloneRot = 0.25f * clone;
+
+				for (int ghost = 0; ghost < TIME_GHOSTS; ++ghost) {
+					float t = T - ghost * GHOST_DELAY + 0.07f * clonePhase;
+
+					float yaw = ROTATE_SPEED * t + cloneRot;
+					float breath = 1.0f + BREATH_DEPTH * std::sin(t * 0.9f + clonePhase);
+					float splitAngle = SPLIT_BASE + SPLIT_WOBBLE * std::sin(0.6f * t + 1.7f * clonePhase);
+
+					// trunks
+					std::vector<Node> curr, next;
+					curr.reserve(BASE_TRUNKS);
+					float r0 = 0.14f;
+					for (int i = 0; i < BASE_TRUNKS; ++i) {
+						float a = i * (2.0f * M_PI / BASE_TRUNKS) + yaw * 0.7f + 0.4f * std::sin(0.3f * t + i);
+						float x = r0 * std::cos(a), z = r0 * std::sin(a), y = -0.55f;
+						float dx = 0.35f * std::cos(a), dy = 1.0f, dz = 0.35f * std::sin(a);
+						norm3(dx, dy, dz);
+						curr.push_back({ x,y,z,dx,dy,dz,0 });
+					}
+
+					// per-level endpoints for cross-links
+					std::vector<std::vector<V3>> endpoints(MAX_LEVELS);
+					int segId = 0;
+
+					for (int level = 0; level < MAX_LEVELS; ++level) {
+						float len = BASE_LEN * std::pow(SCALE, (float)level) * breath;
+						float thick = 0.018f * std::pow(0.78f, (float)level);
+						float windP = t * WIND_SPEED + 0.7f * level + 0.9f * clonePhase;
+
+						for (const Node& n : curr) {
+							// ---- direction with wind + turbulence ----
+							float sx = n.x, sy = n.y, sz = n.z;
+							float dx = n.dx, dy = n.dy, dz = n.dz;
+
+							// yaw sway
+							{
+								float yawS = WIND_SWAY * 0.25f * std::sin(windP + 0.6f * segId);
+								float tx = dx, tz = dz; rotateY(tx, tz, yawS); dx = tx; dz = tz; norm3(dx, dy, dz);
+							}
+							// bend around axis  (dir, up)
+							{
+								V3 ax = cross3(dx, dy, dz, 0.0f, 1.0f, 0.0f);
+								float L = std::sqrt(ax.x * ax.x + ax.y * ax.y + ax.z * ax.z) + 1e-6f;
+								ax.x /= L; ax.y /= L; ax.z /= L;
+								float bend = WIND_SWAY * 0.35f * std::sin(1.3f * windP + segId * 0.17f);
+								V3 b = rodrigues(dx, dy, dz, ax.x, ax.y, ax.z, bend);
+								dx = b.x; dy = b.y; dz = b.z; norm3(dx, dy, dz);
+							}
+							// curl noise
+							{
+								float n1 = vnoise(3.1f * dx + 0.7f * t, 2.7f * dy, 3.3f * dz);
+								float n2 = vnoise(2.2f * dx, 3.8f * dy + 0.5f * t, 2.6f * dz);
+								float curl = 0.20f * (n1 + 0.5f * n2);
+								V3 cr = cross3(dx, dy, dz, 0.0f, 1.0f, 0.0f);
+								dx += curl * cr.x; dy += curl * cr.y; dz += curl * cr.z;
+								norm3(dx, dy, dz);
+							}
+
+							float ex = sx + dx * len;
+							float ey = sy + dy * len;
+							float ez = sz + dz * len;
+
+							// compute thickness once (needed in strands too)
+							float th = thick * (0.85f + 0.30f * std::sin(2.3f * t + level + clonePhase));
+
+							// ===== main branch =====
+							{
+								Line& L = add_line();
+								L.x0.start = sx; L.y0.start = sy; L.z0.start = sz;
+								L.x1.start = ex; L.y1.start = ey; L.z1.start = ez;
+
+								float flow = 0.016f * std::sin(3.0f * t + segId * 0.23f + clonePhase);
+								L.x1.end = ex + flow * (ex - sx);
+								L.y1.end = ey + 0.4f * flow * (ey - sy);
+								L.z1.end = ez + flow * (ez - sz);
+
+								float hue = 1.0f * t + 0.35f * (sy + ey) + 0.7f * clone + 0.25f * ghost;
+								float sat = 0.65f + 0.35f * std::sin(1.5f * t + 0.13f * segId);
+								L.rgb_t0.x = 0.10f + 0.38f * std::sin(hue) * sat;
+								L.rgb_t0.y = 0.26f + 0.64f * std::sin(hue + 1.05f) * sat;
+								L.rgb_t0.z = 0.80f + 0.20f * std::sin(hue + 2.10f) * sat;
+
+								L.thickness.start = th;
+								L.thickness.end = th * (0.8f + 0.4f * std::sin(4.4f * t + 0.17f * segId));
+								L.number_of_cubes = 8 + (int)(10.0f * len);
+
+								++segId;
+							}
+
+							// ===== ribbon strands =====
+							{
+								// make perpendicular basis (nx, bx)
+								V3 nrm = cross3(dx, dy, dz, 0.0f, 1.0f, 0.0f);
+								float L = std::sqrt(nrm.x * nrm.x + nrm.y * nrm.y + nrm.z * nrm.z);
+								if (L < 1e-4f) { nrm = V3{ 1.0f,0.0f,0.0f }; L = 1.0f; }
+								nrm.x /= L; nrm.y /= L; nrm.z /= L;
+								V3 bxv = cross3(dx, dy, dz, nrm.x, nrm.y, nrm.z);
+								float L2 = std::sqrt(bxv.x * bxv.x + bxv.y * bxv.y + bxv.z * bxv.z) + 1e-6f;
+								bxv.x /= L2; bxv.y /= L2; bxv.z /= L2;
+
+								float rr = RIBBON_RADIUS * len * (0.9f + 0.3f * std::sin(0.9f * t + level));
+								int   strands = (RIBBON_STRANDS > 1 ? RIBBON_STRANDS : 1);
+
+								for (int s = 0; s < strands; ++s) {
+									float ang = (2.0f * M_PI * s) / strands;
+									float ox = rr * (nrm.x * std::cos(ang) + bxv.x * std::sin(ang));
+									float oy = rr * (nrm.y * std::cos(ang) + bxv.y * std::sin(ang));
+									float oz = rr * (nrm.z * std::cos(ang) + bxv.z * std::sin(ang));
+
+									Line& R = add_line();
+									R.x0.start = sx + ox; R.y0.start = sy + oy; R.z0.start = sz + oz;
+									R.x1.start = ex + ox; R.y1.start = ey + oy; R.z1.start = ez + oz;
+
+									float hue = 0.8f * t + 2.1f * s + 0.2f * level + 0.4f * clone;
+									R.rgb_t0.x = 0.10f + 0.30f * std::sin(hue);
+									R.rgb_t0.y = 0.58f + 0.36f * std::sin(hue + 1.0f);
+									R.rgb_t0.z = 0.84f + 0.16f * std::sin(hue + 2.0f);
+
+									float base = 0.6f * th;
+									R.thickness.start = 0.6f * maxf(0.0012f, base);
+									R.thickness.end = R.thickness.start * (0.9f + 0.3f * std::sin(3.7f * t + s + segId * 0.07f));
+									R.number_of_cubes = 6 + (int)(6.0f * len);
+
+									float shear = 0.02f * std::sin(2.2f * t + segId * 0.21f + s);
+									R.x1.end = R.x1.start + shear * (R.x1.start - R.x0.start);
+									R.y1.end = R.y1.start + 0.35f * shear;
+									R.z1.end = R.z1.start + shear * (R.z1.start - R.z0.start);
+								}
+							}
+
+							// ===== perpendicular hair filaments =====
+							{
+								V3 nrm = cross3(dx, dy, dz, 0.0f, 1.0f, 0.0f);
+								float L = std::sqrt(nrm.x * nrm.x + nrm.y * nrm.y + nrm.z * nrm.z);
+								if (L < 1e-4f) { nrm = V3{ 1.0f,0.0f,0.0f }; L = 1.0f; }
+								nrm.x /= L; nrm.y /= L; nrm.z /= L;
+
+								for (int h = 0; h < HAIRS_PER_SEG; ++h) {
+									float u = (h + 1.0f) / (HAIRS_PER_SEG + 1.0f);
+									float px = lerp(sx, ex, u);
+									float py = lerp(sy, ey, u);
+									float pz = lerp(sz, ez, u);
+									float sign = (h % 2 == 0) ? +1.0f : -1.0f;
+									float hl = HAIR_FRAC_LEN * len * (0.7f + 0.6f * hash11(segId * 0.137f + h));
+									float ox = sign * nrm.x * hl, oy = sign * nrm.y * hl, oz = sign * nrm.z * hl;
+
+									Line& H = add_line();
+									H.x0.start = px;       H.y0.start = py;        H.z0.start = pz;
+									H.x1.start = px + ox;  H.y1.start = py + oy;   H.z1.start = pz + oz;
+
+									float hue = 0.6f * t + 3.0f * u + 0.5f * level;
+									H.rgb_t0.x = 0.12f + 0.28f * std::sin(hue);
+									H.rgb_t0.y = 0.52f + 0.38f * std::sin(hue + 1.0f);
+									H.rgb_t0.z = 0.86f + 0.14f * std::sin(hue + 2.0f);
+
+									H.thickness.start = 0.0016f;
+									H.thickness.end = 0.0012f;
+									H.number_of_cubes = 4;
+
+									float curl = 0.02f * std::sin(5.0f * t + segId * 0.33f + h);
+									H.x1.end = H.x1.start + curl * ox;
+									H.y1.end = H.y1.start + 0.4f * curl * oy;
+									H.z1.end = H.z1.start + curl * oz;
+								}
+							}
+
+							// ===== pulses along branch =====
+							{
+								float seed = segId * 0.173f + 2.1f * level + 0.7f * clone;
+								float uA = fractf(PULSE_SPEED_A * t + hash11(seed) * 4.0f);
+								float uB = fractf(PULSE_SPEED_B * t + hash11(seed + 10.0f) * 5.0f);
+
+								auto pulse = [&](float u, float bright) {
+									float px = sx + dx * len * u, py = sy + dy * len * u, pz = sz + dz * len * u;
+									float q = 0.03f + 0.05f * std::sin(6.28318f * u);
+									Line& P = add_line();
+									P.x0.start = px; P.y0.start = py; P.z0.start = pz;
+									P.x1.start = px + dx * q; P.y1.start = py + dy * q; P.z1.start = pz + dz * q;
+									P.rgb_t0.x = 0.88f * bright; P.rgb_t0.y = 0.95f * bright; P.rgb_t0.z = 1.0f * bright;
+									P.thickness.start = 0.0065f;
+									P.thickness.end = 0.0040f;
+									P.number_of_cubes = 3;
+									// small forward drift for the pulse
+									P.x1.end = P.x1.start + 0.02f * dx;
+									P.y1.end = P.y1.start + 0.008f * dy;
+									P.z1.end = P.z1.start + 0.02f * dz;
+									};
+								if (hash11(seed) > 0.35f)     pulse(uA, 1.0f);
+								if (hash11(seed + 5.0f) > 0.65f) pulse(uB, 0.85f);
+							}
+
+							// record endpoint for cross-links
+							endpoints[level].push_back(V3{ ex,ey,ez });
+
+							// ===== spawn children (2 or sometimes 3) =====
+							if (level + 1 < MAX_LEVELS) {
+								float h = hash11(segId * 0.731f + level * 3.13f + clonePhase);
+
+								// base split plane axis ( to direction)
+								float rx = std::sin(h * 23.0f), ry = std::cos(h * 19.0f), rz = std::sin(h * 17.0f);
+								V3 ax0 = cross3(dx, dy, dz, rx, ry, rz);
+								float L = std::sqrt(ax0.x * ax0.x + ax0.y * ax0.y + ax0.z * ax0.z) + 1e-6f;
+								float ax = ax0.x / L, ay = ax0.y / L, az = ax0.z / L;
+
+								// twist split plane
+								float twist = TWIST_AROUND * (h * 2.0f - 1.0f) + 0.4f * std::sin(0.6f * t + level + clonePhase);
+								V3 ax1 = rodrigues(ax, ay, az, dx, dy, dz, twist);
+
+								// maybe tri-split on earlier/mid levels
+								int  childCount = 2 + ((level < MAX_LEVELS - 3 && h > 0.72f) ? 1 : 0);
+								float spread = splitAngle * (0.9f + 0.2f * std::sin(0.4f * t + level));
+
+								if (childCount == 2) {
+									V3 Ld = rodrigues(dx, dy, dz, ax1.x, ax1.y, ax1.z, +spread);
+									V3 Rd = rodrigues(dx, dy, dz, ax1.x, ax1.y, ax1.z, -spread);
+									norm3(Ld.x, Ld.y, Ld.z); norm3(Rd.x, Rd.y, Rd.z);
+									next.push_back({ ex,ey,ez, Ld.x,Ld.y,Ld.z, level + 1 });
+									next.push_back({ ex,ey,ez, Rd.x,Rd.y,Rd.z, level + 1 });
+								}
+								else {
+									V3 C0 = rodrigues(dx, dy, dz, ax1.x, ax1.y, ax1.z, 0.0f);
+									V3 C1 = rodrigues(dx, dy, dz, ax1.x, ax1.y, ax1.z, +spread * 0.85f);
+									V3 C2 = rodrigues(dx, dy, dz, ax1.x, ax1.y, ax1.z, -spread * 0.85f);
+									norm3(C0.x, C0.y, C0.z); norm3(C1.x, C1.y, C1.z); norm3(C2.x, C2.y, C2.z);
+									next.push_back({ ex,ey,ez, C0.x,C0.y,C0.z, level + 1 });
+									next.push_back({ ex,ey,ez, C1.x,C1.y,C1.z, level + 1 });
+									next.push_back({ ex,ey,ez, C2.x,C2.y,C2.z, level + 1 });
+								}
+							}
+						}
+
+						curr.swap(next);
+						next.clear();
+					}
+
+					// ===== level cross-links (lightning lattice) =====
+					for (int Lvl = 1; Lvl < MAX_LEVELS; ++Lvl) {
+						auto& pts = endpoints[Lvl];
+						if (pts.size() < 4) continue;
+
+						int half = (int)pts.size() / 2;
+						int links = (CROSSLINKS_PER_L < half ? CROSSLINKS_PER_L : half);
+						for (int k = 0; k < links; ++k) {
+							int i = (k * 37 + (int)(hash11(T * 53.0f + Lvl * 7.0f + k) * 1e6)) % (int)pts.size();
+							int j = (i + 1 + (int)(hash11((i + Lvl) * 0.77f) * (int)pts.size())) % (int)pts.size();
+							V3 a = pts[i], b = pts[j];
+							float dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
+							float d = std::sqrt(dx * dx + dy * dy + dz * dz);
+							if (d > 1e-4f && d < CROSSLINK_RANGE) {
+								Line& C = add_line();
+								C.x0.start = a.x; C.y0.start = a.y; C.z0.start = a.z;
+								C.x1.start = b.x; C.y1.start = b.y; C.z1.start = b.z;
+								C.rgb_t0.x = 0.92f; C.rgb_t0.y = 0.96f; C.rgb_t0.z = 1.0f;
+								C.thickness.start = 0.0028f;
+								C.thickness.end = 0.0022f;
+								C.number_of_cubes = 4;
+
+								float jx = 0.03f * std::sin(11.0f * T + i + Lvl);
+								float jy = 0.02f * std::sin(13.0f * T + j + Lvl);
+								float jz = 0.03f * std::sin(17.0f * T + i - j);
+								C.x1.end = b.x + jx; C.y1.end = b.y + jy; C.z1.end = b.z + jz;
+							}
+						}
+					}
+				}
+			}
+
+			// Advance time
+			time_base += 0.016f;
+		}
+
+
+
+
+
+		void init_fractal_pinwheel_supernova()
+		{
+			lines.clear();
+
+			// ====================================================================
+			// SECTION 1: ARTISTIC PARAMETERS & CONFIGURATION ("The Fireworks Console")
+			// ====================================================================
+
+			const int   max_depth = 4;                // How many recursive generations. Be careful, this grows exponentially! (3 is fast, 4 is detailed, 5 is intense)
+			const int   branches_per_node = 6;        // The number of "blades" on each pinwheel. 5 or 6 looks great.
+			const float initial_radius = 0.8f;        // How far the first generation of trails travel.
+			const float shrink_factor = 0.45f;        // How much smaller each subsequent generation is.
+			const float rotation_speed = 2.5f;        // How much each pinwheel spins as it expands.
+			const int   num_finale_sparks = 400;      // Number of sparks in the final burst.
+
+			// --- Color Palette & Constants ---
+			const float TAU = 6.28318530718f;
+			const float PI = 3.14159265359f;
+			// A procedural rainbow color function to ensure maximum vividness.
+			auto hue_color = [&](float h) -> Vec3 { // h from 0 to 1
+				return {
+					0.5f + 0.5f * cos(TAU * (h + 0.00f)),
+					0.5f + 0.5f * cos(TAU * (h + 0.33f)),
+					0.5f + 0.5f * cos(TAU * (h + 0.66f))
+				};
+				};
+
+			// ====================================================================
+			// SECTION 2: THE RECURSIVE FRACTAL GENERATOR
+			// This function is the heart of the effect. It calls itself to build the fractal.
+			// ====================================================================
+
+			std::function<void(Vec3, float, float, int)> spawn_burst =
+				[&](Vec3 origin, float radius, float base_angle, int depth)
+				{
+					// Base Case: Stop recursing if we've reached the maximum depth.
+					if (depth >= max_depth) {
+						// When a branch "dies", it releases a shower of sparks. This creates the finale.
+						for (int i = 0; i < num_finale_sparks / (pow(branches_per_node, max_depth - 1)); ++i) {
+							Line& spark = add_line();
+							// Sparks explode outwards from the final branch tip.
+							float theta = Random::generate_random_float_0_to_1() * TAU;
+							float phi = acos(2.f * Random::generate_random_float_0_to_1() - 1.f);
+							Vec3 dir = { sin(phi) * cos(theta), cos(phi), sin(phi) * sin(theta) };
+							Vec3 end_point = vec_add(origin, vec_scale(dir, radius * 1.5f));
+
+							spark.x0.start = origin.x; spark.y0.start = origin.y; spark.z0.start = origin.z;
+							spark.x1.start = origin.x; spark.y1.start = origin.y; spark.z1.start = origin.z;
+							spark.x0.end = end_point.x; spark.y0.end = end_point.y; spark.z0.end = end_point.z;
+							spark.x1.end = end_point.x; spark.y1.end = end_point.y; spark.z1.end = end_point.z;
+
+							spark.rgb_t0 = hue_color(Random::generate_random_float_0_to_1());
+							spark.rgb_t1 = vec_scale(spark.rgb_t0, 0.1f);
+							spark.thickness.start = 0.008f;
+							spark.thickness.end = 0.0f; // Fade to invisibility
+							spark.number_of_cubes = 10;
+						}
+						return;
+					}
+
+					// --- Recursive Step: Create the pinwheel for the current generation ---
+					for (int i = 0; i < branches_per_node; ++i)
+					{
+						float current_angle = base_angle + (float)i / branches_per_node * TAU;
+
+						// Calculate the end point of this pinwheel "blade"
+						Vec3 direction = { cos(current_angle), sin(current_angle), 0 }; // We'll keep it 2D for clarity, but rotate it
+
+						// Give the pinwheel a 3D orientation by rotating its direction vector
+						float tilt_angle_x = PI / 4.0f * sin(base_angle);
+						float tilt_angle_y = PI / 4.0f * cos(base_angle);
+						direction = { direction.x, direction.y * cos(tilt_angle_x) - direction.z * sin(tilt_angle_x), direction.y * sin(tilt_angle_x) + direction.z * cos(tilt_angle_x) };
+						direction = { direction.x * cos(tilt_angle_y) + direction.z * sin(tilt_angle_y), direction.y, -direction.x * sin(tilt_angle_y) + direction.z * cos(tilt_angle_y) };
+
+						Vec3 end_point = vec_add(origin, vec_scale(direction, radius));
+
+						// Create the line for this "blade"
+						Line& blade = add_line();
+
+						// ANIMATION: Each blade starts collapsed at its origin and explodes outwards.
+						blade.x0.start = origin.x; blade.y0.start = origin.y; blade.z0.start = origin.z;
+						blade.x1.start = origin.x; blade.y1.start = origin.y; blade.z1.start = origin.z;
+
+						// END State: The blade has reached its full length and has spun.
+						float final_angle = current_angle + rotation_speed / (depth + 1); // Inner layers spin slower
+						Vec3 rotated_direction = { cos(final_angle), sin(final_angle), 0 };
+						rotated_direction = { rotated_direction.x, rotated_direction.y * cos(tilt_angle_x) - rotated_direction.z * sin(tilt_angle_x), rotated_direction.y * sin(tilt_angle_x) + rotated_direction.z * cos(tilt_angle_x) };
+						rotated_direction = { rotated_direction.x * cos(tilt_angle_y) + rotated_direction.z * sin(tilt_angle_y), rotated_direction.y, -rotated_direction.x * sin(tilt_angle_y) + rotated_direction.z * cos(tilt_angle_y) };
+						Vec3 end_point_rotated = vec_add(origin, vec_scale(rotated_direction, radius));
+
+						blade.x0.end = origin.x; blade.y0.end = origin.y; blade.z0.end = origin.z;
+						blade.x1.end = end_point_rotated.x; blade.y1.end = end_point_rotated.y; blade.z1.end = end_point_rotated.z;
+
+						// Styling: Color evolves with each generation, thickness tapers.
+						float hue = base_angle / TAU + (float)i / branches_per_node + depth * 0.1f;
+						blade.rgb_t0 = hue_color(fmod(hue, 1.0f));
+						blade.rgb_t1 = hue_color(fmod(hue + 0.05f, 1.0f));
+						blade.thickness.start = 0.015f * pow(shrink_factor, depth - 1);
+						blade.thickness.end = blade.thickness.start * 0.2f; // Taper to a fine point
+						blade.number_of_cubes = 25;
+
+						// The magic: Make the recursive call for the next generation.
+						// The new burst will spawn from the tip of this blade.
+						spawn_burst(end_point_rotated, radius * shrink_factor, final_angle, depth + 1);
+					}
+				};
+
+			// ====================================================================
+			// SECTION 3: KICK OFF THE CHAIN REACTION
+			// ====================================================================
+			spawn_burst({ 0, 0, 0 }, initial_radius, 0.0f, 0);
+		}
+
+
+		void init_pulsing_neural_mesh()
+		{
+			lines.clear();
+
+			const float TAU = 6.283185307179586f;
+
+			// Use a consistent time base (e.g., seconds since epoch)
+			double base_time = static_cast<double>(time(nullptr));
+			float t_now = static_cast<float>(fmod(base_time, 100.0));      // Current time
+			float t_next = t_now + 0.016f;                                 // ~1 frame ahead (60 FPS)
+
+			const int num_lines = 24;
+
+			for (int i = 0; i < num_lines; ++i) {
+				Line& line = add_line();
+
+				float phase = (float)i / num_lines * TAU;
+
+				// --- START: where the line is NOW ---
+				float radius_start = 0.2f + sin(t_now * 2.0f + phase) * 0.1f;
+				float angle_start = phase + t_now * 1.5f;
+				float height_start = sin(t_now * 3.0f + phase) * 0.3f;
+
+				line.x0.start = cos(angle_start) * radius_start;
+				line.y0.start = height_start;
+				line.z0.start = sin(angle_start) * radius_start;
+
+				// End point of the line (e.g., outer ring)
+				float outer_radius_start = 0.6f;
+				float outer_angle_start = phase + t_now * 0.8f;
+				line.x1.start = cos(outer_angle_start) * outer_radius_start;
+				line.y1.start = height_start * 0.5f;
+				line.z1.start = sin(outer_angle_start) * outer_radius_start;
+
+				// --- END: where the line will be NEXT FRAME ---
+				float radius_end = 0.2f + sin(t_next * 2.0f + phase) * 0.1f;
+				float angle_end = phase + t_next * 1.5f;
+				float height_end = sin(t_next * 3.0f + phase) * 0.3f;
+
+				line.x0.end = cos(angle_end) * radius_end;
+				line.y0.end = height_end;
+				line.z0.end = sin(angle_end) * radius_end;
+
+				float outer_radius_end = 0.6f;
+				float outer_angle_end = phase + t_next * 0.8f;
+				line.x1.end = cos(outer_angle_end) * outer_radius_end;
+				line.y1.end = height_end * 0.5f;
+				line.z1.end = sin(outer_angle_end) * outer_radius_end;
+
+				// --- Color & thickness (also animated) ---
+				float pulse = (sin(t_now * 4.0f + phase) + 1.0f) * 0.5f;
+				Vec3 color = {
+					0.2f + pulse * 0.8f,
+					0.4f + pulse * 0.4f,
+					0.9f
+				};
+
+				line.rgb_t0.x = color.x; line.rgb_t0.y = color.y; line.rgb_t0.z = color.z;
+				line.rgb_t1.x = color.x * 0.8f; line.rgb_t1.y = color.y * 0.8f; line.rgb_t1.z = color.z * 1.2f;
+
+				line.thickness.start = 0.002f + pulse * 0.006f;
+				line.thickness.end = line.thickness.start * 1.1f;
+
+				line.number_of_cubes = 10;
+			}
+		}
+
+
+
+
+
+
+
+
+
 
 
 
@@ -8200,19 +8756,18 @@ namespace Universe_
 				// lines.init_cosmic_carousel();
 				// lines.init_neural_aurora();
 				// lines.init_fractal_flow();
-				
-				lines.init_cube_sphere_morph();
-
-				
-
+				// lines.init_cube_sphere_morph();
+				// lines.init_fractal_pinwheel_supernova();
 				
 
-
-
-
-
+				
+				// nah lines.init_fractal_storm();
 
 				
+
+
+
+				lines.init_pulsing_neural_mesh();
 				
 
 				
