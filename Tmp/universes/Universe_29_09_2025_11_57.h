@@ -5986,12 +5986,441 @@ namespace Universe_
 
 
 
+		void init_voxel_universe()
+		{
+			const float M_PI = 3.14159265359f;
+			static float time_base = 0.0f;
+
+			// World parameters
+			int chunk_size = 8;
+			int render_distance = 3; // chunks in each direction
+			float voxel_size = 0.08f;
+			float world_center_x = 0.0f;
+			float world_center_z = 0.0f;
+
+			// Terrain generation parameters
+			float terrain_frequency = 0.5f;
+			float terrain_amplitude = 0.3f;
+			float cave_frequency = 2.0f;
+
+			// Advanced noise function using multiple octaves
+			auto voxel_noise = [&](float x, float y, float z) -> float {
+				// Multi-octave Perlin-like noise
+				float value = 0.0f;
+				float amplitude = 1.0f;
+				float frequency = terrain_frequency;
+				float max_value = 0.0f;
+
+				for (int octave = 0; octave < 4; octave++) {
+					// 3D noise using sine waves (simplified Perlin)
+					float noise_val =
+						sin(x * frequency + time_base * 0.1f) *
+						cos(z * frequency * 1.3f + time_base * 0.07f) *
+						sin(y * frequency * 0.7f + time_base * 0.05f);
+
+					value += noise_val * amplitude;
+					max_value += amplitude;
+					amplitude *= 0.5f;
+					frequency *= 2.0f;
+				}
+
+				return value / max_value;
+				};
+
+			// Biome determination
+			auto get_biome = [&](float x, float z) -> int {
+				float temp = sin(x * 0.2f) * cos(z * 0.2f);
+				float humidity = sin(x * 0.15f + 2.0f) * cos(z * 0.15f + 1.0f);
+
+				if (temp > 0.3f && humidity > 0.2f) return 0; // Forest
+				if (temp < -0.3f) return 1; // Snow
+				if (humidity < -0.3f) return 2; // Desert
+				return 3; // Plains
+				};
+
+			// Get voxel color based on position and biome
+			auto get_voxel_color = [&](float x, float y, float z, int biome) -> std::tuple<float, float, float> {
+				float height = y / terrain_amplitude;
+
+				switch (biome) {
+				case 0: // Forest
+					if (height > 0.8f) {
+						return { 0.1f, 0.6f, 0.1f }; // Grass
+					}
+					else if (height > 0.3f) {
+						return { 0.3f, 0.2f, 0.1f }; // Dirt
+					}
+					else {
+						return { 0.2f, 0.2f, 0.2f }; // Stone
+					}
+				case 1: // Snow
+					if (height > 0.7f) {
+						return { 0.9f, 0.9f, 1.0f }; // Snow
+					}
+					else if (height > 0.4f) {
+						return { 0.6f, 0.6f, 0.7f }; // Stone
+					}
+					else {
+						return { 0.3f, 0.3f, 0.4f }; // Deep stone
+					}
+				case 2: // Desert
+					if (height > 0.6f) {
+						return { 0.9f, 0.8f, 0.4f }; // Sand
+					}
+					else {
+						return { 0.7f, 0.6f, 0.3f }; // Sandstone
+					}
+				default: // Plains
+					if (height > 0.7f) {
+						return { 0.4f, 0.7f, 0.3f }; // Grass
+					}
+					else if (height > 0.4f) {
+						return { 0.5f, 0.4f, 0.2f }; // Dirt
+					}
+					else {
+						return { 0.3f, 0.3f, 0.3f }; // Stone
+					}
+				}
+				};
+
+			// Generate a single voxel cube with optimized line drawing
+			auto create_voxel_cube = [&](float center_x, float center_y, float center_z,
+				float r, float g, float b, bool animated = false) {
+					float half_size = voxel_size * 0.5f;
+
+					// Define the 8 corners of the voxel
+					std::vector<std::tuple<float, float, float>> corners = {
+						{center_x - half_size, center_y - half_size, center_z - half_size},
+						{center_x + half_size, center_y - half_size, center_z - half_size},
+						{center_x + half_size, center_y - half_size, center_z + half_size},
+						{center_x - half_size, center_y - half_size, center_z + half_size},
+						{center_x - half_size, center_y + half_size, center_z - half_size},
+						{center_x + half_size, center_y + half_size, center_z - half_size},
+						{center_x + half_size, center_y + half_size, center_z + half_size},
+						{center_x - half_size, center_y + half_size, center_z + half_size}
+					};
+
+					// Define the 12 edges of the cube
+					std::vector<std::pair<int, int>> edges = {
+						{0,1}, {1,2}, {2,3}, {3,0}, // Bottom face
+						{4,5}, {5,6}, {6,7}, {7,4}, // Top face  
+						{0,4}, {1,5}, {2,6}, {3,7}  // Vertical edges
+					};
+
+					for (const auto& [start_idx, end_idx] : edges) {
+						Line& edge = add_line();
+
+						auto [sx, sy, sz] = corners[start_idx];
+						auto [ex, ey, ez] = corners[end_idx];
+
+						edge.x0.start = sx;
+						edge.y0.start = sy;
+						edge.z0.start = sz;
+						edge.x1.start = ex;
+						edge.y1.start = ey;
+						edge.z1.start = ez;
+
+						edge.rgb_t0.x = r;
+						edge.rgb_t0.y = g;
+						edge.rgb_t0.z = b;
+
+						edge.thickness.start = 0.004f;
+						edge.number_of_cubes = 4;
+						edge.copy_start_to_end();
+
+						if (animated) {
+							// Add subtle animation to certain voxels
+							float anim_offset = sin(time_base * 2.0f + center_x * 3.0f + center_z * 2.0f) * 0.01f;
+							edge.x1.end = ex + anim_offset;
+							edge.y1.end = ey + anim_offset * 0.5f;
+						}
+					}
+				};
+
+			// Generate terrain chunks around center
+			for (int chunk_x = -render_distance; chunk_x <= render_distance; chunk_x++) {
+				for (int chunk_z = -render_distance; chunk_z <= render_distance; chunk_z++) {
+					float chunk_world_x = world_center_x + chunk_x * chunk_size * voxel_size;
+					float chunk_world_z = world_center_z + chunk_z * chunk_size * voxel_size;
+
+					int biome = get_biome(chunk_world_x, chunk_world_z);
+
+					for (int local_x = 0; local_x < chunk_size; local_x++) {
+						for (int local_z = 0; local_z < chunk_size; local_z++) {
+							float world_x = chunk_world_x + local_x * voxel_size;
+							float world_z = chunk_world_z + local_z * voxel_size;
+
+							// Generate terrain height
+							float height_noise = voxel_noise(world_x, 0.0f, world_z);
+							int terrain_height = int((height_noise * 0.5f + 0.5f) * chunk_size);
+
+							// Generate caves and overhangs
+							for (int local_y = 0; local_y < chunk_size; local_y++) {
+								float world_y = local_y * voxel_size;
+
+								float density = voxel_noise(world_x, world_y, world_z);
+								float cave_density = sin(world_x * cave_frequency) * cos(world_z * cave_frequency) *
+									sin(world_y * cave_frequency * 0.5f);
+
+								bool should_create_voxel = false;
+
+								// Solid terrain
+								if (local_y <= terrain_height && density > -0.1f) {
+									should_create_voxel = true;
+								}
+								// Cave systems
+								else if (cave_density > 0.3f && density > -0.2f) {
+									should_create_voxel = true;
+								}
+								// Floating islands
+								else if (local_y > terrain_height + 2 && density > 0.4f &&
+									sin(world_x * 0.8f) * cos(world_z * 0.8f) > 0.5f) {
+									should_create_voxel = true;
+								}
+
+								if (should_create_voxel) {
+									auto [r, g, b] = get_voxel_color(world_x, world_y, world_z, biome);
+
+									// Special voxel types based on conditions
+									bool is_animated = false;
+
+									// Glowing ore veins
+									if (density > 0.6f && local_y < terrain_height - 2) {
+										r = 0.8f + 0.2f * sin(time_base * 3.0f + world_x);
+										g = 0.6f + 0.4f * cos(time_base * 2.0f + world_z);
+										b = 0.2f;
+										is_animated = true;
+									}
+
+									// Water/lava pools
+									else if (local_y == terrain_height + 1 && density < -0.3f) {
+										if (biome == 1) { // Snow biome - water
+											r = 0.2f;
+											g = 0.4f;
+											b = 0.8f + 0.2f * sin(time_base * 2.0f);
+											is_animated = true;
+										}
+										else { // Other biomes - lava
+											r = 0.9f + 0.1f * sin(time_base * 4.0f);
+											g = 0.3f + 0.2f * cos(time_base * 3.0f);
+											b = 0.1f;
+											is_animated = true;
+										}
+									}
+
+									create_voxel_cube(world_x, world_y, world_z, r, g, b, is_animated);
+								}
+							}
+						}
+					}
+				}
+			}
+
+			// Generate dynamic entities
+			auto generate_entities = [&]() {
+				// Floating crystals
+				for (int crystal = 0; crystal < 8; crystal++) {
+					float angle = crystal * (2.0f * M_PI / 8) + time_base * 0.5f;
+					float radius = 0.8f + 0.2f * sin(crystal * 1.7f);
+					float height = 0.5f + 0.3f * cos(time_base * 0.7f + crystal);
+
+					float crystal_x = radius * cos(angle);
+					float crystal_z = radius * sin(angle);
+					float crystal_y = height;
+
+					// Create crystal cluster
+					for (int i = -1; i <= 1; i++) {
+						for (int j = -1; j <= 1; j++) {
+							for (int k = -1; k <= 1; k++) {
+								if (abs(i) + abs(j) + abs(k) <= 1) { // Only create adjacent voxels
+									float voxel_x = crystal_x + i * voxel_size;
+									float voxel_y = crystal_y + j * voxel_size;
+									float voxel_z = crystal_z + k * voxel_size;
+
+									create_voxel_cube(voxel_x, voxel_y, voxel_z,
+										0.7f + 0.3f * sin(time_base * 2.0f + crystal),
+										0.3f + 0.3f * cos(time_base * 1.5f + crystal),
+										0.9f + 0.1f * sin(time_base * 2.5f + crystal),
+										true);
+								}
+							}
+						}
+					}
+				}
+
+				// Particle effects
+				for (int particle = 0; particle < 20; particle++) {
+					float life = fmod(time_base * 0.3f + particle * 0.2f, 1.0f);
+					if (life < 0.8f) {
+						float angle = particle * (2.0f * M_PI / 20) + time_base * 2.0f;
+						float radius = 0.3f + life * 0.5f;
+						float height = -0.2f + life * 1.0f;
+
+						float px = radius * cos(angle);
+						float pz = radius * sin(angle);
+						float py = height;
+
+						create_voxel_cube(px, py, pz,
+							0.9f, 0.8f, 0.1f,
+							true);
+					}
+				}
+				};
+
+			// Generate skybox with distant voxel clouds
+			auto generate_skybox = [&]() {
+				for (int cloud = 0; cloud < 5; cloud++) {
+					float angle = cloud * (2.0f * M_PI / 5) + time_base * 0.1f;
+					float radius = 1.5f + 0.2f * sin(cloud * 2.0f);
+					float height = 0.8f + 0.1f * cos(cloud * 1.3f);
+
+					float cloud_x = radius * cos(angle);
+					float cloud_z = radius * sin(angle);
+					float cloud_y = height;
+
+					// Create cloud formation
+					for (int i = -2; i <= 2; i++) {
+						for (int j = -1; j <= 1; j++) {
+							for (int k = -2; k <= 2; k++) {
+								if (Random::generate_random_float_0_to_1() > 0.6f) {
+									float voxel_x = cloud_x + i * voxel_size * 0.7f;
+									float voxel_y = cloud_y + j * voxel_size * 0.7f;
+									float voxel_z = cloud_z + k * voxel_size * 0.7f;
+
+									create_voxel_cube(voxel_x, voxel_y, voxel_z,
+										0.9f, 0.9f, 0.95f,
+										true);
+								}
+							}
+						}
+					}
+				}
+				};
+
+			// ===== MAIN EXECUTION =====
+
+			generate_entities();
+			generate_skybox();
+
+			// Increment time for animation
+			time_base += 0.016f;
+		}
 
 
+		void init_rainy_window_final_v2()
+		{
+			lines.clear();
+
+			// --- SECTION 1: Self-Contained Helpers & Constants ---
+			auto vec_scale = [](const Vec3& v, float s) -> Vec3 { return { v.x * s, v.y * s, v.z * s }; };
+
+			// --- SECTION 2: The Artistic Palette & Scene Configuration ---
+			// Every value here is a brushstroke. Tweak them to change the painting.
+			const int num_streaks = 250;
+			const float window_width = 2.0f;
+			const float window_height = 2.2f;
+
+			const Vec3 rain_color = { 0.6f, 0.7f, 0.8f };        // Cool white with a hint of blue
+			const Vec3 city_glow_warm = { 1.0f, 0.7f, 0.3f };       // Distant traffic and office lights
+			const Vec3 city_glow_cool = { 0.4f, 0.6f, 1.0f };       // Neon signs, colder lights
+			const Vec3 city_ambient = { 0.1f, 0.15f, 0.25f };     // The dark, wet silhouette of the city
+			const Vec3 frame_color = { 0.02f, 0.02f, 0.02f };       // A dark frame to draw the eye inward
+			const Vec3 interior_reflection_color = { 0.5f, 0.3f, 0.15f }; // A very faint, warm shape of a lamp inside
+
+			// --- SECTION 3: The Distant City - An Impressionistic Backdrop ---
+			// These lines are static and far behind the window (positive Z).
+			// Their thickness and placement create a "bokeh" or out-of-focus effect.
+			for (int i = 0; i < 50; ++i) {
+				float x = Random::generate_random_float_minus_one_to_plus_one() * window_width * 0.8f;
+				float y = Random::generate_random_float_minus_one_to_plus_one() * window_height * 0.4f;
+				float z = 1.0f + Random::generate_random_float_0_to_1() * 2.0f; // Far distance
+				float brightness = 0.2f + Random::generate_random_float_0_to_1() * 0.8f;
+
+				Line& bokeh_light = add_line();
+				bokeh_light.x0.start = x; bokeh_light.y0.start = y; bokeh_light.z0.start = z;
+				bokeh_light.x1.start = x; bokeh_light.y1.start = y; bokeh_light.z1.start = z; // It's a point
+
+				// Mix of warm and cool city lights
+				Vec3 color = (Random::generate_random_float_0_to_1() > 0.6f) ? city_glow_warm : city_glow_cool;
+				bokeh_light.rgb_t0 = vec_scale(color, brightness);
+				bokeh_light.thickness.start = 0.01f + Random::generate_random_float_0_to_1() * 0.04f;
+				bokeh_light.number_of_cubes = 2;
+				bokeh_light.copy_start_to_end();
+				// Animate a gentle flicker or shimmer
+				bokeh_light.thickness.end = bokeh_light.thickness.start * (0.5f + Random::generate_random_float_0_to_1());
+				bokeh_light.rgb_t1 = vec_scale(bokeh_light.rgb_t0, 0.7f);
+			}
+
+			// --- SECTION 4: The Rain on the Glass - The Heart of the Scene ---
+			// **THIS IS THE CRITICAL BUG FIX.** Instead of stretching a line, we now animate a
+			// fixed-length segment that translates downwards, which correctly simulates a falling streak.
+			for (int i = 0; i < num_streaks; ++i) {
+				Line& streak = add_line();
+
+				// Each streak has its own unique life
+				float x_pos = Random::generate_random_float_minus_one_to_plus_one() * (window_width / 2.0f);
+				float segment_length = 0.01f + Random::generate_random_float_0_to_1() * 0.2f;
+				float start_y_pos = (window_height / 2.0f) + segment_length; // Start just out of view
+				float end_y_pos = (-window_height / 2.0f) * (0.5f + Random::generate_random_float_0_to_1() * 0.5f); // End somewhere on the lower half
+				float travel_distance = start_y_pos - end_y_pos;
+
+				// The animation's speed and timing is varied by giving streaks different start/end points in their journey
+				float anim_start_progress = pow(Random::generate_random_float_0_to_1(), 2.0f); // Bias towards starting early
+				float anim_end_progress = anim_start_progress + 0.1f + Random::generate_random_float_0_to_1() * (1.0f - anim_start_progress);
+				if (anim_end_progress > 1.0f) anim_end_progress = 1.0f;
+
+				// START State: The streak segment at its initial position in the animation
+				streak.x0.start = x_pos;
+				streak.y0.start = start_y_pos - travel_distance * anim_start_progress;
+				streak.z0.start = 0;
+				streak.x1.start = x_pos;
+				streak.y1.start = streak.y0.start - segment_length;
+				streak.z1.start = 0;
+
+				// END State: The streak segment at its final position
+				streak.x0.end = x_pos;
+				streak.y0.end = start_y_pos - travel_distance * anim_end_progress;
+				streak.z0.end = 0;
+				streak.x1.end = x_pos;
+				streak.y1.end = streak.y0.end - segment_length;
+				streak.z1.end = 0;
+
+				// Styling: Streaks are bright but fade slightly as they fall
+				float initial_brightness = 0.5f + Random::generate_random_float_0_to_1() * 0.5f;
+				streak.rgb_t0 = vec_scale(rain_color, initial_brightness);
+				streak.rgb_t1 = vec_scale(rain_color, initial_brightness * 0.5f); // Fade out
+				streak.thickness.start = 0.001f + Random::generate_random_float_0_to_1() * 0.003f;
+				streak.thickness.end = streak.thickness.start * 0.5f;
+				streak.number_of_cubes = 15;
+			}
+
+			// --- SECTION 5: The Window Frame and Interior Reflections - Grounding the Viewer ---
+			// These elements tell us we are *inside*, looking out.
+			// The frame is static and dark.
+			{ Line& l = add_line(); l.x0.start = -window_width / 2; l.y0.start = -window_height / 2; l.z0.start = 0; l.x1.start = window_width / 2; l.y1.start = -window_height / 2; l.z1.start = 0; l.rgb_t0 = frame_color; l.thickness.start = 0.04f; l.number_of_cubes = 50; l.copy_start_to_end(); }
+			{ Line& l = add_line(); l.x0.start = -window_width / 2; l.y0.start = window_height / 2; l.z0.start = 0; l.x1.start = window_width / 2; l.y1.start = window_height / 2; l.z1.start = 0; l.rgb_t0 = frame_color; l.thickness.start = 0.04f; l.number_of_cubes = 50; l.copy_start_to_end(); }
+			{ Line& l = add_line(); l.x0.start = -window_width / 2; l.y0.start = -window_height / 2; l.z0.start = 0; l.x1.start = -window_width / 2; l.y1.start = window_height / 2; l.z1.start = 0; l.rgb_t0 = frame_color; l.thickness.start = 0.04f; l.number_of_cubes = 50; l.copy_start_to_end(); }
+			{ Line& l = add_line(); l.x0.start = window_width / 2; l.y0.start = -window_height / 2; l.z0.start = 0; l.x1.start = window_width / 2; l.y1.start = window_height / 2; l.z1.start = 0; l.rgb_t0 = frame_color; l.thickness.start = 0.04f; l.number_of_cubes = 50; l.copy_start_to_end(); }
+
+			// A crucial detail: a very faint, warm, curved line on the glass.
+			// This is the reflection of a lamp inside the room. It adds immense depth and mood.
+			for (int i = 0; i < 50; ++i) {
+				float progress = (float)i / 49.0f;
+				float x = -0.5f + progress * 1.0f;
+				float y = -0.3f - x * x * 0.5f; // A gentle downward curve
+
+				Line& reflection_segment = add_line();
+				reflection_segment.x0.start = x; reflection_segment.y0.start = y; reflection_segment.z0.start = -0.01f;
+				reflection_segment.x1.start = x; reflection_segment.y1.start = y; reflection_segment.z1.start = -0.01f;
+				reflection_segment.rgb_t0 = interior_reflection_color;
+				reflection_segment.thickness.start = 0.02f;
+				reflection_segment.number_of_cubes = 1;
+				reflection_segment.copy_start_to_end();
+			}
+		}
 
 
-
-
+		
 
 
 
@@ -6187,12 +6616,13 @@ namespace Universe_
 				// lines.init_2012_lowpoly_city_world();
 				// lines.init_2021_polygon_dance();
 				// lines.init_quantum_fluid_pool();
+				// lines.init_2030_airplane_wirefly();
+				// lines.init_rainy_window_final_v2();
 
 
+				
 
-
-				lines.init_2030_airplane_wirefly();
-
+				// lines.init_voxel_universe();
 				
 				
 
