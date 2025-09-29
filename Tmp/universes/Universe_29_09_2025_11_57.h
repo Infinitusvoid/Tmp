@@ -7872,7 +7872,133 @@ namespace Universe_
 			time_base += 0.016f;
 		}
 		
+		// Add this new, self-contained function inside your 'struct Lines'
 
+		void init_sphere_cube_metamorphosis()
+		{
+			lines.clear();
+
+			// ====================================================================
+			// SECTION 1: ARTISTIC PARAMETERS & CONFIGURATION ("The Knobs")
+			// ====================================================================
+
+			const int   grid_density = 40;            // How many lines make up the wireframe. Higher = smoother.
+			const float start_shape_twist = 0.0f;     // Initial twist of the sphere (in radians)
+			const float end_shape_twist = 1.5f * 3.14159265359f;  // Final twist of the cube (in radians)
+
+			// A vivid color shift from a cool, organic sphere to a hot, geometric cube.
+			const Vec3 start_color_pole = { 0.8f, 0.9f, 1.0f }; // Light blue at the poles
+			const Vec3 start_color_equator = { 0.2f, 0.6f, 1.0f }; // Deep blue at the equator
+			const Vec3 end_color_pole = { 1.0f, 0.9f, 0.5f };   // Bright yellow at the poles
+			const Vec3 end_color_equator = { 1.0f, 0.4f, 0.2f };   // Fiery orange at the equator
+
+			const float thickness_start = 0.005f;
+			const float thickness_end = 0.006f;
+			const float final_scale = 1.0f;
+
+			// --- General Constants ---
+			const float TAU = 6.28318530718f;
+			const float PI = 3.14159265359f; // <<<<<<<<<<<<< FIXED: PI constant is now defined.
+
+			// ====================================================================
+			// SECTION 2: THE CORE TRANSFORMATION LOGIC
+			// ====================================================================
+
+			// Helper function to project a point on a sphere to a point on a cube
+			auto sphere_to_cube_projection = [](Vec3 p) -> Vec3 {
+				float abs_x = std::abs(p.x);
+				float abs_y = std::abs(p.y);
+				float abs_z = std::abs(p.z);
+				float max_coord = std::max({ abs_x, abs_y, abs_z });
+				if (max_coord == 0.0f) return { 0,0,0 };
+				return vec_scale(p, 1.0f / max_coord);
+				};
+
+			// Helper to rotate a point around the Y-axis
+			auto rotate_y = [](Vec3 p, float angle) -> Vec3 {
+				float s = sin(angle);
+				float c = cos(angle);
+				return { p.x * c - p.z * s, p.y, p.x * s + p.z * c };
+				};
+
+			// ====================================================================
+			// SECTION 3: MESH GENERATION
+			// We create a grid on a sphere, then map it to a cube for the end state.
+			// ====================================================================
+
+			for (int i = 0; i < grid_density; ++i) {
+				for (int j = 0; j < grid_density; ++j) {
+					float u1 = (float)j / grid_density * TAU;
+					float u2 = (float)(j + 1) / grid_density * TAU;
+					float v1 = (float)i / grid_density * PI;
+					float v2 = (float)(i + 1) / grid_density * PI;
+
+					// --- Define the 4 corners of a grid cell on a unit sphere ---
+					auto get_sphere_point = [&](float u, float v) -> Vec3 {
+						return { sin(v) * cos(u), cos(v), sin(v) * sin(u) };
+						};
+					Vec3 p1_sphere_base = get_sphere_point(u1, v1);
+					Vec3 p2_sphere_base = get_sphere_point(u2, v1);
+					Vec3 p3_sphere_base = get_sphere_point(u1, v2);
+
+					// --- Apply the projection to find corresponding cube points ---
+					Vec3 p1_cube_base = sphere_to_cube_projection(p1_sphere_base);
+					Vec3 p2_cube_base = sphere_to_cube_projection(p2_sphere_base);
+					Vec3 p3_cube_base = sphere_to_cube_projection(p3_sphere_base);
+
+					// --- Apply final animation transforms (rotation and scale) ---
+					Vec3 p1_sphere_final = vec_scale(rotate_y(p1_sphere_base, start_shape_twist), final_scale);
+					Vec3 p2_sphere_final = vec_scale(rotate_y(p2_sphere_base, start_shape_twist), final_scale);
+					Vec3 p3_sphere_final = vec_scale(rotate_y(p3_sphere_base, start_shape_twist), final_scale);
+
+					Vec3 p1_cube_final = vec_scale(rotate_y(p1_cube_base, end_shape_twist), final_scale);
+					Vec3 p2_cube_final = vec_scale(rotate_y(p2_cube_base, end_shape_twist), final_scale);
+					Vec3 p3_cube_final = vec_scale(rotate_y(p3_cube_base, end_shape_twist), final_scale);
+
+					// --- Helper to create and style a single morphing line ---
+					auto add_morphing_line = [&](Vec3 start_p0, Vec3 start_p1, Vec3 end_p0, Vec3 end_p1) {
+						Line& line = add_line();
+
+						// ANIMATION: Start collapsed at the origin for a "big bang" reveal
+						line.x0.start = 0; line.y0.start = 0; line.z0.start = 0;
+						line.x1.start = 0; line.y1.start = 0; line.z1.start = 0;
+
+						// END State: The fully morphed, twisted shape
+						// We use the start_p0 and start_p1 for the START state of the animation,
+						// but these are not the initial values. The initial values are (0,0,0).
+						// The correct END state is the final cube shape.
+						line.x0.end = end_p0.x; line.y0.end = end_p0.y; line.z0.end = end_p0.z;
+						line.x1.end = end_p1.x; line.y1.end = end_p1.y; line.z1.end = end_p1.z;
+
+						// The animation will proceed from (0,0,0) to the final cube shape.
+						// To show the sphere-to-cube morph, we'd need to modify how the engine interprets start/end.
+						// For now, let's make the start state the sphere and end state the cube.
+						line.x0.start = start_p0.x; line.y0.start = start_p0.y; line.z0.start = start_p0.z;
+						line.x1.start = start_p1.x; line.y1.start = start_p1.y; line.z1.start = start_p1.z;
+
+						// Styling: Colors interpolate based on latitude
+						float color_mix = std::abs(start_p0.y); // Use Y-coord (cos(v)) for latitude mix factor
+						line.rgb_t0.x = (1 - color_mix) * start_color_equator.x + color_mix * start_color_pole.x;
+						line.rgb_t0.y = (1 - color_mix) * start_color_equator.y + color_mix * start_color_pole.y;
+						line.rgb_t0.z = (1 - color_mix) * start_color_equator.z + color_mix * start_color_pole.z;
+
+						line.rgb_t1.x = (1 - color_mix) * end_color_equator.x + color_mix * end_color_pole.x;
+						line.rgb_t1.y = (1 - color_mix) * end_color_equator.y + color_mix * end_color_pole.y;
+						line.rgb_t1.z = (1 - color_mix) * end_color_equator.z + color_mix * end_color_pole.z;
+
+						line.thickness.start = thickness_start;
+						line.thickness.end = thickness_end;
+						line.number_of_cubes = 15;
+						};
+
+					// Create the two lines for this grid cell (one along longitude, one along latitude)
+					add_morphing_line(p1_sphere_final, p2_sphere_final, p1_cube_final, p2_cube_final);
+					if (i < grid_density - 1) {
+						add_morphing_line(p1_sphere_final, p3_sphere_final, p1_cube_final, p3_cube_final);
+					}
+				}
+			}
+		}
 
 
 
@@ -8074,15 +8200,8 @@ namespace Universe_
 				// lines.init_cosmic_carousel();
 				// lines.init_neural_aurora();
 				// lines.init_fractal_flow();
-				// lines.init_cube_sphere_morph();
-
-
-
 				
-
-				
-
-				
+				lines.init_cube_sphere_morph();
 
 				
 
