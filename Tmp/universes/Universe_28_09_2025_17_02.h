@@ -47,7 +47,7 @@ namespace Universe_
 		XYZ end_color = { 0.0, 0.0, 0.0 };
 
 		Float_start_end cube_size = { 0.0001, 0001 };
-		Float_start_end radious = {0.0, 0.0};
+		Float_start_end radious = { 0.0, 0.0 };
 		Float_start_end x_rnd_min = { 0.0, 0.0 };
 		Float_start_end x_rnd_max = { 0.0, 0.0 };
 		Float_start_end y_rnd_min = { 0.0, 0.0 };
@@ -61,11 +61,11 @@ namespace Universe_
 	struct Spheres
 	{
 		std::vector<Sphere> spheres;
-		
+
 
 		void init_0(int number)
 		{
-			for(int i = 0; i < number; i++)
+			for (int i = 0; i < number; i++)
 			{
 				Sphere sphere;
 
@@ -76,7 +76,7 @@ namespace Universe_
 				sphere.end_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
 
 				sphere.radious = { 0.02f + Random::generate_random_float_0_to_1() * 0.02f, 0.02f + Random::generate_random_float_0_to_1() * 0.02f };
-				
+
 				sphere.cube_size = { 0.001, 0.001 };
 
 				sphere.x_rnd_min = { 0.0, 0.0 };
@@ -86,17 +86,17 @@ namespace Universe_
 				sphere.y_rnd_max = { 1.0, 1.0 };
 
 				sphere.thickness = { 0.0, 0.0 };
-				
+
 				sphere.jitter.start = 1.0f;
 				sphere.jitter.end = 1.0f;
-				
+
 				spheres.push_back(std::move(sphere));
 			}
 		}
 
-		
 
-		
+
+
 		void init_1(int number)
 		{
 			for (int i = 0; i < number; i++)
@@ -105,10 +105,10 @@ namespace Universe_
 
 
 				float factor_i = (1.0f / float(number)) * i;
-				
 
-				sphere.start_position = { factor_i * 10.0f, 0.0f, Random::generate_random_float_minus_one_to_plus_one() * 2.0f};
-				sphere.end_position = 
+
+				sphere.start_position = { factor_i * 10.0f, 0.0f, Random::generate_random_float_minus_one_to_plus_one() * 2.0f };
+				sphere.end_position =
 				{
 					sphere.start_position.x,
 					sphere.start_position.y + 2.0f,
@@ -137,12 +137,12 @@ namespace Universe_
 			}
 		}
 
-		
 
 
 
 
-		
+
+
 
 
 		void draw(Scene_::Scene& scene, int number_of_cube_per_sphere)
@@ -153,10 +153,10 @@ namespace Universe_
 
 
 				// Instance 0
-				
 
 
-				for(Sphere& sphere : spheres)
+
+				for (Sphere& sphere : spheres)
 				{
 					auto id = sh.create_instance();
 					auto I = sh.instance(id);
@@ -250,13 +250,13 @@ namespace Universe_
 				}
 
 
-			});
+				});
 		}
 	};
 
 	struct Line
 	{
-		Float_start_end x0 = {0.0f, 0.0f}; // u0
+		Float_start_end x0 = { 0.0f, 0.0f }; // u0
 		Float_start_end y0 = { 0.0f, 0.0f }; // u1
 		Float_start_end z0 = { 0.0f, 0.0f }; // u2
 
@@ -264,10 +264,54 @@ namespace Universe_
 		Float_start_end y1 = { 0.0f, 0.0f }; // u4
 		Float_start_end z1 = { 0.0f, 0.0f }; // u5
 
-		XYZ rgb_t0 = {0.0f, 0.0f, 0.0f}; // u6, u7, u8 
+		XYZ rgb_t0 = { 0.0f, 0.0f, 0.0f }; // u6, u7, u8 
 		XYZ rgb_t1 = { 0.0f, 0.0f, 0.0f };
 
 		Float_start_end thickness = { 0.0f, 0.0f }; // u9
+
+		int number_of_cubes = 100;
+
+		void send(Program::Shader::Instance& I)
+		{
+			I.set_u_start_end(0, x0.start, x0.end); // u0
+			I.set_u_start_end(1, y0.start, y0.end); // u1
+			I.set_u_start_end(2, z0.start, z0.end); // u2
+
+			I.set_u_start_end(3, x1.start, x1.end); // u3
+			I.set_u_start_end(4, y1.start, y1.end); // u4
+			I.set_u_start_end(5, z1.start, z1.end); // u5
+
+			I.set_u_start_end(6, rgb_t0.x, rgb_t1.x); // u6
+			I.set_u_start_end(7, rgb_t0.y, rgb_t1.y); // u7
+			I.set_u_start_end(8, rgb_t0.z, rgb_t1.z); // u8
+
+			I.set_u_start_end(9, thickness.start, thickness.end); // u9
+
+		}
+
+		void copy_start_to_end()
+		{
+			x0.end = x0.start;
+			y0.end = y0.start;
+			z0.end = z0.start;
+
+			x1.end = x1.start;
+			y1.end = y1.start;
+			z1.end = z1.start;
+
+			rgb_t1.x = rgb_t0.x;
+			rgb_t1.y = rgb_t0.y;
+			rgb_t1.z = rgb_t0.z;
+
+			thickness.end = thickness.start;
+		}
+	};
+
+	struct Transform
+	{
+		XYZ position;
+		XYZ euler;
+		XYZ scale;
 	};
 
 	struct Lines
@@ -276,7 +320,49 @@ namespace Universe_
 
 		void init()
 		{
-			add_line();
+			{
+				int number_of_lines = 100;
+				const float TAU = 6.2831853071795864769252867665590;
+				float step_size = (1.0 / float(number_of_lines)) * TAU;
+
+				for (int i = 0; i < number_of_lines; i++)
+				{
+					Line& line = add_line();
+
+
+					line.x0.start = 0.0f;
+					line.y0.start = 0.0f;
+					line.z0.start = 0.0f;
+
+					line.x1.start = 0.5f * sin(i * step_size);
+					line.y1.start = 0.0f;
+					line.z1.start = 0.5f * cos(i * step_size);
+
+					line.rgb_t0.x = 0.2 * Random::generate_random_float_0_to_1();
+					line.rgb_t0.y = 0.2 * Random::generate_random_float_0_to_1();
+					line.rgb_t0.z = 0.2 * Random::generate_random_float_0_to_1();
+
+					line.thickness.start = 0.01;
+					line.number_of_cubes = 100;
+
+					line.copy_start_to_end();
+
+					
+
+					line.x1.end = 0.5f * cos(i * step_size);
+					line.y1.end = 0.0f;
+					line.z1.end = 0.5f * sin(i * step_size);
+
+					// line.y1.end = 1.0;
+					// line.z1.end = 1.0;
+				}
+
+				
+
+				
+			}
+
+
 		}
 
 		void draw(Scene_::Scene& scene)
@@ -288,9 +374,16 @@ namespace Universe_
 				{
 					auto id = sh.create_instance();
 					auto I = sh.instance(id);
-					I.set_group_size(1000, 1000, 1);
-					I.set_group_size(1000, 1000, 1)
-						.set_drawcalls(1)
+
+					int grup_size_x = lines.at(i).number_of_cubes;
+					int grup_size_y = 1;
+					int grop_size_z = 1;
+					int drawcalls = 1;
+
+					assert(drawcalls == 1); // This shader works only if per each line we only use 1 drawcall
+
+					I.set_group_size(grup_size_x, grup_size_y, grop_size_z)
+						.set_drawcalls(drawcalls)
 						.set_position_start(0.0f, 0.0f, 0.0f)
 						.set_position_end(0.0f, 0.0f, 0.0f)
 						.set_euler_start(0.0f, 0.0f, 0.0f)
@@ -298,47 +391,8 @@ namespace Universe_
 						.set_scale_start(1.0f, 1.0f, 1.0f)
 						.set_scale_end(1.0f, 1.0f, 1.0f);
 
-					I.set_u_start_end(0, 0.0f, 0.0f);
-					I.set_u_start_end(1, 0.0f, 0.0f);
-					I.set_u_start_end(2, 0.0f, 0.0f);
-					I.set_u_start_end(3, 0.0f, 0.0f);
-					I.set_u_start_end(4, 0.0f, 0.0f);
-					I.set_u_start_end(5, 0.0f, 0.0f);
-					I.set_u_start_end(6, 0.0f, 0.0f);
-					I.set_u_start_end(7, 0.0f, 0.0f);
-					I.set_u_start_end(8, 0.0f, 0.0f);
-					I.set_u_start_end(9, 0.0f, 0.0f);
+					lines.at(i).send(I);
 				}
-
-				// Instance 0
-				/*{
-					auto id = sh.create_instance();
-					auto I = sh.instance(id);
-					I.set_group_size(1000, 1000, 1)
-						.set_drawcalls(1)
-						.set_position_start(0.0f, 0.0f, 0.0f)
-						.set_position_end(0.0f, 0.0f, 0.0f)
-						.set_euler_start(0.0f, 0.0f, 0.0f)
-						.set_euler_end(0.0f, 0.0f, 0.0f)
-						.set_scale_start(1.0f, 1.0f, 1.0f)
-						.set_scale_end(1.0f, 1.0f, 1.0f);
-
-
-					constexpr int kU = 10;
-					for (int u = 0; u < kU; ++u)
-					{
-						float v_start = 0.1f * static_cast<float>(u);
-						float v_end = 1.0f - 0.1f * static_cast<float>(u);
-
-						v_start = 0.0;
-						v_end = 0.0;
-
-						I.set_u_start_end(u, v_start, v_end);
-					}
-
-					I.set_u_start_end(0, 72.29710, 72.29710);
-				}*/
-
 
 				});
 		}
@@ -398,7 +452,7 @@ namespace Universe_
 
 	struct Clip
 	{
-		
+
 
 		void generate()
 		{
@@ -411,7 +465,7 @@ namespace Universe_
 			program.le.exposure = 1.0;
 			program.le.msaaSamples = 10;
 
-			program.capture.capture = false;
+			program.capture.capture = true;
 			program.capture.capture_png = false;
 			program.capture.capture_bmp = true;
 
@@ -419,14 +473,14 @@ namespace Universe_
 			program.render_display.number_of_frames = program.render_display.render_fps * clip_length_seconds;
 			program.render_display.render_time_start = 0.0;
 
-			// CAPTURED: { pos:[-0.253910,0.518504,0.281625], yaw:103.439995, pitch:-1.920018, fov:45.000000 }
-			// CAPTURED: { pos:[-0.253910,0.518504,0.281625], yaw:86.639862, pitch:9.599976, fov:45.000000 }
-			program.camera_start.x = -0.253910;
-			program.camera_start.y = 0.518504;
-			program.camera_start.z = 0.281625;
+			
+			// CAPTURED: { pos: [-0.986564, 1.019589, 2.007937] , yaw : 46.080070, pitch : -17.400019, fov : 45.000000 }
+			program.camera_start.x = -0.986564;
+			program.camera_start.y = 1.019589;
+			program.camera_start.z = 2.007937;
 
-			program.camera_start.yaw = 86.639862;
-			program.camera_start.pitch = 9.599976;
+			program.camera_start.yaw = 46.080070;
+			program.camera_start.pitch = -17.400019;
 			program.camera_start.fov = 45.0;
 
 
@@ -441,7 +495,7 @@ namespace Universe_
 			Scene_::Scene scene = Scene_::Scene();
 			program.configure(scene);
 
-			if(enable_shader_20) // sphered
+			if (enable_shader_20) // sphered
 			{
 				Spheres sphere;
 				sphere.init_1(10);
@@ -510,26 +564,26 @@ namespace Universe_
 
 			clip.generate();
 		}
-		
-		
-		
-		
 
-		
 
-		
 
-		
+
+
+
+
+
+
+
 	}
-	
+
 }
 
 
 int universe(int argc, char* argv[])
 {
 	std::cout << "Universe_25_09_2025_13_56\n";
-	
-	
+
+
 
 	Universe_::generate();
 

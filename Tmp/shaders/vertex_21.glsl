@@ -112,6 +112,13 @@ void main()
     // well yea well if we are going to have just one draw call per line which is kinda resonable as we will only have up to 1 million cube per one line which can be drawn in one drawcall 
     // than sure we can calculate that
     // the maximum is (uGrid.x * uGrid.y * uGrid.z) 
+    
+    int drawcalls_max = 1;
+    int id_max = uGrid.x * uGrid.y * uGrid.z * drawcalls_max;
+    float step_one_id = 1.0 / float(id_max);
+
+    float factor_id = float(id) * step_one_id;
+
 
     
     // Per-instance randomness
@@ -147,59 +154,38 @@ void main()
         float rnd_cube_rotation_angle = rand01(s3_rot_angle);
 
     
-    float radius = 0.5;
-
-    
+    const float jitter_scale = 1.0;
 
     /*
-    
-    
-*/
-    
-    
-    // u0 color_r
-    // u1 color_g
-    // u2 color_b
-    // u3 scale_cube
-    // u4 rnd_x_min
-    // u5 rnd_x_max
-    // u6 rnd_y_min
-    // u7 rnd_y_max
-    // u8 radius_scale
-    // u9 jitter_scale
-    
-    float color_r = 1.0; // u0;
-    float color_g = 1.0; // u1;
-    float color_b = 1.0;// u2;
-    float scale_cube = 0.000001; // u3;
-    // float rnd_x_min = u4;
-    // float rnd_x_max = u5;
-    // float rnd_y_min = u6;
-    // float rnd_y_max = u7;
-    // float thickness = u8;
-    float jitter_scale = 1.0; // u9;
+    I.set_u_start_end(0, x0.start, x0.end); // u0
+			I.set_u_start_end(1, y0.start, y0.end); // u1
+			I.set_u_start_end(2, z0.start, z0.end); // u2
+
+			I.set_u_start_end(3, x1.start, x1.end); // u3
+			I.set_u_start_end(4, y1.start, y1.end); // u4
+			I.set_u_start_end(5, z1.start, z1.end); // u5
+
+			I.set_u_start_end(6, rgb_t0.x, rgb_t1.x); // u6
+			I.set_u_start_end(7, rgb_t0.y, rgb_t1.y); // u7
+			I.set_u_start_end(8, rgb_t0.z, rgb_t1.z); // u8
+
+			I.set_u_start_end(9, thickness.start, thickness.end); // u9
+    */
+
+    vec3 position_0 = vec3(u0, u1, u2);
+    vec3 position_1 = vec3(u3, u4, u5);
+    vec3 position = mix(position_0, position_1, factor_id);
+
+    float color_r = u6;
+    float color_g = u7;
+    float color_b = u8;
+
+    float scale_cube = u9;
 
     
-    // Sphere
-    // rnd_x = rnd_x_min + rnd_x * (rnd_x_max - rnd_x_min);
-    // rnd_y = rnd_y_min + rnd_y * (rnd_y_max - rnd_y_min);
-    
-    // radius *= (1.0 - rnd_z * thickness);
-
-    radius = 0.001;
-
-    // radius -= 0.5 * fract(float(int(rnd_z * n)) * inv_n - uTime * 0.1);
-
-    vec3 position_0 = vec3(0.0, 0.0, 0.0);
-    vec3 position_1 = vec3(0.0, 0.5, 0.5);
-    vec3 position = mix(position_0, position_1, rnd_z);
-
-    
-
-    vec3 sphere_position = spherical01(radius, rnd_x, rnd_y) + position;
-    float px = sphere_position.x;
-    float py = sphere_position.y;
-    float pz = sphere_position.z;
+    float px = position.x;
+    float py = position.y;
+    float pz = position.z;
     
     // Instances Cube Scale
     // float scale_cube = 0.001 * 0.1;
