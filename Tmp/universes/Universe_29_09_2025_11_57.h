@@ -5414,6 +5414,594 @@ namespace Universe_
 
 
 
+		// --- Simple & dynamic: concentric polygons that rotate, breathe and drift ---
+		void init_2021_polygon_dance()
+		{
+			lines.clear();
+
+			// ===== knobs (friendly to tweak) =====
+			const bool  yz_swapped = true;     // flip Y/Z if you prefer Z-up camera
+			const float TAU = 6.28318530718f;
+
+			// rings
+			struct Ring { int count, sides; float R, polyR, dAlpha, dOrient, dR, y; Vec3 c0, c1; };
+			Ring rings[] = {
+				//        tiles  sides    ringR  polyR  orbit   orient  breathe  Y      start color            end color
+				/* inner */ { 24,   3,    0.36f, 0.055f,  0.55f,   1.25f,  0.06f,  0.00f, {0.95f,0.55f,0.30f},  {1.00f,0.75f,0.45f} },
+				/* mid  */  { 18,   4,    0.62f, 0.070f, -0.40f,  -0.90f,  0.08f,  0.00f, {0.35f,0.70f,0.95f},  {0.55f,0.85f,1.00f} },
+				/* outer */ { 12,   6,    0.88f, 0.080f,  0.25f,   0.65f,  0.05f,  0.00f, {0.55f,0.95f,0.60f},  {0.70f,1.00f,0.75f} }
+			};
+
+			const float thick0 = 0.0065f;
+			const float thick1 = 0.0080f;
+			const int   cubes = 40;
+
+			// helpers
+			auto mp = [&](float X, float Y, float Z)->Vec3 { return yz_swapped ? Vec3{ X,Z,Y } : Vec3{ X,Y,Z }; };
+			auto emit = [&](const Vec3& A, const Vec3& B, const Vec3& c0, const Vec3& c1, float t0, float t1, int nCubes)
+				{
+					Line& L = add_line();
+					Vec3 M{ 0.5f * (A.x + B.x), 0.5f * (A.y + B.y), 0.5f * (A.z + B.z) };
+					L.x0.start = M.x; L.y0.start = M.y; L.z0.start = M.z;
+					L.x1.start = M.x; L.y1.start = M.y; L.z1.start = M.z;
+					L.rgb_t0 = c0; L.thickness.start = t0; L.number_of_cubes = nCubes;
+					L.copy_start_to_end();
+					L.x0.end = A.x; L.y0.end = A.y; L.z0.end = A.z;
+					L.x1.end = B.x; L.y1.end = B.y; L.z1.end = B.z;
+					L.rgb_t1 = c1; L.thickness.end = t1;
+				};
+			auto lerp = [](float a, float b, float t) { return a + (b - a) * t; };
+			auto mix3 = [&](Vec3 a, Vec3 b, float t) { return Vec3{ lerp(a.x,b.x,t), lerp(a.y,b.y,t), lerp(a.z,b.z,t) }; };
+
+			// draw one polygon (edges only), with animated center/orientation/radius
+			auto polygon = [&](Vec3 C0, Vec3 C1, int sides, float r0, float r1, float ang0, float ang1, Vec3 col0, Vec3 col1)
+				{
+					for (int k = 0; k < sides; ++k)
+					{
+						float u0 = (k / float(sides)) * TAU;
+						float u1 = ((k + 1) / float(sides)) * TAU;
+
+						// start vertices
+						Vec3 A0 = mp(C0.x + r0 * std::cos(u0 + ang0), C0.y, C0.z + r0 * std::sin(u0 + ang0));
+						Vec3 B0 = mp(C0.x + r0 * std::cos(u1 + ang0), C0.y, C0.z + r0 * std::sin(u1 + ang0));
+
+						// end vertices (rotated + maybe different center/radius)
+						Vec3 A1 = mp(C1.x + r1 * std::cos(u0 + ang1), C1.y, C1.z + r1 * std::sin(u0 + ang1));
+						Vec3 B1 = mp(C1.x + r1 * std::cos(u1 + ang1), C1.y, C1.z + r1 * std::sin(u1 + ang1));
+
+						emit(A0, B0, col0, col1, thick0, thick1, cubes);
+						// we can also ghost a secondary radial chord for liveliness (optional, comment out if too busy)
+						// emit(mp(C0.x,C0.y,C0.z), A0, mix3(col0,{1,1,1},0.12f), mix3(col1,{1,1,1},0.12f), thick0*0.5f, thick1*0.5f, 26);
+					}
+				};
+
+			// build all rings
+			for (const auto& R : rings)
+			{
+				for (int i = 0; i < R.count; ++i)
+				{
+					float a = (i / float(R.count)) * TAU;
+					float j = 0.35f * std::sin(3.0f * a);               // tiny phase jitter per tile
+					float a0 = a + j;
+					float a1 = a + j + R.dAlpha;                       // orbit drift
+					float o0 = a * 0.5f;                                 // start orientation
+					float o1 = o0 + R.dOrient;                         // end orientation
+
+					// centers (start on ring; end drifts along orbit)
+					Vec3 C0 = { R.R * std::cos(a0), R.y, R.R * std::sin(a0) };
+					Vec3 C1 = { (R.R + 0.03f * std::sin(2.0f * a)) * std::cos(a1),
+								R.y,
+								(R.R + 0.03f * std::sin(2.0f * a)) * std::sin(a1) };
+
+					// polygon radii (breathe)
+					float pr0 = R.polyR * (1.0f - 0.15f * std::sin(4.0f * a));
+					float pr1 = pr0 * (1.0f + R.dR);
+
+					// color drift across the ring
+					float hueT = (i / float(R.count));
+					Vec3 col0 = mix3(R.c0, R.c1, 0.25f + 0.75f * hueT);
+					Vec3 col1 = mix3(R.c0, R.c1, 0.85f * hueT);
+
+					polygon(C0, C1, R.sides, pr0, pr1, o0, o1, col0, col1);
+				}
+			}
+
+			// subtle connecting chords between mid & outer rings to add flow
+			{
+				const int chords = 48;
+				for (int i = 0; i < chords; ++i)
+				{
+					float u = i / float(chords);
+					float a = u * TAU;
+					float rMid = rings[1].R, rOut = rings[2].R;
+					Vec3 M0 = mp(rMid * std::cos(a), 0.0f, rMid * std::sin(a));
+					Vec3 O0 = mp(rOut * std::cos(a + 0.06f), 0.0f, rOut * std::sin(a + 0.06f));
+
+					Vec3 M1 = mp((rMid + 0.02f) * std::cos(a + 0.30f), 0.0f, (rMid + 0.02f) * std::sin(a + 0.30f));
+					Vec3 O1 = mp((rOut - 0.02f) * std::cos(a + 0.36f), 0.0f, (rOut - 0.02f) * std::sin(a + 0.36f));
+
+					Vec3 cA = { 0.25f,0.85f,0.65f }, cB = { 0.15f,0.55f,0.95f };
+					emit(M0, O0, cA, cB, thick0 * 0.6f, thick1 * 0.7f, 28);
+					emit(M1, O1, cB, cA, thick0 * 0.5f, thick1 * 0.6f, 22);
+				}
+			}
+		}
+
+
+		void init_quantum_fluid_pool()
+		{
+			const float M_PI = 3.14159265359f;
+			static float time_base = 0.0f;
+
+			// Dynamic parameters that evolve over time
+			float pool_radius = 0.4f * 2.0;
+			float base_height = -0.6f * 2.0;
+			int fluid_rings = 12;
+			int particles_per_ring = 36 * 2.0;
+
+			// Evolving wave parameters
+			float primary_freq = 2.0f + sin(time_base * 0.3f) * 1.0f;
+			float secondary_freq = 4.0f + cos(time_base * 0.4f) * 2.0f;
+			float chaos_factor = 0.1f + 0.05f * sin(time_base * 0.5f);
+
+			// Create the dynamic fluid surface with multiple interacting wave systems
+			for (int ring = 0; ring < fluid_rings; ring++) {
+				float ring_radius = (ring / float(fluid_rings - 1)) * pool_radius;
+				float ring_energy = 1.0f - (ring / float(fluid_rings)) * 0.7f; // More energy at center
+
+				for (int segment = 0; segment < particles_per_ring; segment++) {
+					float angle1 = segment * (2.0f * M_PI / particles_per_ring);
+					float angle2 = (segment + 1) * (2.0f * M_PI / particles_per_ring);
+
+					// Calculate multiple overlapping wave systems
+					float spiral_wave = sin(time_base * primary_freq + angle1 * 3.0f + ring * 2.0f) * 0.03f;
+					float radial_wave = cos(time_base * secondary_freq + ring * 4.0f) * 0.02f;
+					float chaotic_wave = sin(time_base * 7.0f + angle1 * 11.0f + ring * 13.0f) * chaos_factor;
+
+					// Combine waves with non-linear interactions
+					float wave_height1 = (spiral_wave + radial_wave) * ring_energy + chaotic_wave * 0.3f;
+					float wave_height2 = (spiral_wave + radial_wave) * ring_energy + chaotic_wave * 0.3f;
+
+					// Add vortex effects near center
+					if (ring < 3) {
+						float vortex = sin(time_base * 5.0f + angle1 * 8.0f) * 0.05f * (3 - ring);
+						wave_height1 += vortex;
+						wave_height2 += vortex * 1.1f;
+					}
+
+					// Calculate 3D positions with dynamic waves
+					float x1 = ring_radius * cos(angle1) + 1.0;
+					float y1 = base_height + wave_height1;
+					float z1 = ring_radius * sin(angle1);
+
+					float x2 = ring_radius * cos(angle2) + 1.0;
+					float y2 = base_height + wave_height2;
+					float z2 = ring_radius * sin(angle2);
+
+					// Create surface connection line
+					Line& surface_line = add_line();
+					surface_line.x0.start = x1;
+					surface_line.y0.start = y1;
+					surface_line.z0.start = z1;
+					surface_line.x1.start = x2;
+					surface_line.y1.start = y2;
+					surface_line.z1.start = z2;
+
+					// Dynamic fluid colors based on wave energy and position
+					float hue = angle1 * 0.5f + time_base * 2.0f + ring * 0.3f;
+					float energy = abs(wave_height1) * 10.0f;
+
+					surface_line.rgb_t0.x = 0.1f + 0.4f * sin(hue) + energy * 0.3f;
+					surface_line.rgb_t0.y = 0.2f + 0.5f * sin(hue + 1.0f) + energy * 0.2f;
+					surface_line.rgb_t0.z = 0.6f + 0.4f * sin(hue + 2.0f) + energy * 0.4f;
+
+					surface_line.thickness.start = 0.008f + 0.01f * energy;
+					surface_line.number_of_cubes = 12 + int(energy * 8);
+
+					surface_line.copy_start_to_end();
+
+					// Animate to completely different wave state
+					float next_time = time_base + 0.2f;
+					float next_spiral = sin(next_time * primary_freq * 1.3f + angle1 * 3.5f + ring * 2.2f) * 0.04f;
+					float next_radial = cos(next_time * secondary_freq * 0.8f + ring * 4.5f) * 0.025f;
+					float next_chaos = sin(next_time * 9.0f + angle1 * 13.0f + ring * 17.0f) * chaos_factor * 1.2f;
+
+					float next_height1 = (next_spiral + next_radial) * ring_energy + next_chaos * 0.3f;
+					float next_height2 = (next_spiral + next_radial) * ring_energy + next_chaos * 0.3f;
+
+					if (ring < 3) {
+						float next_vortex = sin(next_time * 6.0f + angle1 * 9.0f) * 0.06f * (3 - ring);
+						next_height1 += next_vortex;
+						next_height2 += next_vortex * 1.1f;
+					}
+
+					surface_line.x1.end = x2 + 0.02f * sin(next_time + angle2);
+					surface_line.y1.end = base_height + next_height2;
+					surface_line.z1.end = z2 + 0.02f * cos(next_time + angle2);
+
+					// Create depth lines from surface to pool floor (only for some segments)
+					if (segment % 4 == 0 && ring > 0) {
+						Line& depth_line = add_line();
+						depth_line.x0.start = x1;
+						depth_line.y0.start = y1;
+						depth_line.z0.start = z1;
+						depth_line.x1.start = x1 * 0.3f; // Converge toward center at bottom
+						depth_line.y1.start = base_height - 0.2f - 0.1f * sin(ring + angle1);
+						depth_line.z1.start = z1 * 0.3f;
+
+						// Depth-based color fading
+						float depth_factor = 1.0f - (ring / float(fluid_rings)) * 0.7f;
+						depth_line.rgb_t0.x = 0.05f + 0.2f * depth_factor;
+						depth_line.rgb_t0.y = 0.1f + 0.3f * depth_factor;
+						depth_line.rgb_t0.z = 0.3f + 0.4f * depth_factor;
+
+						depth_line.thickness.start = 0.004f;
+						depth_line.number_of_cubes = 8;
+						depth_line.copy_start_to_end();
+
+						// Animate depth lines
+						depth_line.x1.end = x1 * 0.3f + 0.01f * sin(next_time * 2.0f + ring);
+						depth_line.y1.end = base_height - 0.2f - 0.1f * sin(next_time + ring + angle1);
+						depth_line.z1.end = z1 * 0.3f + 0.01f * cos(next_time * 2.0f + ring);
+					}
+				}
+			}
+
+			// Create emergent fluid particles that appear and disappear
+			auto create_emergent_particles = [&]() {
+				int particle_count = 25;
+
+				for (int particle_idx = 0; particle_idx < particle_count; particle_idx++) {
+					float life_phase = fmod(time_base * 0.5f + particle_idx * 0.7f, 1.0f);
+
+					// Only create particles that are "alive" in their lifecycle
+					if (life_phase < 0.7f) {
+						float particle_radius = 0.02f + 0.03f * sin(particle_idx * 5.0f);
+						float particle_angle = particle_idx * (2.0f * M_PI / particle_count) + time_base * 2.0f;
+						float particle_distance = 0.1f + 0.3f * fmod(particle_idx * 0.3f + time_base * 0.2f, 1.0f);
+
+						// Pulsating size based on lifecycle
+						float size_pulse = sin(life_phase * M_PI) * particle_radius;
+
+						// Create particle as a small dynamic shape
+						int particle_segments = 6;
+						for (int j = 0; j < particle_segments; j++) {
+							float seg_angle1 = j * (2.0f * M_PI / particle_segments);
+							float seg_angle2 = (j + 1) * (2.0f * M_PI / particle_segments);
+
+							// Calculate wave-affected height for particles
+							float particle_wave = sin(time_base * 3.0f + particle_angle * 4.0f) * 0.02f;
+
+							Line& particle = add_line();
+							particle.x0.start = particle_distance * cos(particle_angle) + size_pulse * cos(seg_angle1);
+							particle.y0.start = base_height + particle_wave;
+							particle.z0.start = particle_distance * sin(particle_angle) + size_pulse * sin(seg_angle1);
+							particle.x1.start = particle_distance * cos(particle_angle) + size_pulse * cos(seg_angle2);
+							particle.y1.start = base_height + particle_wave;
+							particle.z1.start = particle_distance * sin(particle_angle) + size_pulse * sin(seg_angle2);
+
+							// Particle color evolves with lifecycle
+							float particle_hue = life_phase * 3.0f + particle_idx * 0.2f;
+							particle.rgb_t0.x = 0.3f + 0.5f * sin(particle_hue);
+							particle.rgb_t0.y = 0.4f + 0.4f * sin(particle_hue + 1.0f);
+							particle.rgb_t0.z = 0.8f + 0.2f * sin(particle_hue + 2.0f);
+
+							particle.thickness.start = 0.005f + 0.008f * life_phase;
+							particle.number_of_cubes = 4;
+							particle.copy_start_to_end();
+
+							// Particles move in evolving patterns
+							float next_phase = fmod(time_base * 0.5f + 0.1f + particle_idx * 0.7f, 1.0f);
+							if (next_phase < 0.7f) {
+								float next_pulse = sin(next_phase * M_PI) * particle_radius;
+								float next_wave = sin((time_base + 0.1f) * 3.0f + particle_angle * 4.0f) * 0.025f;
+
+								particle.x1.end = particle_distance * cos(particle_angle + 0.1f) + next_pulse * cos(seg_angle2);
+								particle.y1.end = base_height + next_wave;
+								particle.z1.end = particle_distance * sin(particle_angle + 0.1f) + next_pulse * sin(seg_angle2);
+							}
+							else {
+								// Make particles disappear gracefully
+								particle.x1.end = particle.x1.start;
+								particle.y1.end = particle.y1.start;
+								particle.z1.end = particle.z1.start;
+							}
+						}
+					}
+				}
+				};
+
+			// Create energy tendrils that reach out from the fluid
+			auto create_energy_tendrils = [&]() {
+				int tendril_count = 8;
+
+				for (int tendril_idx = 0; tendril_idx < tendril_count; tendril_idx++) {
+					float tendril_angle = tendril_idx * (2.0f * M_PI / tendril_count);
+					float tendril_length = 0.3f + 0.2f * sin(time_base * 1.5f + tendril_idx);
+					float tendril_phase = time_base * 2.0f + tendril_idx;
+
+					int tendril_segments = 15;
+					for (int seg = 0; seg < tendril_segments; seg++) {
+						float seg_ratio = seg / float(tendril_segments - 1);
+
+						// Tendril undulation
+						float undulation = sin(tendril_phase + seg * 2.0f) * 0.05f * (1.0f - seg_ratio);
+						float segment_x = (pool_radius + tendril_length * seg_ratio) * cos(tendril_angle) + undulation * cos(tendril_angle + M_PI / 2.0f);
+						float segment_z = (pool_radius + tendril_length * seg_ratio) * sin(tendril_angle) + undulation * sin(tendril_angle + M_PI / 2.0f);
+						float segment_y = base_height + 0.1f * sin(tendril_phase * 1.3f + seg * 3.0f) * seg_ratio;
+
+						if (seg > 0) {
+							float prev_undulation = sin(tendril_phase + (seg - 1) * 2.0f) * 0.05f * (1.0f - (seg - 1) / float(tendril_segments - 1));
+							float prev_x = (pool_radius + tendril_length * (seg - 1) / float(tendril_segments - 1)) * cos(tendril_angle) + prev_undulation * cos(tendril_angle + M_PI / 2.0f);
+							float prev_z = (pool_radius + tendril_length * (seg - 1) / float(tendril_segments - 1)) * sin(tendril_angle) + prev_undulation * sin(tendril_angle + M_PI / 2.0f);
+							float prev_y = base_height + 0.1f * sin(tendril_phase * 1.3f + (seg - 1) * 3.0f) * (seg - 1) / float(tendril_segments - 1);
+
+							Line& tendril = add_line();
+							tendril.x0.start = prev_x;
+							tendril.y0.start = prev_y;
+							tendril.z0.start = prev_z;
+							tendril.x1.start = segment_x;
+							tendril.y1.start = segment_y;
+							tendril.z1.start = segment_z;
+
+							// Energy colors that fade along tendril
+							float color_fade = 1.0f - seg_ratio;
+							tendril.rgb_t0.x = 0.8f * color_fade;
+							tendril.rgb_t0.y = 0.9f * color_fade;
+							tendril.rgb_t0.z = 1.0f * color_fade;
+
+							tendril.thickness.start = 0.006f * color_fade;
+							tendril.number_of_cubes = 8;
+							tendril.copy_start_to_end();
+
+							// Animate tendril motion
+							float next_phase = time_base * 2.0f + 0.1f + tendril_idx;
+							float next_undulation = sin(next_phase + seg * 2.0f) * 0.06f * (1.0f - seg_ratio);
+							float next_x = (pool_radius + tendril_length * seg_ratio) * cos(tendril_angle + 0.05f) + next_undulation * cos(tendril_angle + M_PI / 2.0f + 0.1f);
+							float next_z = (pool_radius + tendril_length * seg_ratio) * sin(tendril_angle + 0.05f) + next_undulation * sin(tendril_angle + M_PI / 2.0f + 0.1f);
+							float next_y = base_height + 0.12f * sin(next_phase * 1.3f + seg * 3.0f) * seg_ratio;
+
+							tendril.x1.end = next_x;
+							tendril.y1.end = next_y;
+							tendril.z1.end = next_z;
+						}
+					}
+				}
+				};
+
+			// ===== MAIN EXECUTION =====
+
+			create_emergent_particles();
+			create_energy_tendrils();
+
+			// Increment time for animation
+			time_base += 0.016f;
+		}
+
+
+		// --- Airplane: wireframe, animated flight, spinning fans, contrails ---
+		void init_2030_airplane_wirefly()
+		{
+			lines.clear();
+
+			// ===== knobs (tweak freely) =====
+			const bool  yz_swapped = true;          // set false if you prefer classic Y-up
+			const float scale = 1.00f;              // overall scene scale
+			const float TAU = 6.28318530718f;
+
+			// flight transforms
+			struct Pose { Vec3 t; float yaw, pitch, roll, s; }; // yaw Z-up  around Y if yz_swapped=false
+			Pose P0{ {-1.15f,  0.05f,  0.00f},  0.00f,  0.00f,  0.00f,  scale };   // start (left)
+			Pose P1{ { 0.95f,  0.22f,  0.06f},  0.25f,  0.08f,  0.35f,  scale };   // end   (right, climbing & banking)
+
+			// styling
+			const Vec3 fuselageColA{ 0.80f,0.86f,0.95f }, fuselageColB{ 0.65f,0.72f,0.90f };
+			const Vec3 wingColA{ 0.85f,0.92f,1.00f }, wingColB{ 0.70f,0.80f,0.95f };
+			const Vec3 accentCol{ 0.95f,0.80f,0.35f };   // small accents (tips etc.)
+			const Vec3 fanColA{ 0.25f,0.95f,0.65f }, fanColB{ 0.15f,0.65f,0.95f };
+			const Vec3 trailCol{ 0.95f,0.98f,1.00f };   // contrails
+			const float tThin = 0.0060f, tMed = 0.0080f, tThick = 0.0120f;
+
+			const int cubesFine = 36, cubesMed = 28, cubesTrail = 20;
+
+			// ===== math helpers =====
+			auto mp = [&](float X, float Y, float Z)->Vec3 { return yz_swapped ? Vec3{ X,Z,Y } : Vec3{ X,Y,Z }; };
+			auto addL = [&](Vec3 A0, Vec3 B0, Vec3 A1, Vec3 B1, Vec3 c0, Vec3 c1, float th0, float th1, int cubes)
+				{
+					Line& L = add_line();
+					// midpoint reveal
+					Vec3 M{ 0.5f * (A0.x + B0.x), 0.5f * (A0.y + B0.y), 0.5f * (A0.z + B0.z) };
+					L.x0.start = M.x; L.y0.start = M.y; L.z0.start = M.z;
+					L.x1.start = M.x; L.y1.start = M.y; L.z1.start = M.z;
+					L.rgb_t0 = c0; L.thickness.start = th0; L.number_of_cubes = cubes;
+					L.copy_start_to_end();
+					L.x0.end = A1.x; L.y0.end = A1.y; L.z0.end = A1.z;
+					L.x1.end = B1.x; L.y1.end = B1.y; L.z1.end = B1.z;
+					L.rgb_t1 = c1; L.thickness.end = th1;
+				};
+			auto rotX = [](Vec3 p, float a) { float c = std::cos(a), s = std::sin(a); return Vec3{ p.x, c * p.y - s * p.z, s * p.y + c * p.z }; };
+			auto rotY = [](Vec3 p, float a) { float c = std::cos(a), s = std::sin(a); return Vec3{ c * p.x + s * p.z, p.y, -s * p.x + c * p.z }; };
+			auto rotZ = [](Vec3 p, float a) { float c = std::cos(a), s = std::sin(a); return Vec3{ c * p.x - s * p.y, s * p.x + c * p.y, p.z }; };
+			auto applyPose = [&](const Pose& P, Vec3 v)->Vec3 {
+				// local->world: scale then Rz*Ry*Rx then translate
+				Vec3 q{ v.x * P.s, v.y * P.s, v.z * P.s };
+				q = rotZ(q, P.roll);
+				q = rotY(q, P.yaw);
+				q = rotX(q, P.pitch);
+				q = Vec3{ q.x + P.t.x, q.y + P.t.y, q.z + P.t.z };
+				return mp(q.x, q.y, q.z);
+				};
+			auto rigid = [&](Vec3 aLocal, Vec3 bLocal, Vec3 cA, Vec3 cB, float thA, float thB, int cubes)
+				{
+					addL(applyPose(P0, aLocal), applyPose(P0, bLocal),
+						applyPose(P1, aLocal), applyPose(P1, bLocal),
+						cA, cB, thA, thB, cubes);
+				};
+
+			// ===== airplane geometry in LOCAL space (Y up, Z right/left) =====
+			// Fuselage profile radii vs x (nose -> tail)
+			auto fusRadY = [&](float x) { // nice hump mid fuselage
+				// nose 0.9 .. tail -0.70 (len ~1.6)
+				float cx = 0.10f, half = 0.80f;
+				float t = std::clamp(1.0f - ((x - cx) * (x - cx)) / (half * half), 0.0f, 1.0f);
+				return 0.16f * std::sqrt(t);
+				};
+			auto fusRadZ = [&](float x) {
+				return 0.70f * fusRadY(x);
+				};
+
+			// 1) FUSELAGE OUTLINES (top/bottom and side rails)
+			{
+				const int N = 84;
+				float x0 = 0.90f, x1 = -0.70f;
+				for (int i = 0; i < N - 1; ++i)
+				{
+					float a = i / (N - 1.0f), b = (i + 1) / (N - 1.0f);
+					float xa = x0 * (1 - a) + x1 * a;
+					float xb = x0 * (1 - b) + x1 * b;
+
+					float ya = fusRadY(xa), yb = fusRadY(xb);
+					float za = fusRadZ(xa), zb = fusRadZ(xb);
+
+					// top/bottom
+					rigid(Vec3{ xa, +ya, 0.0f }, Vec3{ xb, +yb, 0.0f }, fuselageColA, fuselageColB, tMed, tMed, cubesFine);
+					rigid(Vec3{ xa, -ya, 0.0f }, Vec3{ xb, -yb, 0.0f }, fuselageColA, fuselageColB, tMed, tMed, cubesFine);
+
+					// side rails
+					rigid(Vec3{ xa, 0.0f, +za }, Vec3{ xb, 0.0f, +zb }, fuselageColA, fuselageColB, tMed, tMed, cubesFine);
+					rigid(Vec3{ xa, 0.0f, -za }, Vec3{ xb, 0.0f, -zb }, fuselageColA, fuselageColB, tMed, tMed, cubesFine);
+				}
+
+				// cockpit nose accent
+				rigid(Vec3{ 0.90f, 0.00f, 0.00f }, Vec3{ 0.76f, 0.07f, 0.00f }, accentCol, fuselageColA, tMed, tThin, cubesMed);
+				rigid(Vec3{ 0.90f, 0.00f, 0.00f }, Vec3{ 0.76f,-0.06f, 0.00f }, accentCol, fuselageColA, tMed, tThin, cubesMed);
+
+				// windows (small dashes along +Z side)
+				const int WN = 9;
+				for (int i = 0; i < WN; ++i) {
+					float u = i / (WN - 1.0f);
+					float x = 0.70f - 0.65f * u;
+					float y = 0.05f + 0.35f * fusRadY(x);
+					float z = 0.55f * fusRadZ(x);
+					rigid(Vec3{ x, y, z }, Vec3{ x - 0.05f, y, z }, Vec3{ 0.85f,0.95f,1.0f }, Vec3{ 0.65f,0.85f,1.0f }, tThin * 0.9f, tThin * 0.8f, 12);
+				}
+			}
+
+			// 2) WINGS (planform triangles + rib)
+			auto wing = [&](float dirZ) {
+				// right wing dirZ=+1, left = -1
+				float span = 0.85f * dirZ;
+				Vec3 LE_root{ 0.25f,  0.02f,  0.15f * dirZ };
+				Vec3 TE_root{ -0.22f, -0.00f,  0.05f * dirZ };
+				Vec3 LE_tip{ 0.35f,  0.04f,  span };
+				Vec3 TE_tip{ 0.02f, -0.02f,  span - 0.08f * dirZ };
+
+				// edges
+				rigid(LE_root, LE_tip, wingColA, wingColB, tThick, tThick, cubesFine);   // leading
+				rigid(TE_root, TE_tip, wingColA, wingColB, tMed, tMed, cubesFine);   // trailing
+				rigid(LE_tip, TE_tip, wingColB, wingColA, tMed, tMed, cubesFine);   // tip
+				// rib
+				rigid(Vec3{ 0.08f,0.02f,0.10f * dirZ }, Vec3{ 0.12f,0.03f,span - 0.06f * dirZ }, wingColB, wingColA, tThin, tThin, cubesMed);
+
+				// wingtip accent
+				rigid(LE_tip, Vec3{ LE_tip.x + 0.06f, LE_tip.y + 0.03f, LE_tip.z }, accentCol, accentCol, tThin, tThin, 16);
+				};
+			wing(+1.0f);
+			wing(-1.0f);
+
+			// 3) TAILPLANES (horizontal + vertical)
+			{
+				// horizontal stabilizer
+				float s = 0.48f;
+				Vec3 H_leR{ -0.52f, 0.03f,  s }, H_teR{ -0.70f,-0.02f, s - 0.08f };
+				Vec3 H_leL{ -0.52f, 0.03f, -s }, H_teL{ -0.70f,-0.02f,-s + 0.08f };
+				rigid(H_leR, H_teR, wingColA, wingColB, tMed, tMed, cubesMed);
+				rigid(H_leL, H_teL, wingColA, wingColB, tMed, tMed, cubesMed);
+				rigid(H_leR, H_leL, wingColB, wingColA, tMed, tMed, cubesMed);
+				rigid(H_teR, H_teL, wingColB, wingColA, tThin, tThin, cubesMed);
+
+				// vertical stabilizer (fin)
+				Vec3 V_baseF{ -0.62f,  0.00f, 0.00f };
+				Vec3 V_baseB{ -0.78f, -0.05f, 0.00f };
+				Vec3 V_top{ -0.48f,  0.28f, 0.00f };
+				rigid(V_baseF, V_top, fuselageColB, fuselageColA, tThick, tThick, cubesMed);
+				rigid(V_baseB, V_top, fuselageColB, fuselageColA, tMed, tMed, cubesMed);
+			}
+
+			// 4) ENGINES: under wings (rings) + spinning fans
+			auto engine = [&](Vec3 center, float r, int segs, float spinEnd)
+				{
+					for (int k = 0; k < segs; ++k) {
+						float a0 = (k / float(segs)) * TAU;
+						float a1 = ((k + 1) / float(segs)) * TAU;
+
+						// circle in YZ-plane (axis along X)
+						Vec3 A_local0{ center.x, center.y + r * std::cos(a0), center.z + r * std::sin(a0) };
+						Vec3 B_local0{ center.x, center.y + r * std::cos(a1), center.z + r * std::sin(a1) };
+
+						Vec3 A_local1{ center.x, center.y + r * std::cos(a0 + spinEnd), center.z + r * std::sin(a0 + spinEnd) };
+						Vec3 B_local1{ center.x, center.y + r * std::cos(a1 + spinEnd), center.z + r * std::sin(a1 + spinEnd) };
+
+						addL(applyPose(P0, A_local0), applyPose(P0, B_local0),
+							applyPose(P1, A_local1), applyPose(P1, B_local1),
+							fanColA, fanColB, tThin * 0.9f, tThin * 1.1f, 18);
+					}
+				};
+			// engine placements (under wings)
+			engine(Vec3{ 0.16f, -0.08f,  0.42f }, 0.085f, 24, 1.75f); // right
+			engine(Vec3{ 0.16f, -0.08f, -0.42f }, 0.085f, 24, 1.75f); // left
+
+			// 5) CONTRAILS: wing tips and engines (wavy, grow in)
+			auto wavy_trail = [&](Vec3 P, Vec3 dir, float len, float amp, int segs) {
+				// start short & calm, end longer & wavier
+				for (int i = 0; i < segs; ++i) {
+					float t0 = i / float(segs);
+					float t1 = (i + 1) / float(segs);
+					float Ls = 0.25f * len;                 // start length
+					float Le = len;                       // end length
+
+					auto local = [&](float tt, float L, float phase)->Vec3 {
+						float x = P.x - L * tt;             // trail backwards along -X (airflow)
+						float y = P.y + amp * 0.3f * std::sin(6.0f * tt + phase);
+						float z = P.z + amp * 0.5f * std::sin(4.0f * tt + 1.6f * phase);
+						return Vec3{ x,y,z };
+						};
+					Vec3 A0 = applyPose(P0, local(t0, Ls, 0.0f));
+					Vec3 B0 = applyPose(P0, local(t1, Ls, 0.0f));
+					Vec3 A1 = applyPose(P1, local(t0, Le, 0.9f));
+					Vec3 B1 = applyPose(P1, local(t1, Le, 1.7f));
+
+					addL(A0, B0, A1, B1, trailCol, trailCol, tThin * 0.7f, tThin * 0.5f, cubesTrail);
+				}
+				};
+			// wing tip world-local anchors
+			Vec3 tipR{ 0.35f, 0.04f,  0.85f };
+			Vec3 tipL{ 0.35f, 0.04f, -0.85f };
+			wavy_trail(tipR, Vec3{ -1,0,0 }, 0.85f, 0.08f, 32);
+			wavy_trail(tipL, Vec3{ -1,0,0 }, 0.85f, 0.08f, 32);
+			// engine exhaust trails (shorter)
+			wavy_trail(Vec3{ 0.06f,-0.08f,  0.42f }, Vec3{ -1,0,0 }, 0.55f, 0.04f, 24);
+			wavy_trail(Vec3{ 0.06f,-0.08f, -0.42f }, Vec3{ -1,0,0 }, 0.55f, 0.04f, 24);
+		}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 		// ------
 
@@ -5596,18 +6184,23 @@ namespace Universe_
 				// lines.init_solar_flare();
 				// lines.init_2020_glass_of_water();
 				// lines.init_calculus_morph();
+				// lines.init_2012_lowpoly_city_world();
+				// lines.init_2021_polygon_dance();
+				// lines.init_quantum_fluid_pool();
 
 
 
+
+				lines.init_2030_airplane_wirefly();
+
+				
+				
 
 
 
 				
 
-				
-				
 
-				lines.init_2012_lowpoly_city_world();
 
 				// --
 				
