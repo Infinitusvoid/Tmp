@@ -46,8 +46,8 @@ namespace Universe_
 		XYZ start_color = { 0.0, 0.0, 0.0 };
 		XYZ end_color = { 0.0, 0.0, 0.0 };
 
-		Float_start_end cube_size = { 0.0001, 0001 };
-		Float_start_end radious = { 0.0, 0.0 };
+		Float_start_end cube_size = { 0.0001f, 0.0001f };
+		Float_start_end radius = { 0.0, 0.0 };
 		Float_start_end x_rnd_min = { 0.0, 0.0 };
 		Float_start_end x_rnd_max = { 0.0, 0.0 };
 		Float_start_end y_rnd_min = { 0.0, 0.0 };
@@ -75,7 +75,7 @@ namespace Universe_
 				sphere.start_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
 				sphere.end_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
 
-				sphere.radious = { 0.02f + Random::generate_random_float_0_to_1() * 0.02f, 0.02f + Random::generate_random_float_0_to_1() * 0.02f };
+				sphere.radius = { 0.02f + Random::generate_random_float_0_to_1() * 0.02f, 0.02f + Random::generate_random_float_0_to_1() * 0.02f };
 
 				sphere.cube_size = { 0.001, 0.001 };
 
@@ -118,7 +118,7 @@ namespace Universe_
 				sphere.start_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
 				sphere.end_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
 
-				sphere.radious = { 0.02f + Random::generate_random_float_0_to_1() * 0.02f, 0.02f + Random::generate_random_float_0_to_1() * 0.02f };
+				sphere.radius = { 0.02f + Random::generate_random_float_0_to_1() * 0.02f, 0.02f + Random::generate_random_float_0_to_1() * 0.02f };
 
 				sphere.cube_size = { 0.01, 0.01 };
 
@@ -166,8 +166,8 @@ namespace Universe_
 						.set_position_end(sphere.end_position.x, sphere.end_position.y, sphere.end_position.z)
 						.set_euler_start(0.0f, 0.0f, 0.0f)
 						.set_euler_end(0.0f, 0.0f, 0.0f)
-						.set_scale_start(sphere.radious.start, sphere.radious.start, sphere.radious.start)
-						.set_scale_end(sphere.radious.end, sphere.radious.end, sphere.radious.end);
+						.set_scale_start(sphere.radius.start, sphere.radius.start, sphere.radius.start)
+						.set_scale_end(sphere.radius.end, sphere.radius.end, sphere.radius.end);
 
 
 					I.set_u_start_end(0, sphere.start_color.x, sphere.end_color.x); // u0 color_r
@@ -579,16 +579,13 @@ namespace Universe_
 }
 
 
+
+
 int universe(int argc, char* argv[])
 {
-	std::cout << "Universe_25_09_2025_13_56\n";
-
-
+	std::cout << "Universe\n";
 
 	Universe_::generate();
 
-
-
 	return 0;
-
 }
