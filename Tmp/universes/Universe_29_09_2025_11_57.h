@@ -3820,6 +3820,317 @@ namespace Universe_
 			}
 		}
 
+		
+
+		void init_0013_sea_and_sky_zup()
+		{
+			lines.clear();
+
+			const float TAU = 6.28318530718f;
+
+			// --------------------
+			// tiny helpers
+			// --------------------
+			auto clamp01 = [](float v) { return std::max(0.0f, std::min(1.0f, v)); };
+			auto mixf = [](float a, float b, float t) { return a + (b - a) * t; };
+			auto length2 = [](float x, float y) { return std::sqrt(x * x + y * y); };
+
+			auto add_line_collapsed = [&](Vec3 A, Vec3 B, Vec3 c0, Vec3 c1,
+				float thickStart, float thickEnd, int cubes)
+				{
+					Line& L = add_line();
+					// start collapsed at midpoint (nice reveal)
+					Vec3 M{ 0.5f * (A.x + B.x), 0.5f * (A.y + B.y), 0.5f * (A.z + B.z) };
+					L.x0.start = M.x; L.y0.start = M.y; L.z0.start = M.z;
+					L.x1.start = M.x; L.y1.start = M.y; L.z1.start = M.z;
+					L.rgb_t0 = c0;
+					L.thickness.start = thickStart;
+					L.number_of_cubes = cubes;
+					L.copy_start_to_end();
+					L.x0.end = A.x; L.y0.end = A.y; L.z0.end = A.z;
+					L.x1.end = B.x; L.y1.end = B.y; L.z1.end = B.z;
+					L.rgb_t1 = c1;
+					L.thickness.end = thickEnd;
+				};
+
+			// =========================================================
+			// A) OCEAN  wavy Z-up heightfield in the XY plane (below horizon)
+			// =========================================================
+			{
+				// knobs
+				const int   gridX = 56;
+				const int   gridY = 42;
+				const float extentX = 3.0f;     // world width (X)
+				const float extentY = 2.6f;     // world depth (Y)
+				const float seaZ = -0.08f;   // base sea level
+				const float ampZ0 = 0.18f;    // starting amplitude
+				const float ampZ1 = 0.32f;    // ending amplitude (tween up)
+				const float windX = 0.06f;    // sideways drift in X at end
+				const float windY = 0.04f;    // sideways drift in Y at end
+				const int   cubesPerSeg = 18;
+				const float baseThick = 0.0065f;
+
+				// "sun" position (affects reflection highlight on water)
+				const float sunX = -0.6f;   // left/right
+				const float sunY = -0.2f;   // depth
+				const float sunZ = 0.28f;  // height above horizon
+
+				// wave shape (two swells + a choppy term), Z-up
+				auto waves = [&](float x, float y, float amp)->float {
+					float kx = 1.8f, ky = 1.3f;
+					float s1 = std::sin(kx * x + 0.6f * y);
+					float s2 = std::sin(0.7f * x - 1.9f * y + 1.7f);
+					float ch = 0.35f * std::sin(3.4f * x + 2.2f * y);
+					// bias amplitude so far distance (larger |y|) looks calmer
+					float fade = 0.5f + 0.5f * std::exp(-0.9f * std::fabs(y));
+					return amp * fade * (0.55f * s1 + 0.45f * s2 + 0.25f * ch);
+					};
+
+				// slope estimate for foam and thickness
+				auto slopeMag = [&](float x, float y, float amp)->float {
+					const float e = 0.012f;
+					float hdx = waves(x + e, y, amp) - waves(x - e, y, amp);
+					float hdy = waves(x, y + e, amp) - waves(x, y - e, amp);
+					return std::sqrt(hdx * hdx + hdy * hdy) / (2.0f * e);
+					};
+
+				// ocean palette (deep -> teal)
+				auto ocean = [&](float t)->Vec3 {
+					t = clamp01(t);
+					float r = mixf(0.04f, 0.10f, t);
+					float g = mixf(0.18f, 0.75f, t);
+					float b = mixf(0.35f, 0.95f, t);
+					return { r, g, b };
+					};
+
+				const float dx = (gridX > 1) ? extentX / float(gridX - 1) : 0.0f;
+				const float dy = (gridY > 1) ? extentY / float(gridY - 1) : 0.0f;
+				auto Xat = [&](int j) { return -0.5f * extentX + j * dx; };
+				auto Yat = [&](int i) { return -0.5f * extentY + i * dy; };
+
+				// helper: build one water segment from (x0,y0) to (x1,y1)
+				auto add_water_seg = [&](float x0, float y0, float x1, float y1)
+					{
+						// start/end amplitudes for tween
+						float h0s = seaZ + waves(x0, y0, ampZ0);
+						float h1s = seaZ + waves(x1, y1, ampZ0);
+						float h0e = seaZ + waves(x0 + 0.15f, y0 + 0.10f, ampZ1); // slight phase shift (motion)
+						float h1e = seaZ + waves(x1 + 0.15f, y1 + 0.10f, ampZ1);
+
+						// wind drift at the end (subtle)
+						float x0e = x0 + windX * std::sin(0.6f * y0 + 0.8f * x0);
+						float y0e = y0 + windY * std::cos(0.7f * x0 - 0.9f * y0);
+						float x1e = x1 + windX * std::sin(0.6f * y1 + 0.8f * x1);
+						float y1e = y1 + windY * std::cos(0.7f * x1 - 0.9f * y1);
+
+						// sun reflection highlight  brightens near a vertical ribbon under the sun
+						float sigmaX = 0.22f; // width of highlight band in X
+						auto highlight = [&](float x, float y)->float {
+							float dxs = (x - sunX);
+							float base = std::exp(-0.5f * (dxs * dxs) / (sigmaX * sigmaX));
+							// fade with distance in depth and with wave height (sparkle near crests)
+							float depthFade = clamp01(1.0f - 0.35f * std::fabs(y - sunY));
+							return 0.8f * base * depthFade;
+							};
+
+						float foam0 = clamp01(1.5f * slopeMag(x0, y0, ampZ1));
+						float foam1 = clamp01(1.5f * slopeMag(x1, y1, ampZ1));
+						float hil0 = highlight(x0, y0);
+						float hil1 = highlight(x1, y1);
+
+						// color blend: water + foam + reflection
+						auto waterCol = [&](float z, float foam, float hil)->Vec3 {
+							float deepT = clamp01((z - (seaZ - 0.35f)) / 0.9f);
+							Vec3 base = ocean(deepT);
+							// foam -> push to near white; reflection -> push to warm gold
+							Vec3 foamCol{ 0.92f, 0.96f, 0.98f };
+							Vec3 gold{ 1.00f, 0.88f, 0.52f };
+							// combine
+							base.x = mixf(base.x, foamCol.x, 0.55f * foam);
+							base.y = mixf(base.y, foamCol.y, 0.55f * foam);
+							base.z = mixf(base.z, foamCol.z, 0.55f * foam);
+							base.x = mixf(base.x, gold.x, 0.75f * hil);
+							base.y = mixf(base.y, gold.y, 0.75f * hil);
+							base.z = mixf(base.z, gold.z, 0.55f * hil);
+							return base;
+							};
+
+						Vec3 A_start{ x0, y0, h0s }, B_start{ x1, y1, h1s };
+						Vec3 A_end{ x0e, y0e, h0e }, B_end{ x1e, y1e, h1e };
+
+						Vec3 c0 = waterCol(0.5f * (h0s + h1s), 0.5f * (foam0 + foam1), 0.5f * (hil0 + hil1));
+						Vec3 c1 = waterCol(0.5f * (h0e + h1e), 0.5f * (foam0 + foam1), 0.5f * (hil0 + hil1));
+
+						float thick0 = baseThick * (0.8f + 0.5f * foam0);
+						float thick1 = baseThick * (0.8f + 0.5f * foam1);
+
+						add_line_collapsed(A_start, B_start, c0, c1,
+							baseThick * 0.35f, 0.5f * (thick0 + thick1), cubesPerSeg);
+					};
+
+				// draw rows (constant Y)
+				for (int i = 0; i < gridY; ++i) {
+					float y = Yat(i);
+					for (int j = 0; j < gridX - 1; ++j) {
+						add_water_seg(Xat(j), y, Xat(j + 1), y);
+					}
+				}
+				// draw cols (constant X)
+				for (int j = 0; j < gridX; ++j) {
+					float x = Xat(j);
+					for (int i = 0; i < gridY - 1; ++i) {
+						add_water_seg(x, Yat(i), x, Yat(i + 1));
+					}
+				}
+			}
+
+			// =========================================================
+			// B) SKY  vertical gradient curtains + Sun bloom (above horizon)
+			// =========================================================
+			{
+				const int   skyCols = 54;          // density across X
+				const int   skyRows = 10;          // a few bands along Y (depth)
+				const float extentX = 3.0f;
+				const float extentY = 2.6f;
+				const float zHorizon = 0.00f;      // horizon height
+				const float zTop = 1.35f;      // sky top
+				const float baseThick = 0.0060f;
+				const int   cubes = 22;
+
+				// same sun as before (for warm near-horizon tint)
+				const float sunX = -0.6f, sunY = -0.2f, sunZ = 0.28f;
+
+				auto skyGrad = [&](float z)->Vec3 {
+					// warm near horizon -> cool blue overhead
+					float t = clamp01((z - zHorizon) / (zTop - zHorizon));
+					Vec3 warm{ 0.98f, 0.78f, 0.55f }; // apricot glow
+					Vec3 cool{ 0.24f, 0.52f, 0.95f }; // clear blue
+					return {
+						mixf(warm.x, cool.x, t),
+						mixf(warm.y, cool.y, t),
+						mixf(warm.z, cool.z, t)
+					};
+					};
+
+				auto Xat = [&](int j) { return -0.5f * extentX + j * (extentX / std::max(1, skyCols - 1)); };
+				auto Yat = [&](int i) { return -0.5f * extentY + i * (extentY / std::max(1, skyRows - 1)); };
+
+				for (int i = 0; i < skyRows; ++i)
+				{
+					for (int j = 0; j < skyCols; ++j)
+					{
+						float x = Xat(j), y = Yat(i);
+
+						// subtle horizontal sway at the end (like heat haze)
+						float swayX = 0.04f * std::sin(0.8f * y + 0.6f * x);
+						float swayY = 0.03f * std::cos(0.7f * x - 0.9f * y);
+
+						// color tint towards sun horizontally
+						float ds = std::exp(-2.0f * ((x - sunX) * (x - sunX) + 0.4f * (y - sunY) * (y - sunY)));
+						Vec3 cStart = skyGrad(zHorizon + 0.001f);
+						Vec3 cEnd = skyGrad(zTop);
+						// warm boost near sun at the end
+						cEnd.x = mixf(cEnd.x, 1.00f, 0.35f * ds);
+						cEnd.y = mixf(cEnd.y, 0.88f, 0.35f * ds);
+						cEnd.z = mixf(cEnd.z, 0.60f, 0.25f * ds);
+
+						Vec3 A{ x, y, zHorizon }, B{ x + swayX, y + swayY, zTop };
+						add_line_collapsed(A, B, cStart, cEnd, baseThick * 0.28f, baseThick, cubes);
+					}
+				}
+
+				// --- Sun disk (ring of chords), blooming from horizon
+				{
+					const int   rays = 64;
+					const float R0 = 0.14f;    // start radius
+					const float R1 = 0.22f;    // end radius (bloom)
+					const float thick = 0.009f;
+					const int   rcubes = 30;
+
+					for (int k = 0; k < rays; ++k)
+					{
+						float a0 = (k / float(rays)) * TAU;
+						float a1 = a0 + (0.75f * TAU / rays); // short chord
+						Vec3 S{ sunX + R0 * std::cos(a0), sunY + R0 * std::sin(a0), sunZ };
+						Vec3 E{ sunX + R0 * std::cos(a1), sunY + R0 * std::sin(a1), sunZ };
+
+						Vec3 S2{ sunX + R1 * std::cos(a0), sunY + R1 * std::sin(a0), sunZ };
+						Vec3 E2{ sunX + R1 * std::cos(a1), sunY + R1 * std::sin(a1), sunZ };
+
+						Vec3 warm0{ 1.00f, 0.88f, 0.58f };
+						Vec3 warm1{ 1.00f, 0.95f, 0.85f };
+						add_line_collapsed(S, E, warm0, warm1, thick * 0.25f, thick, rcubes);
+						add_line_collapsed(S2, E2, warm1, warm0, thick * 0.25f, thick, rcubes);
+					}
+				}
+
+				// --- Clouds: soft puffs drifting in depth (Y)
+				{
+					const int clouds = 8;
+					for (int c = 0; c < clouds; ++c)
+					{
+						float cx = -1.4f + 2.8f * Random::generate_random_float_0_to_1();
+						float cy = -1.1f + 2.2f * Random::generate_random_float_0_to_1();
+						float cz = 0.55f + 0.55f * Random::generate_random_float_0_to_1();
+						int   puffs = 5 + (Random::random_int(0, 1000) % 4);
+						float baseR = 0.10f + 0.08f * Random::generate_random_float_0_to_1();
+
+						for (int p = 0; p < puffs; ++p)
+						{
+							float pr = baseR * (0.75f + 0.5f * Random::generate_random_float_0_to_1());
+							float px = cx + 0.65f * pr * Random::generate_random_float_minus_one_to_plus_one();
+							float py = cy + 0.65f * pr * Random::generate_random_float_minus_one_to_plus_one();
+							float pz = cz + 0.06f * Random::generate_random_float_minus_one_to_plus_one();
+
+							int segs = 22;
+							for (int s = 0; s < segs; ++s)
+							{
+								float a0 = (s / float(segs)) * TAU;
+								float a1 = ((s + 1) / float(segs)) * TAU;
+
+								Vec3 S{ px + 0.5f * pr * std::cos(a0), py + 0.8f * pr * std::sin(a0), pz };
+								Vec3 E{ px + 0.5f * pr * std::cos(a1), py + 0.8f * pr * std::sin(a1), pz };
+								// drift in depth by end
+								Vec3 S2{ S.x, S.y + 0.12f, S.z + 0.03f };
+								Vec3 E2{ E.x, E.y + 0.12f, E.z + 0.03f };
+
+								Vec3 c0{ 0.94f, 0.96f, 0.98f };
+								Vec3 c1{ 0.88f, 0.92f, 0.98f };
+								add_line_collapsed(S, E, c0, c1, 0.0045f, 0.0075f, 16);
+							}
+						}
+					}
+				}
+			}
+
+			// =========================================================
+			// C) HORIZON accent  a thin bright line where sea meets sky
+			// =========================================================
+			{
+				const int   segs = 80;
+				const float extentX = 3.0f;
+				const float yNear = -1.3f, yFar = 1.3f; // a gentle bow in depth for curvature
+				const float zH = 0.002f; // slightly above zero for clarity
+				for (int i = 0; i < segs; ++i)
+				{
+					float t0 = i / float(segs);
+					float t1 = (i + 1) / float(segs);
+					float x0 = mixf(-0.5f * extentX, 0.5f * extentX, t0);
+					float x1 = mixf(-0.5f * extentX, 0.5f * extentX, t1);
+					// shallow curve in Y so horizon reads better in 3D
+					float y0 = 0.15f * std::sin(0.7f * t0) * (yFar - yNear) * 0.06f;
+					float y1 = 0.15f * std::sin(0.7f * t1) * (yFar - yNear) * 0.06f;
+
+					Vec3 A{ x0, y0, zH }, B{ x1, y1, zH };
+					Vec3 c0{ 0.95f, 0.98f, 1.00f }, c1{ 0.85f, 0.95f, 1.00f };
+					add_line_collapsed(A, B, c0, c1, 0.0035f, 0.0065f, 26);
+				}
+			}
+		}
+
+		
+		
+
 
 
 
@@ -3992,8 +4303,11 @@ namespace Universe_
 				// lines.init_0009_supershape_matrix_rain();
 				// lines.init_0011_flip_unique_matrix_orbit();
 				// lines.init_geometric_unfolding();
-				lines.init_hyperbolic_gyroid_lattice();
+				// lines.init_hyperbolic_gyroid_lattice();
 
+
+
+				lines.init_0013_sea_and_sky_zup();
 
 
 
