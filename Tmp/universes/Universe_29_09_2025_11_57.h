@@ -3023,6 +3023,183 @@ namespace Universe_
 			}
 		}
 
+		// Matrix-like green glyph columns flowing over a supershape surface
+		void init_0009_supershape_matrix_rain()
+		{
+			lines.clear();
+
+			// ===== knobs =====
+			const int   nCols = 28;     // how many rain columns around the shape
+			const int   glyphsPer = 14;     // glyphs per column
+			const float R = 0.85f;  // overall size of the surface
+			const float glyphH = 0.06f;  // glyph height in world units
+			const float glyphW = 0.045f; // glyph width  in world units
+			const float colStep = 2.6f;   // spacing between glyphs along column (multiplies glyphH)
+			const float fallDist = 0.65f;  // how far start is offset along fall direction (bigger = longer trails)
+			const float twistEnd = 0.35f;  // end twist around the normal for extra motion
+			const int   cubesPerStroke = 20;
+			const float baseThick = 0.006f;
+			const float TAU = 6.28318530718f;
+
+			// --- tiny supershape surf (a=b=1); tune these for different sculptures ---
+			auto sform = [](float ang, float m, float n1, float n2, float n3) {
+				float t = 0.5f * m * ang;
+				float c = std::pow(std::fabs(std::cos(t)), n2);
+				float s = std::pow(std::fabs(std::sin(t)), n3);
+				float d = std::pow(c + s, 1.0f / std::max(1e-6f, n1));
+				return d == 0.0f ? 0.0f : 1.0f / d;
+				};
+			// flower-ish sphere
+			const float m1 = 7.0f, n1a = 0.25f, n2a = 1.7f, n3a = 1.7f; // theta
+			const float m2 = 3.0f, n1b = 0.20f, n2b = 0.80f, n3b = 1.6f; // phi
+			auto surf = [&](float th, float ph)->Vec3 {
+				float r1 = sform(th, m1, n1a, n2a, n3a);
+				float r2 = sform(ph, m2, n1b, n2b, n3b);
+				float x = R * r1 * std::cos(th) * r2 * std::cos(ph);
+				float y = R * r1 * std::sin(th) * r2 * std::cos(ph);
+				float z = R * r2 * std::sin(ph);
+				return Vec3{ x, y, z };
+				};
+
+			auto sub = [](Vec3 a, Vec3 b) { return Vec3{ a.x - b.x, a.y - b.y, a.z - b.z }; };
+			auto add = [](Vec3 a, Vec3 b) { return Vec3{ a.x + b.x, a.y + b.y, a.z + b.z }; };
+			auto mul = [](Vec3 a, float s) { return Vec3{ a.x * s, a.y * s, a.z * s }; };
+			auto dot = [](Vec3 a, Vec3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; };
+			auto len = [&](Vec3 v) { return std::sqrt(dot(v, v)); };
+			auto nrm = [&](Vec3 v) { float L = len(v); return (L < 1e-8f) ? Vec3{ 0,0,0 } : mul(v, 1.0f / L); };
+			auto cross = [](Vec3 a, Vec3 b) {
+				return Vec3{ a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x };
+				};
+			auto rotAround = [&](Vec3 p, Vec3 axis, float ang)->Vec3 {
+				// Rodrigues
+				Vec3 u = nrm(axis);
+				float c = std::cos(ang), s = std::sin(ang);
+				return add(add(mul(p, c), mul(cross(u, p), s)), mul(u, dot(u, p) * (1.0f - c)));
+				};
+
+			// neon green palette (head bright, tail dim)
+			auto green = [&](float t)->Vec3 {
+				float g = 0.6f + 0.4f * t;
+				float b = 0.25f + 0.25f * t;
+				return Vec3{ 0.05f, g, b };
+				};
+
+			// minimal glyph strokes (normalized [0,1]  [0,1]); feel free to extend
+			struct V2 { float x, y; };
+			using Stroke = std::pair<V2, V2>;
+			auto S_push_v = [](std::vector<Stroke>& S, float x, float y0, float y1) { S.push_back({ {x,y0},{x,y1} }); };
+			auto S_push_h = [](std::vector<Stroke>& S, float y, float x0, float x1) { S.push_back({ {x0,y},{x1,y} }); };
+			auto S_push_d = [](std::vector<Stroke>& S, float x0, float y0, float x1, float y1) { S.push_back({ {x0,y0},{x1,y1} }); };
+
+			auto glyph = [&](char c)->std::vector<Stroke> {
+				std::vector<Stroke> S;
+				const float m = 0.12f, l = m, r = 1.0f - m, b = m, t = 1.0f - m, mid = 0.5f;
+				switch (c) {
+				case '0': S_push_h(S, t, l, r); S_push_h(S, b, l, r); S_push_v(S, l, b, t); S_push_v(S, r, b, t); break;
+				case '1': S_push_v(S, mid, b, t); break;
+				case '2': S_push_h(S, t, l, r); S_push_h(S, b, l, r); S_push_d(S, l, b, r, mid); S_push_d(S, l, mid, r, t); break;
+				case '3': S_push_h(S, t, l, r); S_push_h(S, mid, l, r); S_push_h(S, b, l, r); S_push_v(S, r, b, t); break;
+				case '4': S_push_v(S, l, b, t); S_push_v(S, r, b, t); S_push_h(S, mid, l, r); break;
+				case '5': S_push_h(S, t, l, r); S_push_h(S, b, l, r); S_push_v(S, l, b, mid); S_push_v(S, r, mid, t); break;
+				case '6': S_push_h(S, t, l, r); S_push_h(S, b, l, r); S_push_v(S, l, b, t); S_push_h(S, mid, l, r); break;
+				case '7': S_push_h(S, t, l, r); S_push_d(S, l, b, r, t); break;
+				case '8': S_push_h(S, t, l, r); S_push_h(S, mid, l, r); S_push_h(S, b, l, r); S_push_v(S, l, b, t); S_push_v(S, r, b, t); break;
+				case '9': S_push_h(S, t, l, r); S_push_h(S, b, l, r); S_push_v(S, r, b, t); S_push_h(S, mid, l, r); break;
+				case 'A': S_push_d(S, l, b, mid, t); S_push_d(S, r, b, mid, t); S_push_h(S, mid, l, r); break;
+				case 'H': S_push_v(S, l, b, t); S_push_v(S, r, b, t); S_push_h(S, mid, l, r); break;
+				case 'K': S_push_v(S, l, b, t); S_push_d(S, l, mid, r, t); S_push_d(S, l, mid, r, b); break;
+				case '+': S_push_h(S, mid, l, r); S_push_v(S, mid, b, t); break;
+				case '-': S_push_h(S, mid, l, r); break;
+				default:  S_push_h(S, t, l, r); S_push_h(S, b, l, r); S_push_v(S, l, b, t); S_push_v(S, r, b, t); break; // box
+				}
+				return S;
+				};
+			const char alphabet[] = "00110110011100010110AHK+-";
+
+			// build columns at evenly spaced thetas; glyphs fall along +phi (toward south pole)
+			for (int ci = 0; ci < nCols; ++ci)
+			{
+				float u = (ci + 0.5f) / float(nCols);         // 0..1 around
+				float theta = -3.14159265f + u * TAU;         // wrap
+				float phiTop = 0.9f * 1.57079633f * 0.65f;   // start near north-mid
+				float dPhi = (colStep * glyphH) / R;        // arc step per glyph (approx)
+
+				// column local frame at (theta, phi)
+				auto frameAt = [&](float th, float ph) {
+					const float eps = 0.0015f;
+					Vec3 P = surf(th, ph);
+					Vec3 Pt = surf(th + eps, ph);
+					Vec3 Pp = surf(th, ph + eps);
+					Vec3 Tt = nrm(sub(Pt, P));   // along theta (around)
+					Vec3 Tp = nrm(sub(Pp, P));   // along phi   (down/up)
+					Vec3 N = nrm(cross(Tt, Tp)); // surface normal
+					// re-orthogonalize
+					Tp = nrm(cross(N, Tt));
+					return std::tuple<Vec3, Vec3, Vec3, Vec3>(P, Tt, Tp, N); // origin, X(around), Y(down), N
+					};
+
+				for (int gi = 0; gi < glyphsPer; ++gi)
+				{
+					// choose glyph
+					char ch = alphabet[Random::random_int(0, 999999) % (sizeof(alphabet) - 1)];
+					auto strokes = glyph(ch);
+
+					float phEnd = phiTop - gi * dPhi;     // final position along column
+					float phStart = phEnd + (fallDist / R); // start higher (falls down)
+					auto [Pe, Xt, Yd, Ne] = frameAt(theta, phEnd);
+					auto [Ps, Xs, Ys, Ns] = frameAt(theta, phStart);
+
+					// slight end twist around normal (adds motion)
+					float twist = twistEnd * (0.25f + 0.75f * (gi / float(glyphsPer)));
+
+					// colors: head brighter
+					float head = 1.0f - (gi / float(glyphsPer - 1));
+					Vec3 C0 = green(0.30f * head);
+					Vec3 C1 = green(0.80f * head);
+
+					// map glyph space [0,1]^2 to 3D using (X,Y) axes at start/end
+					auto mapStart = [&](V2 p)->Vec3 {
+						Vec3 local = add(mul(Xs, (p.x - 0.5f) * glyphW),
+							mul(Ys, (p.y - 0.5f) * glyphH));
+						return add(Ps, local);
+						};
+					auto mapEnd = [&](V2 p)->Vec3 {
+						// rotate in-plane around normal, then place
+						Vec3 ex = Xt, ey = Yd;
+						Vec3 local = add(mul(ex, (p.x - 0.5f) * glyphW),
+							mul(ey, (p.y - 0.5f) * glyphH));
+						Vec3 spun = rotAround(local, Ne, twist);
+						return add(Pe, spun);
+						};
+
+					// emit strokes
+					for (const auto& st : strokes)
+					{
+						Vec3 A0 = mapStart(st.first);
+						Vec3 B0 = mapStart(st.second);
+						Vec3 A1 = mapEnd(st.first);
+						Vec3 B1 = mapEnd(st.second);
+
+						// start collapsed to mid for smooth reveal
+						Vec3 M0{ 0.5f * (A0.x + B0.x), 0.5f * (A0.y + B0.y), 0.5f * (A0.z + B0.z) };
+
+						Line& L = add_line();
+						L.x0.start = M0.x; L.y0.start = M0.y; L.z0.start = M0.z;
+						L.x1.start = M0.x; L.y1.start = M0.y; L.z1.start = M0.z;
+						L.rgb_t0 = C0;
+						L.thickness.start = baseThick * 0.30f;
+						L.number_of_cubes = cubesPerStroke;
+
+						L.copy_start_to_end();
+
+						L.x0.end = A1.x; L.y0.end = A1.y; L.z0.end = A1.z;
+						L.x1.end = B1.x; L.y1.end = B1.y; L.z1.end = B1.z;
+						L.rgb_t1 = C1;
+						L.thickness.end = baseThick * (0.65f + 0.35f * head);
+					}
+				}
+			}
+		}
 
 
 
@@ -3193,15 +3370,12 @@ namespace Universe_
 				// lines.init_0005_letter_layers_fly_yz_swapped();
 				// lines.init_fractal_tree_3d();
 				// lines.init_crystal_fractal_tree();
-
-				
-
-				
-				lines.init_0006_wavy_dune_landscape();
+				// lines.init_0006_wavy_dune_landscape();
 				// lines.init_brutalist_monolith();
 				// lines.init_0007_tesseract_warp();
 				// lines.init_0008_supershape_ribbons();
 
+				lines.init_0009_supershape_matrix_rain();
 
 
 				
