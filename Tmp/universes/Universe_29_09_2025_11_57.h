@@ -3201,9 +3201,624 @@ namespace Universe_
 			}
 		}
 
+		// Add this new function inside your 'struct Lines'
+
+		void init_0011_flip_unique_matrix_orbit()
+		{
+			lines.clear();
+			const float TAU = 6.28318530718f;
+
+			// =========================
+			// helpers (Z is UP)
+			// =========================
+			auto rotZ = [](Vec3 p, float a)->Vec3 { // spin in XY plane (since Z is up)
+				float c = std::cos(a), s = std::sin(a);
+				return Vec3{ c * p.x - s * p.y, s * p.x + c * p.y, p.z };
+				};
+			auto rotY = [](Vec3 p, float a)->Vec3 { // yaw around Y (depth axis now)
+				float c = std::cos(a), s = std::sin(a);
+				return Vec3{ c * p.x + s * p.z, p.y, -s * p.x + c * p.z };
+				};
+			auto rotX = [](Vec3 p, float a)->Vec3 { // pitch around X
+				float c = std::cos(a), s = std::sin(a);
+				return Vec3{ p.x, c * p.y - s * p.z, s * p.y + c * p.z };
+				};
+			auto sub = [](Vec3 a, Vec3 b) {return Vec3{ a.x - b.x,a.y - b.y,a.z - b.z }; };
+			auto add = [](Vec3 a, Vec3 b) {return Vec3{ a.x + b.x,a.y + b.y,a.z + b.z }; };
+			auto mul = [](Vec3 a, float s) {return Vec3{ a.x * s,a.y * s,a.z * s }; };
+			auto dot = [](Vec3 a, Vec3 b) {return a.x * b.x + a.y * b.y + a.z * b.z; };
+			auto len = [&](Vec3 v) {return std::sqrt(dot(v, v)); };
+			auto nrm = [&](Vec3 v) {float L = len(v); return (L < 1e-8f) ? Vec3{ 0,0,0 } : mul(v, 1.0f / L); };
+			auto cross = [](Vec3 a, Vec3 b) {return Vec3{ a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x }; };
+
+			// =========================
+			// A) Z-up dunes (unique base)
+			// =========================
+			{
+				const int   gridX = 44, gridY = 36;    // XY grid (Z is height)
+				const float extentX = 2.6f, extentY = 2.0f;
+				const float baseZ = -0.55f;
+				const float ampZ = 0.70f;
+				const float windX = 0.06f, windY = 0.05f;
+				const float baseThick = 0.0065f;
+				const int   cubesPer = 16;
+				auto warm = [&](float t)->Vec3 {
+					const Vec3 a{ 0.48f,0.32f,0.26f }, b{ 0.52f,0.42f,0.40f };
+					const Vec3 c{ 1,1,1 }, d{ 0.00f,0.27f,0.57f };
+					float ct = TAU * t;
+					return Vec3{
+						a.x + b.x * std::cos(ct * c.x + TAU * d.x),
+						a.y + b.y * std::cos(ct * c.y + TAU * d.y),
+						a.z + b.z * std::cos(ct * c.z + TAU * d.z)
+					};
+					};
+				auto hfield = [&](float x, float y)->float {
+					float sx = 1.15f, sy = 1.10f;
+					float X = x * sx, Y = y * sy;
+					float wx = X + 0.35f * std::sin(0.7f * Y) + 0.15f * std::sin(2.1f * Y + 1.0f);
+					float wy = Y + 0.35f * std::sin(0.7f * X) + 0.15f * std::sin(1.8f * X + 0.6f);
+					float h = 0.60f * std::sin(1.2f * wx + 0.55f * wy);
+					h += 0.35f * std::sin(2.3f * wx - 1.7f * wy);
+					h += 0.20f * std::cos(1.9f * wx + 2.5f * wy);
+					h += 0.15f * std::sin(0.55f * (wx * wx + wy * wy));
+					float ridge = std::pow(std::fabs(h), 0.75f);
+					h = 0.55f * h + 0.65f * ridge;
+					float r = std::sqrt((x * 0.45f) * (x * 0.45f) + (y * 0.55f) * (y * 0.55f));
+					h -= 0.18f * r;
+					return std::clamp(h, -1.2f, 1.2f);
+					};
+				const float dx = (gridX > 1) ? extentX / float(gridX - 1) : 0.0f;
+				const float dy = (gridY > 1) ? extentY / float(gridY - 1) : 0.0f;
+				auto Xat = [&](int j) {return -0.5f * extentX + j * dx; };
+				auto Yat = [&](int i) {return  0.5f * extentY - i * dy; };
+
+				auto add_seg = [&](float x0, float y0, float x1, float y1) {
+					float hz0 = hfield(x0, y0), hz1 = hfield(x1, y1);
+					Vec3 C0 = warm(0.5f + 0.5f * (0.85f * hz0));
+					Vec3 C1 = warm(0.5f + 0.5f * (0.85f * hz1));
+					float wx0 = windX * std::sin(0.8f * y0 + 1.1f * x0);
+					float wy0 = windY * std::cos(0.7f * x0 - 1.0f * y0);
+					float wx1 = windX * std::sin(0.8f * y1 + 1.1f * x1);
+					float wy1 = windY * std::cos(0.7f * x1 - 1.0f * y1);
+
+					Vec3 A0{ x0, y0, baseZ }, B0{ x1, y1, baseZ };
+					Vec3 A1{ x0 + wx0, y0 + wy0, baseZ + ampZ * hz0 };
+					Vec3 B1{ x1 + wx1, y1 + wy1, baseZ + ampZ * hz1 };
+
+					Vec3 M{ 0.5f * (A0.x + B0.x), 0.5f * (A0.y + B0.y), 0.5f * (A0.z + B0.z) };
+
+					Line& L = add_line();
+					L.x0.start = M.x; L.y0.start = M.y; L.z0.start = M.z;
+					L.x1.start = M.x; L.y1.start = M.y; L.z1.start = M.z;
+					L.rgb_t0 = C0;
+					L.thickness.start = baseThick * 0.35f;
+					L.number_of_cubes = cubesPer;
+					L.copy_start_to_end();
+					L.x0.end = A1.x; L.y0.end = A1.y; L.z0.end = A1.z;
+					L.x1.end = B1.x; L.y1.end = B1.y; L.z1.end = B1.z;
+					L.rgb_t1 = C1; L.thickness.end = baseThick;
+					};
+
+				for (int i = 0; i < gridY; ++i) { float y = Yat(i); for (int j = 0; j < gridX - 1; ++j) add_seg(Xat(j), y, Xat(j + 1), y); }
+				for (int j = 0; j < gridX; ++j) { float x = Xat(j); for (int i = 0; i < gridY - 1; ++i) add_seg(x, Yat(i), x, Yat(i + 1)); }
+			}
+
+			// =========================
+			// B) Supershape core with Matrix rain (Z-up)  truly different flow
+			// =========================
+			{
+				const int   nCols = 26, glyphsPer = 12;
+				const float R = 0.78f, glyphH = 0.055f, glyphW = 0.042f;
+				const float colStep = 2.5f, fallDist = 0.60f, twistEnd = 0.38f;
+				const float baseThick = 0.0060f; const int cubesPer = 18;
+
+				auto sform = [](float ang, float m, float n1, float n2, float n3) {
+					float t = 0.5f * m * ang;
+					float c = std::pow(std::fabs(std::cos(t)), n2);
+					float s = std::pow(std::fabs(std::sin(t)), n3);
+					float d = std::pow(c + s, 1.0f / std::max(1e-6f, n1));
+					return d == 0.0f ? 0.0f : 1.0f / d;
+					};
+				// theta around Z, phi from equator to poles (Z up)
+				const float m1 = 7.0f, n1a = 0.25f, n2a = 1.7f, n3a = 1.7f;
+				const float m2 = 3.0f, n1b = 0.20f, n2b = 0.80f, n3b = 1.6f;
+				auto surf = [&](float th, float ph)->Vec3 {
+					float r1 = sform(th, m1, n1a, n2a, n3a);
+					float r2 = sform(ph, m2, n1b, n2b, n3b);
+					float x = R * r1 * std::cos(th) * r2 * std::cos(ph);
+					float y = R * r1 * std::sin(th) * r2 * std::cos(ph);
+					float z = R * r2 * std::sin(ph); // Z is up
+					return Vec3{ x,y,z };
+					};
+
+				struct V2 { float x, y; }; using Stroke = std::pair<V2, V2>;
+				auto pv = [&](std::vector<Stroke>& S, float x, float y0, float y1) {S.push_back({ {x,y0},{x,y1} }); };
+				auto phl = [&](std::vector<Stroke>& S, float y, float x0, float x1) {S.push_back({ {x0,y},{x1,y} }); };
+				auto pd = [&](std::vector<Stroke>& S, float x0, float y0, float x1, float y1) {S.push_back({ {x0,y0},{x1,y1} }); };
+				auto glyph = [&](char c)->std::vector<Stroke> {
+					std::vector<Stroke> S; const float m = 0.12f, l = m, r = 1.0f - m, b = m, t = 1.0f - m, mid = 0.5f;
+					switch (c) {
+					case '0': phl(S, t, l, r); phl(S, b, l, r); pv(S, l, b, t); pv(S, r, b, t); break;
+					case '1': pv(S, mid, b, t); break;
+					case '2': phl(S, t, l, r); phl(S, b, l, r); pd(S, l, b, r, mid); pd(S, l, mid, r, t); break;
+					case '3': phl(S, t, l, r); phl(S, mid, l, r); phl(S, b, l, r); pv(S, r, b, t); break;
+					case '4': pv(S, l, b, t); pv(S, r, b, t); phl(S, mid, l, r); break;
+					case '5': phl(S, t, l, r); phl(S, b, l, r); pv(S, l, b, mid); pv(S, r, mid, t); break;
+					case '6': phl(S, t, l, r); phl(S, b, l, r); pv(S, l, b, t); phl(S, mid, l, r); break;
+					case '7': phl(S, t, l, r); pd(S, l, b, r, t); break;
+					case '8': phl(S, t, l, r); phl(S, mid, l, r); phl(S, b, l, r); pv(S, l, b, t); pv(S, r, b, t); break;
+					case '9': phl(S, t, l, r); phl(S, b, l, r); pv(S, r, b, t); phl(S, mid, l, r); break;
+					case 'A': pd(S, l, b, 0.5f, t); pd(S, r, b, 0.5f, t); phl(S, 0.62f, l + 0.15f, r - 0.15f); break;
+					case 'H': pv(S, l, b, t); pv(S, r, b, t); phl(S, 0.5f, l, r); break;
+					case 'K': pv(S, l, b, t); pd(S, l, 0.5f, r, t); pd(S, l, 0.5f, r, b); break;
+					default:  phl(S, t, l, r); phl(S, b, l, r); pv(S, l, b, t); pv(S, r, b, t); break;
+					}
+					return S;
+					};
+				const char alphabet[] = "0123456789AAHKK";
+
+				auto frameAt = [&](float th, float ph) {
+					const float eps = 0.0016f;
+					Vec3 P = surf(th, ph), Pt = surf(th + eps, ph), Pp = surf(th, ph + eps);
+					Vec3 Tt = nrm(sub(Pt, P));   // tangent around Z
+					Vec3 Tp = nrm(sub(Pp, P));   // tangent toward pole (+/-Z)
+					Vec3 N = nrm(cross(Tt, Tp));
+					Tp = nrm(cross(N, Tt));    // re-orthogonalize
+					return std::tuple<Vec3, Vec3, Vec3, Vec3>(P, Tt, Tp, N);
+					};
+				auto neon = [&](float t)->Vec3 { float g = 0.6f + 0.4f * t, b = 0.22f + 0.22f * t; return Vec3{ 0.06f,g,b }; };
+
+				for (int ci = 0; ci < nCols; ++ci) {
+					float u = (ci + 0.5f) / float(nCols);
+					float theta = -3.14159265f + u * TAU;        // around Z
+					float phiTop = 0.9f * 1.57079633f * 0.68f; // start near +Z mid
+					float dPhi = (colStep * glyphH) / R;
+
+					for (int gi = 0; gi < glyphsPer; ++gi) {
+						char ch = alphabet[Random::random_int(0, 999999) % (sizeof(alphabet) - 1)];
+						auto strokes = glyph(ch);
+
+						float phEnd = phiTop - gi * dPhi;      // falling toward -Z
+						float phStart = phEnd + (fallDist / R);  // start higher
+						auto [Pe, Xt, Yd, Ne] = frameAt(theta, phEnd);
+						auto [Ps, Xs, Ys, Ns] = frameAt(theta, phStart);
+
+						float twist = twistEnd * (0.25f + 0.75f * (gi / float(glyphsPer)));
+						float head = 1.0f - (gi / float(glyphsPer - 1));
+						Vec3  C0 = neon(0.30f * head), C1 = neon(0.90f * head);
+
+						auto mapS = [&](V2 p)->Vec3 {
+							Vec3 local = add(mul(Xs, (p.x - 0.5f) * glyphW), mul(Ys, (p.y - 0.5f) * glyphH));
+							return add(Ps, local);
+							};
+						auto rotAround = [&](Vec3 v, Vec3 axis, float a) { Vec3 u = nrm(axis); float c = std::cos(a), s = std::sin(a);
+						return add(add(mul(v, c), mul(cross(u, v), s)), mul(u, dot(u, v) * (1.0f - c))); };
+						auto mapE = [&](V2 p)->Vec3 {
+							Vec3 local = add(mul(Xt, (p.x - 0.5f) * glyphW), mul(Yd, (p.y - 0.5f) * glyphH));
+							return add(Pe, rotAround(local, Ne, twist));
+							};
+
+						for (const auto& st : strokes) {
+							Vec3 A0 = mapS(st.first), B0 = mapS(st.second);
+							Vec3 A1 = mapE(st.first), B1 = mapE(st.second);
+							Vec3 M{ 0.5f * (A0.x + B0.x), 0.5f * (A0.y + B0.y), 0.5f * (A0.z + B0.z) };
+
+							Line& L = add_line();
+							L.x0.start = M.x; L.y0.start = M.y; L.z0.start = M.z;
+							L.x1.start = M.x; L.y1.start = M.y; L.z1.start = M.z;
+							L.rgb_t0 = C0; L.thickness.start = baseThick * 0.30f; L.number_of_cubes = cubesPer;
+							L.copy_start_to_end();
+							L.x0.end = A1.x; L.y0.end = A1.y; L.z0.end = A1.z;
+							L.x1.end = B1.x; L.y1.end = B1.y; L.z1.end = B1.z;
+							L.rgb_t1 = C1; L.thickness.end = baseThick * (0.65f + 0.35f * head);
+						}
+					}
+				}
+			}
+
+			// =========================
+			// C) Triple orbital text bands (layers along Z) + hex cage
+			// =========================
+			{
+				const char* text = "  MATRIX  MATH  ";
+				int L = 0; while (text[L] != '\0') ++L;
+
+				struct V2 { float x, y; }; using Stroke = std::pair<V2, V2>;
+				auto pv = [&](std::vector<Stroke>& S, float x, float y0, float y1) {S.push_back({ {x,y0},{x,y1} }); };
+				auto phl = [&](std::vector<Stroke>& S, float y, float x0, float x1) {S.push_back({ {x0,y},{x1,y} }); };
+				auto pd = [&](std::vector<Stroke>& S, float x0, float y0, float x1, float y1) {S.push_back({ {x0,y0},{x1,y1} }); };
+				auto strokesFor = [&](char c)->std::vector<Stroke> {
+					std::vector<Stroke> S; char C = (c >= 'a' && c <= 'z') ? char(c - 'a' + 'A') : c;
+					const float m = 0.10f, l = m, r = 1.0f - m, b = m, t = 1.0f - m, mid = 0.5f, hi = 0.62f;
+					switch (C) {
+					case 'M': pv(S, l, b, t); pv(S, r, b, t); pd(S, l, t, 0.5f, b + 0.25f); pd(S, r, t, 0.5f, b + 0.25f); break;
+					case 'A': pd(S, l, b, 0.5f, t); pd(S, r, b, 0.5f, t); phl(S, hi, l + 0.15f, r - 0.15f); break;
+					case 'T': phl(S, t, l, r); pv(S, mid, b, t); break;
+					case 'R': pv(S, l, b, t); phl(S, t, l, 0.82f); phl(S, 0.56f, l, 0.82f); pd(S, l, 0.56f, 0.86f, b); break;
+					case 'I': pv(S, mid, b, t); phl(S, t, l + 0.2f, r - 0.2f); phl(S, b, l + 0.2f, r - 0.2f); break;
+					case 'X': pd(S, l, b, r, t); pd(S, l, t, r, b); break;
+					case ' ': break;
+					default:  phl(S, t, l, r); phl(S, b, l, r); pv(S, l, b, t); pv(S, r, b, t); break;
+					}
+					return S;
+					};
+
+				const int   bands = 3;
+				const float ringR[bands] = { 1.55f, 1.85f, 2.15f };
+				const float ringZ[bands] = { 0.15f, 0.00f, -0.15f }; // stacked along Z (Z up)
+				const float letterH = 0.22f;
+				const float baseThick = 0.0075f;
+				const int   cubesPer = 26;
+				const float yawEnd[bands] = { 0.85f, -0.65f, 1.05f }; // each band spins differently
+				const float lift[bands] = { 0.10f,  0.00f,  0.12f };
+				const float push[bands] = { 0.18f,  0.24f,  0.30f };
+
+				for (int b = 0; b < bands; ++b)
+				{
+					for (int i = 0; i < L; ++i)
+					{
+						auto S = strokesFor(text[i]);
+						float u = (i + 0.5f) / float(L);
+						float ang = u * TAU;
+
+						// ring basis (XY circle at fixed Z)
+						Vec3 pos{ ringR[b] * std::cos(ang), ringR[b] * std::sin(ang), ringZ[b] };
+						Vec3 out = nrm(Vec3{ pos.x, pos.y, 0.0f });       // radial in XY
+						Vec3 tang{ -out.y, out.x, 0.0f };                 // tangent in XY
+						Vec3 up{ 0,0,1 };                                 // Z up
+
+						// cool cyan-magenta scheme, different per band
+						Vec3 c0{ 0.45f + 0.35f * std::cos(ang + 0.2f * b), 0.55f, 0.75f + 0.20f * std::sin(ang + 0.4f * b) };
+						Vec3 c1{ 0.65f, 0.90f, 1.00f };
+
+						auto mapPt = [&](V2 p)->Vec3 {
+							float dx = (p.x - 0.5f) * letterH, dy = (p.y - 0.5f) * letterH;
+							return Vec3{
+								pos.x + tang.x * dx + up.x * dy,
+								pos.y + tang.y * dx + up.y * dy,
+								pos.z + tang.z * dx + up.z * dy
+							};
+							};
+						auto toEnd = [&](Vec3 P)->Vec3 {
+							// spin around Z + slight lift + outward push
+							Vec3 Q{ P.x + out.x * push[b], P.y + out.y * push[b], P.z + lift[b] };
+							return rotZ(Q, yawEnd[b]);
+							};
+
+						for (const auto& st : S)
+						{
+							Vec3 A = mapPt(st.first), B = mapPt(st.second);
+							Vec3 M{ 0.5f * (A.x + B.x), 0.5f * (A.y + B.y), 0.5f * (A.z + B.z) };
+							Line& L = add_line();
+							L.x0.start = M.x; L.y0.start = M.y; L.z0.start = M.z;
+							L.x1.start = M.x; L.y1.start = M.y; L.z1.start = M.z;
+							L.rgb_t0 = c0; L.thickness.start = baseThick * 0.35f; L.number_of_cubes = cubesPer;
+							L.copy_start_to_end();
+							Vec3 A1 = toEnd(A), B1 = toEnd(B);
+							L.x0.end = A1.x; L.y0.end = A1.y; L.z0.end = A1.z;
+							L.x1.end = B1.x; L.y1.end = B1.y; L.z1.end = B1.z;
+							L.rgb_t1 = c1; L.thickness.end = baseThick;
+						}
+					}
+				}
+
+				// Minimal hex cage (unique geometric accent), tied to outer band
+				{
+					const int   hexSides = 6;
+					const float r0 = ringR[2] - 0.06f, r1 = ringR[2] + 0.06f;
+					const float z0 = ringZ[0] + 0.16f, z1 = ringZ[2] - 0.16f;
+					const float thick = 0.009f; const int cubes = 40;
+
+					auto add_edge = [&](Vec3 A, Vec3 B, Vec3 c0, Vec3 c1) {
+						Line& L = add_line();
+						Vec3 M{ 0.5f * (A.x + B.x),0.5f * (A.y + B.y),0.5f * (A.z + B.z) };
+						L.x0.start = M.x; L.y0.start = M.y; L.z0.start = M.z;
+						L.x1.start = M.x; L.y1.start = M.y; L.z1.start = M.z;
+						L.rgb_t0 = c0; L.thickness.start = thick * 0.35f; L.number_of_cubes = cubes;
+						L.copy_start_to_end();
+						L.x0.end = A.x; L.y0.end = A.y; L.z0.end = A.z;
+						L.x1.end = B.x; L.y1.end = B.y; L.z1.end = B.z;
+						L.rgb_t1 = c1; L.thickness.end = thick;
+						};
+
+					// two hex rings (top/bottom) and 6 verticals + 6 diagonals
+					std::vector<Vec3> top, bottom;
+					for (int i = 0; i < hexSides; ++i) {
+						float a = (i / float(hexSides)) * TAU + TAU / 12.0f;
+						top.push_back(Vec3{ r0 * std::cos(a), r0 * std::sin(a), z0 });
+						bottom.push_back(Vec3{ r1 * std::cos(a), r1 * std::sin(a), z1 });
+					}
+					for (int i = 0; i < hexSides; ++i) {
+						int j = (i + 1) % hexSides;
+						add_edge(top[i], top[j], { 0.85f,0.85f,0.95f }, { 0.60f,0.80f,1.00f });
+						add_edge(bottom[i], bottom[j], { 0.85f,0.85f,0.95f }, { 0.60f,0.80f,1.00f });
+						add_edge(top[i], bottom[i], { 0.80f,0.80f,0.92f }, { 0.55f,0.75f,0.98f });
+						add_edge(top[i], bottom[j], { 0.80f,0.80f,0.92f }, { 0.55f,0.75f,0.98f }); // weave diagonal
+					}
+				}
+			}
+		}
+
+		// Add this new, self-contained function inside your 'struct Lines'
+
+		void init_geometric_unfolding()
+		{
+			lines.clear();
+
+			// --- SECTION 1: Self-Contained Helpers (Vector Math Lambdas) ---
+			auto vec_add = [](const Vec3& a, const Vec3& b) -> Vec3 { return { a.x + b.x, a.y + b.y, a.z + b.z }; };
+			auto vec_scale = [](const Vec3& v, float s) -> Vec3 { return { v.x * s, v.y * s, v.z * s }; };
+
+			// --- SECTION 2: Geometric & Animation Parameters ---
+			const float scale = 0.8f;                     // Overall size of the final shape
+			const float final_rotation_deg = 120.0f;      // How much the icosahedron rotates as it forms
+			Vec3 start_color = { 0.1f, 0.9f, 1.0f };      // Cool cyan for the flat "glyph"
+			Vec3 end_color = { 1.0f, 0.85f, 0.4f };       // Warm gold for the finished "jewel"
+
+			// --- SECTION 3: Define the Icosahedron Geometry ---
+			// An icosahedron is a 20-faced solid made of equilateral triangles.
+			// We first define its 12 vertices and then its 30 edges.
+
+			// Golden ratio constant, crucial for defining the vertices
+			const float PHI = 1.61803398875f;
+
+			// The 12 vertices of a perfect icosahedron
+			std::vector<Vec3> vertices_3d = {
+				{-1,  PHI, 0}, { 1,  PHI, 0}, {-1, -PHI, 0}, { 1, -PHI, 0},
+				{0, -1,  PHI}, {0,  1,  PHI}, {0, -1, -PHI}, {0,  1, -PHI},
+				{ PHI, 0, -1}, { PHI, 0,  1}, {-PHI, 0, -1}, {-PHI, 0,  1}
+			};
+
+			// The START state: A hand-crafted 2D "net" of the icosahedron, laid flat on the XZ plane.
+			// This defines where each vertex is before the folding begins.
+			std::vector<Vec3> vertices_2d = {
+				{0.0f, 0, 1.86f}, {2.0f, 0, 1.86f}, {0.0f, 0, -1.86f}, {2.0f, 0, -1.86f},
+				{1.0f, 0, -0.93f}, {1.0f, 0, 0.93f}, {1.0f, 0, -2.79f}, {1.0f, 0, 2.79f},
+				{3.0f, 0, -0.93f}, {3.0f, 0, 0.93f}, {-1.0f, 0, -0.93f}, {-1.0f, 0, 0.93f}
+			};
+
+			// The 30 edges, defined as pairs of vertex indices
+			std::vector<std::pair<int, int>> edges = {
+				{0,11}, {0,7}, {0,5}, {0,1}, {1,5}, {1,9}, {1,7}, {2,3}, {2,4}, {2,6},
+				{2,10}, {3,4}, {3,9}, {3,8}, {4,11}, {4,9}, {5,11}, {5,9}, {6,7}, {6,8},
+				{6,10}, {7,8}, {8,9}, {10,11}, {0,10}, {1,8}, {2,11}, {3,10}, {4,5}, {6,9}
+			};
+
+			// --- SECTION 4: Pre-process the Final State (Scaling and Rotation) ---
+			const float rot_rad = final_rotation_deg * 3.14159265f / 180.0f;
+			const float cos_r = cos(rot_rad);
+			const float sin_r = sin(rot_rad);
+
+			for (auto& v : vertices_3d) {
+				// Scale it to the desired size
+				v = vec_scale(v, scale);
+				// Apply a rotation around the Y-axis for the final animation state
+				float x_new = v.x * cos_r - v.z * sin_r;
+				float z_new = v.x * sin_r + v.z * cos_r;
+				v.x = x_new;
+				v.z = z_new;
+			}
+			for (auto& v : vertices_2d) {
+				// Scale the start state as well
+				v = vec_scale(v, scale);
+			}
 
 
+			// --- SECTION 5: Create the Morphing Lines ---
+			// Iterate through each edge and create a line that morphs from the 2D net to the 3D shape.
+			for (const auto& edge : edges)
+			{
+				Line& line = add_line();
 
+				const Vec3& p0_start = vertices_2d[edge.first];
+				const Vec3& p1_start = vertices_2d[edge.second];
+				const Vec3& p0_end = vertices_3d[edge.first];
+				const Vec3& p1_end = vertices_3d[edge.second];
+
+				// Set START state (flat net)
+				line.x0.start = p0_start.x; line.y0.start = p0_start.y; line.z0.start = p0_start.z;
+				line.x1.start = p1_start.x; line.y1.start = p1_start.y; line.z1.start = p1_start.z;
+
+				// Set END state (closed 3D shape)
+				line.x0.end = p0_end.x; line.y0.end = p0_end.y; line.z0.end = p0_end.z;
+				line.x1.end = p1_end.x; line.y1.end = p1_end.y; line.z1.end = p1_end.z;
+
+				// Animate color and thickness
+				line.rgb_t0 = start_color;
+				line.rgb_t1 = end_color;
+				line.thickness.start = 0.006f;
+				line.thickness.end = 0.008f; // Lines get slightly bolder as the shape forms
+				line.number_of_cubes = 100;
+			}
+		}
+		
+
+		void init_hyperbolic_gyroid_lattice()
+		{
+			lines.clear();
+
+			// Self-contained constants
+			const float TAU = 6.283185307179586476925286766559f;
+			const float PI = 3.141592653589793238462643383279f;
+			const float PHI = 1.6180339887498948482045868343656f; // Golden ratio
+
+			// Gyroid implicit function: sin(x)cos(y) + sin(y)cos(z) + sin(z)cos(x) = 0
+			auto gyroid_field = [&](float x, float y, float z) -> float {
+				return std::sin(x) * std::cos(y) + std::sin(y) * std::cos(z) + std::sin(z) * std::cos(x);
+				};
+
+			// Hyperbolic radial warp (Poincaré ball model)
+			auto hyperbolic_warp = [&](Vec3 p) -> Vec3 {
+				float r2 = p.x * p.x + p.y * p.y + p.z * p.z;
+				if (r2 >= 1.0f) return p; // Clamp to unit ball
+				float factor = 2.0f / (1.0f - r2);
+				return { p.x * factor, p.y * factor, p.z * factor };
+				};
+
+			// Approximate surface normal via finite differences
+			auto gyroid_normal = [&](float x, float y, float z) -> Vec3 {
+				const float eps = 0.01f;
+				float dx = gyroid_field(x + eps, y, z) - gyroid_field(x - eps, y, z);
+				float dy = gyroid_field(x, y + eps, z) - gyroid_field(x, y - eps, z);
+				float dz = gyroid_field(x, y, z + eps) - gyroid_field(x, y, z - eps);
+				return vec_normalize({ dx, dy, dz });
+				};
+
+			// Generate base gyroid mesh on a 3D grid
+			const int grid_size = 18;
+			const float scale = 1.8f;
+			const float step = scale / (grid_size - 1);
+			const float offset = -scale * 0.5f;
+
+			std::vector<Vec3> vertices;
+			std::vector<std::pair<int, int>> edges;
+
+			// Step 1: Sample gyroid isosurface via marching cubes (simplified edge detection)
+			for (int ix = 0; ix < grid_size - 1; ++ix)
+				for (int iy = 0; iy < grid_size - 1; ++iy)
+					for (int iz = 0; iz < grid_size - 1; ++iz)
+					{
+						Vec3 base = { offset + ix * step, offset + iy * step, offset + iz * step };
+						float v000 = gyroid_field(base.x, base.y, base.z);
+						float v100 = gyroid_field(base.x + step, base.y, base.z);
+						float v010 = gyroid_field(base.x, base.y + step, base.z);
+						float v001 = gyroid_field(base.x, base.y, base.z + step);
+
+						// Detect zero-crossings (simplified)
+						auto add_edge_if_cross = [&](float a, float b, Vec3 pa, Vec3 pb) {
+							if ((a < 0 && b >= 0) || (a >= 0 && b < 0)) {
+								float t = std::fabs(a) / (std::fabs(a) + std::fabs(b));
+								Vec3 interp = {
+									pa.x + t * (pb.x - pa.x),
+									pa.y + t * (pb.y - pa.y),
+									pa.z + t * (pb.z - pa.z)
+								};
+								vertices.push_back(interp);
+								return (int)vertices.size() - 1;
+							}
+							return -1;
+							};
+
+						int p0 = add_edge_if_cross(v000, v100, base, { base.x + step, base.y, base.z });
+						int p1 = add_edge_if_cross(v000, v010, base, { base.x, base.y + step, base.z });
+						int p2 = add_edge_if_cross(v000, v001, base, { base.x, base.y, base.z + step });
+
+						if (p0 != -1 && p1 != -1) edges.push_back({ p0, p1 });
+						if (p1 != -1 && p2 != -1) edges.push_back({ p1, p2 });
+						if (p2 != -1 && p0 != -1) edges.push_back({ p2, p0 });
+					}
+
+			// Step 2: Subdivide edges with quasicrystalline logic (golden ratio splits)
+			const int subdivisions = 2;
+			for (int sub = 0; sub < subdivisions; ++sub)
+			{
+				std::vector<std::pair<int, int>> new_edges;
+				size_t orig_size = edges.size();
+				for (size_t i = 0; i < orig_size; ++i)
+				{
+					auto [a, b] = edges[i];
+					Vec3 pa = vertices[a];
+					Vec3 pb = vertices[b];
+					Vec3 dir = vec_normalize(vec_add(pb, vec_scale(pa, -1.0f)));
+					float len = vec_length(vec_add(pb, vec_scale(pa, -1.0f)));
+
+					// Split at golden ratio points
+					float t1 = 1.0f / PHI;
+					float t2 = 1.0f - t1;
+
+					Vec3 mid1 = vec_add(pa, vec_scale(dir, len * t1));
+					Vec3 mid2 = vec_add(pa, vec_scale(dir, len * t2));
+
+					int m1 = (int)vertices.size(); vertices.push_back(mid1);
+					int m2 = (int)vertices.size(); vertices.push_back(mid2);
+
+					// Replace edge with 3 segments
+					new_edges.push_back({ a, m1 });
+					new_edges.push_back({ m1, m2 });
+					new_edges.push_back({ m2, b });
+				}
+				edges = std::move(new_edges);
+			}
+
+			// Step 3: Emit animated lines with curvature-based coloring
+			for (auto [a, b] : edges)
+			{
+				Vec3 pa = vertices[a];
+				Vec3 pb = vertices[b];
+
+				// Warp into hyperbolic space
+				Vec3 pa_hyp = hyperbolic_warp(pa);
+				Vec3 pb_hyp = hyperbolic_warp(pb);
+
+				// Compute curvature sign at midpoint
+				Vec3 mid = { (pa.x + pb.x) * 0.5f, (pa.y + pb.y) * 0.5f, (pa.z + pb.z) * 0.5f };
+				Vec3 normal = gyroid_normal(mid.x, mid.y, mid.z);
+				float curvature = normal.x + normal.y + normal.z; // Approximate mean curvature sign
+
+				// Color by curvature
+				Vec3 color;
+				if (curvature > 0.1f) {
+					// Dome (positive curvature)
+					color = { 0.9f, 0.3f, 0.2f };
+				}
+				else if (curvature < -0.1f) {
+					// Saddle (negative curvature)
+					color = { 0.2f, 0.3f, 0.9f };
+				}
+				else {
+					// Flat (minimal surface)
+					color = { 0.3f, 0.9f, 0.3f };
+				}
+
+				Line& line = add_line();
+				// START: collapsed at origin (clean reveal)
+				line.x0.start = 0.0f; line.y0.start = 0.0f; line.z0.start = 0.0f;
+				line.x1.start = 0.0f; line.y1.start = 0.0f; line.z1.start = 0.0f;
+				line.rgb_t0 = color;
+				line.thickness.start = 0.002f;
+				line.number_of_cubes = 12;
+
+				// END: hyperbolic gyroid edge
+				line.copy_start_to_end();
+				line.x0.end = pa_hyp.x; line.y0.end = pa_hyp.y; line.z0.end = pa_hyp.z;
+				line.x1.end = pb_hyp.x; line.y1.end = pb_hyp.y; line.z1.end = pb_hyp.z;
+				line.rgb_t1 = color;
+				line.thickness.end = 0.004f + 0.003f * std::fabs(curvature);
+			}
+
+			// Step 4: Add Penrose quasicrystal frame around boundary
+			const int penrose_rings = 5;
+			const float penrose_radius = 2.2f;
+			for (int ring = 0; ring < penrose_rings; ++ring)
+			{
+				float r = penrose_radius * (ring + 1) / penrose_rings;
+				int points = 5 * (ring + 1);
+				for (int i = 0; i < points; ++i)
+				{
+					float angle1 = TAU * i / points;
+					float angle2 = TAU * (i + 1) / points;
+
+					// Apply 5-fold quasiperiodic modulation
+					float mod1 = 1.0f + 0.3f * std::cos(5.0f * angle1 + ring * 0.4f);
+					float mod2 = 1.0f + 0.3f * std::cos(5.0f * angle2 + ring * 0.4f);
+
+					Vec3 p1 = { r * mod1 * std::cos(angle1), 0.0f, r * mod1 * std::sin(angle1) };
+					Vec3 p2 = { r * mod2 * std::cos(angle2), 0.0f, r * mod2 * std::sin(angle2) };
+
+					Line& frame = add_line();
+					frame.x0.start = p1.x; frame.y0.start = p1.y; frame.z0.start = p1.z;
+					frame.x1.start = p2.x; frame.y1.start = p2.y; frame.z1.start = p2.z;
+					frame.rgb_t0 = { 0.8f, 0.8f, 0.2f };
+					frame.thickness.start = 0.006f;
+					frame.number_of_cubes = 20;
+					frame.copy_start_to_end();
+
+					// Animate: spiral inward
+					frame.x0.end = 0.0f; frame.y0.end = 0.0f; frame.z0.end = 0.0f;
+					frame.x1.end = 0.0f; frame.y1.end = 0.0f; frame.z1.end = 0.0f;
+				}
+			}
+		}
 
 
 
@@ -3374,8 +3989,15 @@ namespace Universe_
 				// lines.init_brutalist_monolith();
 				// lines.init_0007_tesseract_warp();
 				// lines.init_0008_supershape_ribbons();
+				// lines.init_0009_supershape_matrix_rain();
+				// lines.init_0011_flip_unique_matrix_orbit();
+				// lines.init_geometric_unfolding();
+				lines.init_hyperbolic_gyroid_lattice();
 
-				lines.init_0009_supershape_matrix_rain();
+
+
+
+
 
 
 				
