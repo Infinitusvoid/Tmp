@@ -7565,7 +7565,312 @@ namespace Universe_
 
 
 		
-		
+		void init_cube_sphere_morph()
+		{
+			const float M_PI = 3.14159265359f;
+			static float time_base = 0.0f;
+
+			// Animation parameters
+			float morph_factor = (sin(time_base * 0.8f) + 1.0f) * 0.5f; // 0=cube, 1=sphere
+			float base_size = 0.4f;
+			int edge_segments = 6;
+
+			// Define cube vertices (8 corners)
+			std::vector<std::tuple<float, float, float>> cube_vertices = {
+				{-base_size, -base_size, -base_size}, // 0
+				{ base_size, -base_size, -base_size}, // 1
+				{ base_size,  base_size, -base_size}, // 2
+				{-base_size,  base_size, -base_size}, // 3
+				{-base_size, -base_size,  base_size}, // 4
+				{ base_size, -base_size,  base_size}, // 5
+				{ base_size,  base_size,  base_size}, // 6
+				{-base_size,  base_size,  base_size}  // 7
+			};
+
+			// Define cube edges (12 edges)
+			std::vector<std::pair<int, int>> cube_edges = {
+				{0,1}, {1,2}, {2,3}, {3,0}, // Back face
+				{4,5}, {5,6}, {6,7}, {7,4}, // Front face
+				{0,4}, {1,5}, {2,6}, {3,7}  // Connecting edges
+			};
+
+			// Create morphing edges
+			for (const auto& [start_idx, end_idx] : cube_edges) {
+				auto [sx, sy, sz] = cube_vertices[start_idx];
+				auto [ex, ey, ez] = cube_vertices[end_idx];
+
+				for (int i = 0; i < edge_segments; i++) {
+					float t = float(i) / edge_segments;
+					float next_t = float(i + 1) / edge_segments;
+
+					// Current segment start point (cube position)
+					float cube_x1 = sx + t * (ex - sx);
+					float cube_y1 = sy + t * (ey - sy);
+					float cube_z1 = sz + t * (ez - sz);
+
+					// Current segment end point (cube position)
+					float cube_x2 = sx + next_t * (ex - sx);
+					float cube_y2 = sy + next_t * (ey - sy);
+					float cube_z2 = sz + next_t * (ez - sz);
+
+					// Convert to sphere positions (normalize)
+					float len1 = sqrt(cube_x1 * cube_x1 + cube_y1 * cube_y1 + cube_z1 * cube_z1);
+					float sphere_x1 = base_size * cube_x1 / len1;
+					float sphere_y1 = base_size * cube_y1 / len1;
+					float sphere_z1 = base_size * cube_z1 / len1;
+
+					float len2 = sqrt(cube_x2 * cube_x2 + cube_y2 * cube_y2 + cube_z2 * cube_z2);
+					float sphere_x2 = base_size * cube_x2 / len2;
+					float sphere_y2 = base_size * cube_y2 / len2;
+					float sphere_z2 = base_size * cube_z2 / len2;
+
+					// Interpolate between cube and sphere for START positions
+					float start_x1 = cube_x1 * (1.0f - morph_factor) + sphere_x1 * morph_factor;
+					float start_y1 = cube_y1 * (1.0f - morph_factor) + sphere_y1 * morph_factor;
+					float start_z1 = cube_z1 * (1.0f - morph_factor) + sphere_z1 * morph_factor;
+
+					float start_x2 = cube_x2 * (1.0f - morph_factor) + sphere_x2 * morph_factor;
+					float start_y2 = cube_y2 * (1.0f - morph_factor) + sphere_y2 * morph_factor;
+					float start_z2 = cube_z2 * (1.0f - morph_factor) + sphere_z2 * morph_factor;
+
+					// Calculate END positions (next animation frame)
+					float next_morph = fmod(morph_factor + 0.02f, 1.0f);
+					if (next_morph < morph_factor) next_morph = 0.0f;
+
+					float end_x1 = cube_x1 * (1.0f - next_morph) + sphere_x1 * next_morph;
+					float end_y1 = cube_y1 * (1.0f - next_morph) + sphere_y1 * next_morph;
+					float end_z1 = cube_z1 * (1.0f - next_morph) + sphere_z1 * next_morph;
+
+					float end_x2 = cube_x2 * (1.0f - next_morph) + sphere_x2 * next_morph;
+					float end_y2 = cube_y2 * (1.0f - next_morph) + sphere_y2 * next_morph;
+					float end_z2 = cube_z2 * (1.0f - next_morph) + sphere_z2 * next_morph;
+
+					// Add some dynamic movement to make it more interesting
+					float pulse = sin(time_base * 3.0f + i) * 0.02f;
+					end_x1 += pulse;
+					end_y1 += pulse * 0.7f;
+					end_z1 += pulse * 1.2f;
+
+					end_x2 += pulse * 1.1f;
+					end_y2 += pulse * 0.8f;
+					end_z2 += pulse * 0.9f;
+
+					// Create the line with DIFFERENT start and end positions
+					Line& morph_line = add_line();
+					morph_line.x0.start = start_x1;
+					morph_line.y0.start = start_y1;
+					morph_line.z0.start = start_z1;
+					morph_line.x1.start = start_x2;
+					morph_line.y1.start = start_y2;
+					morph_line.z1.start = start_z2;
+
+					// Set END positions to create animation
+					morph_line.x0.end = end_x1;
+					morph_line.y0.end = end_y1;
+					morph_line.z0.end = end_z1;
+					morph_line.x1.end = end_x2;
+					morph_line.y1.end = end_y2;
+					morph_line.z1.end = end_z2;
+
+					// Dynamic colors based on morph state
+					float hue = morph_factor * 2.0f + time_base + i * 0.1f;
+					if (morph_factor < 0.5f) {
+						// Cube phase - warm colors
+						morph_line.rgb_t0.x = 0.8f + 0.2f * sin(hue);
+						morph_line.rgb_t0.y = 0.3f + 0.2f * cos(hue);
+						morph_line.rgb_t0.z = 0.2f;
+					}
+					else {
+						// Sphere phase - cool colors
+						morph_line.rgb_t0.x = 0.2f + 0.3f * sin(hue);
+						morph_line.rgb_t0.y = 0.6f + 0.3f * cos(hue);
+						morph_line.rgb_t0.z = 0.8f + 0.2f * sin(hue * 1.3f);
+					}
+
+					morph_line.thickness.start = 0.008f;
+					morph_line.number_of_cubes = 8;
+				}
+			}
+
+			// Create morphing particles
+			auto create_morphing_particles = [&]() {
+				int particle_count = 20;
+
+				for (int p = 0; p < particle_count; p++) {
+					// Create particles at cube vertices that move to sphere surface
+					int vertex_idx = p % 8;
+					auto [cube_x, cube_y, cube_z] = cube_vertices[vertex_idx];
+
+					// Convert to sphere position
+					float len = sqrt(cube_x * cube_x + cube_y * cube_y + cube_z * cube_z);
+					float sphere_x = base_size * cube_x / len;
+					float sphere_y = base_size * cube_y / len;
+					float sphere_z = base_size * cube_z / len;
+
+					// START position - current morph state
+					float start_x = cube_x * (1.0f - morph_factor) + sphere_x * morph_factor;
+					float start_y = cube_y * (1.0f - morph_factor) + sphere_y * morph_factor;
+					float start_z = cube_z * (1.0f - morph_factor) + sphere_z * morph_factor;
+
+					// END position - next morph state with orbital motion
+					float next_morph = fmod(morph_factor + 0.03f, 1.0f);
+					float end_x = cube_x * (1.0f - next_morph) + sphere_x * next_morph;
+					float end_y = cube_y * (1.0f - next_morph) + sphere_y * next_morph;
+					float end_z = cube_z * (1.0f - next_morph) + sphere_z * next_morph;
+
+					// Add orbital motion
+					float orbit = sin(time_base * 2.0f + p) * 0.05f;
+					end_x += orbit * cos(p * 0.7f);
+					end_z += orbit * sin(p * 0.7f);
+
+					Line& particle = add_line();
+					particle.x0.start = start_x;
+					particle.y0.start = start_y;
+					particle.z0.start = start_z;
+					particle.x1.start = start_x + 0.001f; // Small line for point
+					particle.y1.start = start_y;
+					particle.z1.start = start_z;
+
+					particle.x0.end = end_x;
+					particle.y0.end = end_y;
+					particle.z0.end = end_z;
+					particle.x1.end = end_x + 0.001f;
+					particle.y1.end = end_y;
+					particle.z1.end = end_z;
+
+					// Bright particle colors
+					float particle_hue = time_base * 1.5f + p * 0.3f;
+					particle.rgb_t0.x = 0.9f + 0.1f * sin(particle_hue);
+					particle.rgb_t0.y = 0.8f + 0.2f * cos(particle_hue);
+					particle.rgb_t0.z = 0.7f + 0.3f * sin(particle_hue * 1.2f);
+
+					particle.thickness.start = 0.012f;
+					particle.number_of_cubes = 4;
+				}
+				};
+
+			// Create energy field
+			auto create_energy_field = [&]() {
+				int field_lines = 12;
+
+				for (int line = 0; line < field_lines; line++) {
+					float angle = line * (2.0f * M_PI / field_lines);
+
+					// START positions
+					float start_outer_x = (base_size + 0.3f) * cos(angle);
+					float start_outer_z = (base_size + 0.3f) * sin(angle);
+					float start_inner_x = (base_size * 0.5f) * cos(angle + 0.3f);
+					float start_inner_z = (base_size * 0.5f) * sin(angle + 0.3f);
+
+					// END positions - rotate and pulse
+					float next_angle = angle + 0.1f;
+					float pulse = sin(time_base * 2.0f + line) * 0.05f;
+
+					float end_outer_x = (base_size + 0.3f + pulse) * cos(next_angle);
+					float end_outer_z = (base_size + 0.3f + pulse) * sin(next_angle);
+					float end_inner_x = (base_size * 0.5f + pulse) * cos(next_angle + 0.3f);
+					float end_inner_z = (base_size * 0.5f + pulse) * sin(next_angle + 0.3f);
+
+					Line& field_line = add_line();
+					field_line.x0.start = start_outer_x;
+					field_line.y0.start = -0.2f;
+					field_line.z0.start = start_outer_z;
+					field_line.x1.start = start_inner_x;
+					field_line.y1.start = 0.2f;
+					field_line.z1.start = start_inner_z;
+
+					field_line.x0.end = end_outer_x;
+					field_line.y0.end = -0.2f + pulse;
+					field_line.z0.end = end_outer_z;
+					field_line.x1.end = end_inner_x;
+					field_line.y1.end = 0.2f + pulse;
+					field_line.z1.end = end_inner_z;
+
+					// Subtle field colors
+					float field_hue = time_base * 0.5f + line * 0.4f;
+					field_line.rgb_t0.x = 0.1f + 0.1f * sin(field_hue);
+					field_line.rgb_t0.y = 0.2f + 0.1f * cos(field_hue);
+					field_line.rgb_t0.z = 0.3f + 0.1f * sin(field_hue * 1.5f);
+
+					field_line.thickness.start = 0.004f;
+					field_line.number_of_cubes = 6;
+				}
+				};
+
+			// Create face diagonals for better structure
+			auto create_diagonals = [&]() {
+				std::vector<std::pair<int, int>> diagonals = {
+					{0,6}, {1,7}, {2,4}, {3,5} // Cross-cube diagonals
+				};
+
+				for (const auto& [start_idx, end_idx] : diagonals) {
+					auto [sx, sy, sz] = cube_vertices[start_idx];
+					auto [ex, ey, ez] = cube_vertices[end_idx];
+
+					// START positions
+					float len1 = sqrt(sx * sx + sy * sy + sz * sz);
+					float sphere_sx = base_size * sx / len1;
+					float sphere_sy = base_size * sy / len1;
+					float sphere_sz = base_size * sz / len1;
+
+					float len2 = sqrt(ex * ex + ey * ey + ez * ez);
+					float sphere_ex = base_size * ex / len2;
+					float sphere_ey = base_size * ey / len2;
+					float sphere_ez = base_size * ez / len2;
+
+					float start_x1 = sx * (1.0f - morph_factor) + sphere_sx * morph_factor;
+					float start_y1 = sy * (1.0f - morph_factor) + sphere_sy * morph_factor;
+					float start_z1 = sz * (1.0f - morph_factor) + sphere_sz * morph_factor;
+
+					float start_x2 = ex * (1.0f - morph_factor) + sphere_ex * morph_factor;
+					float start_y2 = ey * (1.0f - morph_factor) + sphere_ey * morph_factor;
+					float start_z2 = ez * (1.0f - morph_factor) + sphere_ez * morph_factor;
+
+					// END positions
+					float next_morph = fmod(morph_factor + 0.015f, 1.0f);
+					float end_x1 = sx * (1.0f - next_morph) + sphere_sx * next_morph;
+					float end_y1 = sy * (1.0f - next_morph) + sphere_sy * next_morph;
+					float end_z1 = sz * (1.0f - next_morph) + sphere_sz * next_morph;
+
+					float end_x2 = ex * (1.0f - next_morph) + sphere_ex * next_morph;
+					float end_y2 = ey * (1.0f - next_morph) + sphere_ey * next_morph;
+					float end_z2 = ez * (1.0f - next_morph) + sphere_ez * next_morph;
+
+					Line& diagonal = add_line();
+					diagonal.x0.start = start_x1;
+					diagonal.y0.start = start_y1;
+					diagonal.z0.start = start_z1;
+					diagonal.x1.start = start_x2;
+					diagonal.y1.start = start_y2;
+					diagonal.z1.start = start_z2;
+
+					diagonal.x0.end = end_x1;
+					diagonal.y0.end = end_y1;
+					diagonal.z0.end = end_z1;
+					diagonal.x1.end = end_x2;
+					diagonal.y1.end = end_y2;
+					diagonal.z1.end = end_z2;
+
+					// Diagonal colors
+					float diag_hue = time_base * 0.8f;
+					diagonal.rgb_t0.x = 0.9f;
+					diagonal.rgb_t0.y = 0.7f + 0.2f * sin(diag_hue);
+					diagonal.rgb_t0.z = 0.3f;
+
+					diagonal.thickness.start = 0.005f;
+					diagonal.number_of_cubes = 10;
+				}
+				};
+
+			// ===== MAIN EXECUTION =====
+
+			create_morphing_particles();
+			create_energy_field();
+			create_diagonals();
+
+			// Update time for next frame
+			time_base += 0.016f;
+		}
 		
 
 
@@ -7769,7 +8074,7 @@ namespace Universe_
 				// lines.init_cosmic_carousel();
 				// lines.init_neural_aurora();
 				// lines.init_fractal_flow();
-				
+				// lines.init_cube_sphere_morph();
 
 
 
