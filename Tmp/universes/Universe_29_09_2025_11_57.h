@@ -9035,6 +9035,465 @@ namespace Universe_
 
 
 
+		
+
+		void init_spiral_duet_fast()
+		{
+			const float M_PI = 3.14159265359f;
+			static float time_base = 0.0f;
+
+			// ========= perf & timing =========
+			const int   MAX_LINES_PER_FRAME = 11000; // hard cap  instant first frame
+			const float DT = 0.016f;
+			const float RAMP_SECONDS = 2.0f;  // density fade-in
+
+			// ========= vibe controls =========
+			const float ORBIT_RADIUS = 0.38f;   // how far spirals orbit around center
+			const float ORBIT_SPEED = 0.45f;   // orbit angular speed
+			const float SPIN_SPEED = 1.35f;   // spin inside each spiral
+			const float BASE_R = 0.22f;   // base coil radius
+			const float R_GROW = 0.40f;   // spiral expansion along u
+			const float R_WOBBLE = 0.08f;   // radial wiggle
+			const float HEIGHT_SWING = 0.55f;   // vertical amplitude
+			const float PITCH = 2.8f;    // vertical pitch (turnsy)
+			const float DANCE_TWIST = 0.7f;    // playful extra twist
+			const float RIBBON_RADIUS = 0.020f;  // strand radial offset (scaled by local r)
+			const float PULSE_SPEED = 0.55f;   // bright pulses racing on the spirals
+
+			// density targets (at full ramp)
+			const int   PATH_SEGS_FULL = 220;  // segments per spiral path
+			const int   RIBBON_STRANDS_F = 3;    // strands around path
+			const int   BRIDGES_FULL = 40;   // inter-spiral bridges per frame
+			const int   CONFETTI_FULL = 140;  // short sparks around paths
+
+			// colors/thickness
+			const float BASE_THICK = 0.010f;
+			const float RIBBON_THICK = 0.006f;
+			const float BRIDGE_THICK = 0.0045f;
+			const float CONFETTI_THICK = 0.0032f;
+
+			// --------- tiny utils (no std::max/min) ----------
+			auto maxf = [](float a, float b) { return (a > b) ? a : b; };
+			auto minf = [](float a, float b) { return (a < b) ? a : b; };
+			auto clampf = [&](float x, float a, float b) { return maxf(a, minf(b, x)); };
+			auto fractf = [](float x) { return x - std::floor(x); };
+			auto lerp = [](float a, float b, float t) { return a + (b - a) * t; };
+			auto smooth = [&](float x) { x = clampf(x, 0.0f, 1.0f); return x * x * (3.0f - 2.0f * x); };
+			auto hash11 = [&](float p) { return fractf(std::sin(p * 127.1f) * 43758.5453f); };
+
+			struct V3 { float x, y, z; };
+			auto add = [](V3 a, V3 b) { return V3{ a.x + b.x,a.y + b.y,a.z + b.z }; };
+			auto sub = [](V3 a, V3 b) { return V3{ a.x - b.x,a.y - b.y,a.z - b.z }; };
+			auto mul = [](V3 a, float s) { return V3{ a.x * s,a.y * s,a.z * s }; };
+			auto dot = [](V3 a, V3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; };
+			auto cross = [](V3 a, V3 b) { return V3{ a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x }; };
+			auto norm = [&](V3 v) { float L = std::sqrt(dot(v, v)) + 1e-6f; return mul(v, 1.0f / L); };
+
+			auto rotY = [&](V3 v, float a) {
+				float c = std::cos(a), s = std::sin(a);
+				return V3{ c * v.x - s * v.z, v.y, s * v.x + c * v.z };
+				};
+
+			// line budget
+			int budget = MAX_LINES_PER_FRAME;
+			auto try_add = [&](Line*& out)->bool {
+				if (budget <= 0) return false;
+				out = &add_line();
+				--budget;
+				return true;
+				};
+#define END_FRAME() do { time_base += DT; return; } while(0)
+
+			// ===== ramp (fast start) =====
+			float T = time_base;
+			float ramp0 = clampf(T / RAMP_SECONDS, 0.0f, 1.0f);
+			float ramp = maxf(0.35f, ramp0); // show something right away
+
+			auto scale_int = [&](int full, float r) {
+				int v = (int)std::floor(lerp(1.0f, (float)full, r) + 1e-4f);
+				if (v < 1) v = 1;
+				return v;
+				};
+			int PATH_SEGS = scale_int(PATH_SEGS_FULL, ramp);
+			int STRANDS = scale_int(RIBBON_STRANDS_F, ramp);
+			int BRIDGES = scale_int(BRIDGES_FULL, ramp);
+			int CONFETTI = scale_int(CONFETTI_FULL, ramp);
+
+			// ===== spiral sampler =====
+			// id=0 or 1. Returns position and tangent at param u[0,1].
+			auto sample_spiral = [&](float u, int id, float t)->std::pair<V3, V3> {
+				// orbit centers
+				float sign = (id == 0) ? +1.0f : -1.0f;
+				float orbitA = ORBIT_SPEED * t + (id == 0 ? 0.0f : M_PI);
+				// playful offset so they "dance"
+				float jig = 0.25f * std::sin(0.7f * t + sign * 0.9f) * std::sin(2.0f * M_PI * u);
+				V3 center = rotY(V3{ sign * ORBIT_RADIUS, 0.0f, 0.0f }, orbitA);
+				center = add(center, V3{ jig * 0.25f, 0.0f, 0.0f });
+
+				// spiral angle and radius
+				float theta = 2.0f * M_PI * (2.5f + 3.5f * u) + sign * (SPIN_SPEED * t) + sign * DANCE_TWIST * std::sin(1.2f * t + 6.0f * u);
+				float r = BASE_R + R_GROW * u + R_WOBBLE * std::sin(7.0f * u + 0.9f * t + id * 1.7f);
+				float y = HEIGHT_SWING * std::sin(PITCH * theta * 0.33f + 0.6f * sign * u + 0.4f * t);
+
+				V3 p = V3{ center.x + r * std::cos(theta),
+						   y,
+						   center.z + r * std::sin(theta) };
+
+				// approximate tangent with small du
+				float du = 1.0f / (float)PATH_SEGS;
+				float u2 = clampf(u + du, 0.0f, 1.0f);
+				float theta2 = 2.0f * M_PI * (2.5f + 3.5f * u2) + sign * (SPIN_SPEED * t) + sign * DANCE_TWIST * std::sin(1.2f * t + 6.0f * u2);
+				float r2 = BASE_R + R_GROW * u2 + R_WOBBLE * std::sin(7.0f * u2 + 0.9f * t + id * 1.7f);
+				float y2 = HEIGHT_SWING * std::sin(PITCH * theta2 * 0.33f + 0.6f * sign * u2 + 0.4f * t);
+				V3 p2 = V3{ center.x + r2 * std::cos(theta2),
+							y2,
+							center.z + r2 * std::sin(theta2) };
+
+				V3 tan = norm(sub(p2, p));
+				return { p, tan };
+				};
+
+			// basis from tangent  (n, b)
+			auto make_basis = [&](V3 t)->std::pair<V3, V3> {
+				V3 up = fabsf(t.y) < 0.95f ? V3{ 0,1,0 } : V3{ 1,0,0 };
+				V3 n = cross(t, up); float Ln = std::sqrt(dot(n, n));
+				if (Ln < 1e-6f) n = V3{ 1,0,0 }; else n = mul(n, 1.0f / Ln);
+				V3 b = norm(cross(t, n));
+				return { n,b };
+				};
+
+			// ===== draw one spiral (path + ribbons + pulses) =====
+			auto draw_spiral = [&](int id, float hueBias) {
+				// main path polyline
+				V3  prevP = {}, prevT = {};
+				bool hasPrev = false;
+
+				for (int s = 0; s < PATH_SEGS; ++s) {
+					float u0 = (float)s / (float)PATH_SEGS;
+					float u1 = (float)(s + 1) / (float)PATH_SEGS;
+
+					auto [p0, t0] = sample_spiral(u0, id, T);
+					auto [p1, t1] = sample_spiral(u1, id, T);
+
+					// main line segment
+					{
+						Line* L; if (!try_add(L)) END_FRAME();
+						L->x0.start = p0.x; L->y0.start = p0.y; L->z0.start = p0.z;
+						L->x1.start = p1.x; L->y1.start = p1.y; L->z1.start = p1.z;
+
+						float hue = 0.8f * T + hueBias + 4.0f * u0;
+						float sat = 0.65f + 0.35f * std::sin(1.6f * T + 3.0f * u0 + id);
+						L->rgb_t0.x = 0.10f + 0.38f * std::sin(hue) * sat;
+						L->rgb_t0.y = 0.26f + 0.64f * std::sin(hue + 1.05f) * sat;
+						L->rgb_t0.z = 0.80f + 0.20f * std::sin(hue + 2.10f) * sat;
+
+						float th = BASE_THICK * (0.85f + 0.30f * std::sin(2.2f * T + id + 1.5f * u0));
+						L->thickness.start = th;
+						L->thickness.end = th * (0.8f + 0.4f * std::sin(4.0f * T + s * 0.11f));
+						L->number_of_cubes = 7;
+
+						// tiny shimmy
+						V3 dv = mul(t0, 0.03f * std::sin(3.0f * T + s * 0.2f + id));
+						L->x1.end = p1.x + dv.x; L->y1.end = p1.y + 0.4f * dv.y; L->z1.end = p1.z + dv.z;
+					}
+
+					// ribbon strands around the segment
+					{
+						auto [n, b] = make_basis(t0);
+						float rr = RIBBON_RADIUS * (BASE_R + R_GROW * u0);
+						int   strands = (ramp < 0.55f ? 1 : STRANDS);
+
+						for (int k = 0; k < strands; ++k) {
+							float ang = (2.0f * M_PI * k) / strands + id * 0.5f + 2.0f * u0;
+							V3 off0 = add(mul(n, rr * std::cos(ang)), mul(b, rr * std::sin(ang)));
+							V3 off1 = off0; // same offset at end (keeps ribbon tight)
+
+							Line* R; if (!try_add(R)) END_FRAME();
+							R->x0.start = p0.x + off0.x; R->y0.start = p0.y + off0.y; R->z0.start = p0.z + off0.z;
+							R->x1.start = p1.x + off1.x; R->y1.start = p1.y + off1.y; R->z1.start = p1.z + off1.z;
+
+							float hue = 0.7f * T + hueBias + 2.2f * u0 + k;
+							R->rgb_t0.x = 0.10f + 0.30f * std::sin(hue);
+							R->rgb_t0.y = 0.58f + 0.36f * std::sin(hue + 1.0f);
+							R->rgb_t0.z = 0.84f + 0.16f * std::sin(hue + 2.0f);
+
+							float rth = RIBBON_THICK * (0.9f + 0.3f * std::sin(3.5f * T + s * 0.13f + k));
+							R->thickness.start = rth;
+							R->thickness.end = rth * 0.9f;
+							R->number_of_cubes = 5;
+
+							// swirl forward a bit
+							V3 adv = mul(t0, 0.02f * std::sin(2.2f * T + k + s * 0.1f));
+							R->x1.end = R->x1.start + adv.x; R->y1.end = R->y1.start + 0.4f * adv.y; R->z1.end = R->z1.start + adv.z;
+						}
+					}
+
+					// bright pulses zipping along
+					if ((s % 7) == 0) {
+						float uPulse = fractf(PULSE_SPEED * T + 0.37f * s + id * 0.23f);
+						float up = lerp(u0, u1, uPulse);
+						auto [pp, tp] = sample_spiral(up, id, T);
+						Line* P; if (!try_add(P)) END_FRAME();
+						V3 tip = add(pp, mul(tp, 0.06f));
+						P->x0.start = pp.x; P->y0.start = pp.y; P->z0.start = pp.z;
+						P->x1.start = tip.x; P->y1.start = tip.y; P->z1.start = tip.z;
+						P->rgb_t0.x = 0.90f; P->rgb_t0.y = 0.96f; P->rgb_t0.z = 1.00f;
+						P->thickness.start = 0.008f;
+						P->thickness.end = 0.005f;
+						P->number_of_cubes = 3;
+						// nudge forward
+						V3 adv = mul(tp, 0.02f);
+						P->x1.end = tip.x + adv.x; P->y1.end = tip.y + 0.008f; P->z1.end = tip.z + adv.z;
+					}
+
+					prevP = p1; prevT = t1; hasPrev = true;
+				}
+				};
+
+			// draw both spirals (different hue biases)
+			draw_spiral(0, 0.0f);
+			draw_spiral(1, 1.8f);
+
+			// ===== inter-spiral joyful "bridges" =====
+			for (int i = 0; i < BRIDGES; ++i) {
+				float u = fractf(0.17f * i + 0.37f * std::sin(0.7f * T + i));
+				auto [pA, tA] = sample_spiral(u, 0, T);
+				auto [pB, tB] = sample_spiral(fractf(u + 0.13f), 1, T);
+
+				// only link if close-ish
+				V3 d = sub(pB, pA);
+				float dist = std::sqrt(dot(d, d));
+				if (dist > 0.65f) continue;
+
+				Line* L; if (!try_add(L)) END_FRAME();
+				L->x0.start = pA.x; L->y0.start = pA.y; L->z0.start = pA.z;
+				L->x1.start = pB.x; L->y1.start = pB.y; L->z1.start = pB.z;
+
+				float hue = 0.4f * T + 6.0f * u;
+				L->rgb_t0.x = 0.92f; L->rgb_t0.y = 0.96f; L->rgb_t0.z = 1.0f; // celebratory white/cyan
+				L->thickness.start = BRIDGE_THICK * (0.9f + 0.3f * std::sin(5.0f * T + i));
+				L->thickness.end = L->thickness.start * 0.9f;
+				L->number_of_cubes = 4;
+
+				// playful wiggle
+				V3 n = norm(cross(norm(d), V3{ 0,1,0 }));
+				V3 wig = mul(n, 0.05f * std::sin(9.0f * u + 2.5f * T + i));
+				L->x1.end = pB.x + wig.x; L->y1.end = pB.y + 0.4f * wig.y; L->z1.end = pB.z + wig.z;
+			}
+
+			// ===== confetti sparks around both spirals =====
+			for (int c = 0; c < CONFETTI; ++c) {
+				int  sid = (c & 1);                   // alternate spiral
+				float u = fractf(0.11f * c + 0.23f * T); // varies along the path
+				auto [p, tdir] = sample_spiral(u, sid, T);
+				auto [n, b] = make_basis(tdir);
+				float spin = 2.0f * M_PI * hash11(7.7f * c);
+				V3 dir = norm(add(mul(n, std::cos(spin)), mul(b, std::sin(spin))));
+				float len = 0.06f + 0.07f * hash11(9.1f * c);
+				V3 a = p;
+				V3 e = add(p, mul(dir, len));
+
+				Line* S; if (!try_add(S)) END_FRAME();
+				S->x0.start = a.x; S->y0.start = a.y; S->z0.start = a.z;
+				S->x1.start = e.x; S->y1.start = e.y; S->z1.start = e.z;
+
+				float hue = 0.95f * T + c * 0.17f + sid;
+				S->rgb_t0.x = 0.15f + 0.30f * std::sin(hue);
+				S->rgb_t0.y = 0.55f + 0.35f * std::sin(hue + 1.0f);
+				S->rgb_t0.z = 0.90f + 0.10f * std::sin(hue + 2.0f);
+
+				S->thickness.start = CONFETTI_THICK;
+				S->thickness.end = CONFETTI_THICK * 0.8f;
+				S->number_of_cubes = 3;
+
+				// sparkle pop
+				V3 adv = mul(dir, 0.02f * std::sin(6.0f * T + c));
+				S->x1.end = e.x + adv.x; S->y1.end = e.y + 0.4f * adv.y; S->z1.end = e.z + adv.z;
+			}
+
+			// advance time
+			time_base += DT;
+		}
+
+
+
+		void init_vast_sea_and_sky()
+		{
+			lines.clear();
+
+			// ====================================================================
+			// SECTION 1: ARTISTIC PARAMETERS & CONFIGURATION ("The Observatory")
+			// ====================================================================
+
+			// --- Scene Composition ---
+			const int   grid_x_resolution = 60;      // How many lines wide the sea is
+			const int   grid_z_resolution = 40;      // How many lines deep the sea is
+			const float scene_width = 3.0f;          // The physical width of the scene
+			const float scene_depth = 2.5f;          // The physical depth of the scene
+
+			// --- Animation & Physics ---
+			const float wave_amplitude = 0.12f;      // How high the waves are
+			const float wave_speed = 0.3f;           // How fast the waves move
+			const float sun_glint_sharpness = 32.0f; // How focused the sun's reflection is
+
+			// --- Color Palette: A dramatic sunset ---
+			const Vec3 sun_color = { 1.0f, 0.9f, 0.7f };
+			const Vec3 horizon_color = { 1.0f, 0.6f, 0.3f };
+			const Vec3 sky_zenith_color = { 0.1f, 0.05f, 0.2f };
+			const Vec3 water_deep_color = { 0.05f, 0.15f, 0.3f };
+			const Vec3 water_shallow_color = { 0.2f, 0.6f, 0.7f };
+			const Vec3 foam_color = { 0.9f, 0.9f, 1.0f };
+			const Vec3 cloud_color = { 0.7f, 0.6f, 0.8f };
+
+			// --- General Constants ---
+			const float TAU = 6.28318530718f;
+			const float PI = 3.14159265359f;
+
+			// ====================================================================
+			// SECTION 2: THE OCEAN SURFACE (The Main Event)
+			// A dynamic heightfield using multiple sine waves.
+			// ====================================================================
+			{
+				// The sun's position determines the reflection
+				const Vec3 sun_position = { -0.8f, 0.5f, -1.2f };
+
+				// Helper to calculate wave height at any point (x, z) and time (t)
+				auto get_wave_y = [&](float x, float z, float t) -> float {
+					float y = 0.0f;
+					// First wave system (large swells)
+					y += sin(x * 1.5f + z * 1.0f + t * 1.0f * wave_speed);
+					// Second wave system (smaller, faster cross-waves)
+					y += 0.5f * sin(x * 3.0f - z * 2.5f + t * 2.2f * wave_speed);
+					return y * wave_amplitude;
+					};
+
+				// Helper to calculate wave steepness (for foam)
+				auto get_slope = [&](float x, float z, float t) -> float {
+					float e = 0.01f;
+					float dy_dx = (get_wave_y(x + e, z, t) - get_wave_y(x - e, z, t)) / (2.f * e);
+					float dy_dz = (get_wave_y(x, z + e, t) - get_wave_y(x, z - e, t)) / (2.f * e);
+					return sqrt(dy_dx * dy_dx + dy_dz * dy_dz);
+					};
+
+				for (int i = 0; i < grid_z_resolution; ++i) {
+					for (int j = 0; j < grid_x_resolution; ++j) {
+						float u = (float)j / (grid_x_resolution - 1);
+						float v = (float)i / (grid_z_resolution - 1);
+						float x = (u - 0.5f) * scene_width;
+						float z = -v * scene_depth; // Go from z=0 backwards
+
+						auto get_point_at_time = [&](float time_offset) -> Vec3 {
+							return { x, get_wave_y(x, z, time_offset), z };
+							};
+
+						if (j < grid_x_resolution - 1 && i < grid_z_resolution - 1) {
+							Vec3 p0_start = get_point_at_time(0.0f);
+							Vec3 p1_start = get_point_at_time(0.0f); // Initially flat
+							p1_start.x = (u + 1.f / (grid_x_resolution - 1) - 0.5f) * scene_width;
+
+							Vec3 p0_end = get_point_at_time(1.0f);
+							Vec3 p1_end = get_point_at_time(1.0f);
+							p1_end.x = (u + 1.f / (grid_x_resolution - 1) - 0.5f) * scene_width;
+							p1_end.y = get_wave_y(p1_end.x, p1_end.z, 1.0f);
+
+							auto add_water_line = [&](Vec3 pa_s, Vec3 pb_s, Vec3 pa_e, Vec3 pb_e) {
+								Line& l = add_line();
+								// ANIMATION: Waves rise from a flat plane
+								l.x0.start = pa_s.x; l.y0.start = 0; l.z0.start = pa_s.z;
+								l.x1.start = pb_s.x; l.y1.start = 0; l.z1.start = pb_s.z;
+								l.x0.end = pa_e.x; l.y0.end = pa_e.y; l.z0.end = pa_e.z;
+								l.x1.end = pb_e.x; l.y1.end = pb_e.y; l.z1.end = pb_e.z;
+
+								// --- Artistic Coloring ---
+								float slope = get_slope(pa_e.x, pa_e.z, 1.0f);
+								Vec3 view_dir = vec_normalize({ -pa_e.x, 1.0f, -pa_e.z });
+								Vec3 sun_dir = vec_normalize(vec_add(sun_position, vec_scale(pa_e, -1.f)));
+								float reflection = pow(std::max(0.f, vec_length(vec_add(view_dir, sun_dir)) / 2.f - 0.8f), sun_glint_sharpness);
+
+								float foam_mix = std::min(1.f, slope * 0.5f);
+								float shallow_mix = std::max(0.f, pa_e.y / wave_amplitude);
+								Vec3 base_color;
+								base_color.x = (1 - shallow_mix) * water_deep_color.x + shallow_mix * water_shallow_color.x;
+								base_color.y = (1 - shallow_mix) * water_deep_color.y + shallow_mix * water_shallow_color.y;
+								base_color.z = (1 - shallow_mix) * water_deep_color.z + shallow_mix * water_shallow_color.z;
+
+								Vec3 final_color;
+								final_color.x = (1 - foam_mix) * base_color.x + foam_mix * foam_color.x;
+								final_color.y = (1 - foam_mix) * base_color.y + foam_mix * foam_color.y;
+								final_color.z = (1 - foam_mix) * base_color.z + foam_mix * foam_color.z;
+								final_color.x += reflection * sun_color.x;
+								final_color.y += reflection * sun_color.y;
+								final_color.z += reflection * sun_color.z;
+
+								l.rgb_t0 = final_color; l.rgb_t1 = final_color;
+								l.thickness.start = 0.002f; l.thickness.end = 0.002f + 0.004f * foam_mix;
+								l.number_of_cubes = 5;
+								};
+							add_water_line(p0_start, p1_start, p0_end, p1_end); // Horizontal line
+							Vec3 p2_start = get_point_at_time(0.0f); p2_start.z = -(v + 1.f / (grid_z_resolution - 1)) * scene_depth;
+							Vec3 p2_end = get_point_at_time(1.0f); p2_end.z = -(v + 1.f / (grid_z_resolution - 1)) * scene_depth;
+							p2_end.y = get_wave_y(p2_end.x, p2_end.z, 1.0f);
+							add_water_line(p0_start, p2_start, p0_end, p2_end); // Vertical line
+						}
+					}
+				}
+			}
+
+			// ====================================================================
+			// SECTION 3: THE SKY, SUN, AND CLOUDS
+			// ====================================================================
+			{
+				// --- Sky Gradient ---
+				for (int i = 0; i < 100; ++i) {
+					float x = ((float)i / 99.f - 0.5f) * scene_width * 1.5f;
+					Line& l = add_line();
+					l.x0.start = x; l.y0.start = 0; l.z0.start = -scene_depth;
+					l.x1.start = x; l.y1.start = 2.0f; l.z1.start = -scene_depth;
+					l.rgb_t0 = horizon_color; l.rgb_t1 = sky_zenith_color;
+					l.thickness.start = 0.02f; l.thickness.end = 0.02f; l.number_of_cubes = 20; l.copy_start_to_end();
+				}
+				// --- Sun ---
+				for (int i = 0; i < 60; ++i) {
+					float angle = (float)i / 60.f * TAU;
+					Line& l = add_line();
+					l.x0.start = -0.8f; l.y0.start = 0.5f; l.z0.start = -scene_depth;
+					l.x1.start = -0.8f + 0.1f * cos(angle); l.y1.start = 0.5f + 0.1f * sin(angle); l.z1.start = -scene_depth;
+					l.rgb_t0 = sun_color; l.rgb_t1 = sun_color;
+					l.thickness.start = 0.01f; l.thickness.end = 0; l.number_of_cubes = 10; l.copy_start_to_end();
+				}
+				// --- Drifting Clouds ---
+				for (int i = 0; i < 20; ++i) {
+					float x_start = Random::generate_random_float_minus_one_to_plus_one() * scene_width;
+					float y = 0.8f + Random::generate_random_float_0_to_1() * 0.5f;
+					float z = -scene_depth * (0.8f + Random::generate_random_float_0_to_1() * 0.4f);
+					float len = 0.2f + Random::generate_random_float_0_to_1() * 0.3f;
+					Line& l = add_line();
+					l.x0.start = x_start; l.y0.start = y; l.z0.start = z;
+					l.x1.start = x_start + len; l.y1.start = y; l.z1.start = z;
+					l.x0.end = x_start - 0.2f; l.y0.end = y; l.z0.end = z; // Drift left
+					l.x1.end = x_start + len - 0.2f; l.y1.end = y; l.z1.end = z;
+					l.rgb_t0 = cloud_color; l.rgb_t1 = vec_scale(cloud_color, 0.8f);
+					l.thickness.start = 0.01f; l.thickness.end = 0.008f; l.number_of_cubes = 10;
+				}
+			}
+
+			// ====================================================================
+			// SECTION 4: THE HORIZON LINE
+			// A single, sharp line to give the scene its vast scale.
+			// ====================================================================
+			{
+				Line& horizon = add_line();
+				horizon.x0.start = -scene_width * 1.5f; horizon.y0.start = 0; horizon.z0.start = -scene_depth;
+				horizon.x1.start = scene_width * 1.5f;  horizon.y1.start = 0; horizon.z1.start = -scene_depth;
+				horizon.rgb_t0 = sun_color; horizon.rgb_t1 = sun_color;
+				horizon.thickness.start = 0.002f; horizon.thickness.end = 0.002f;
+				horizon.number_of_cubes = 10;
+				horizon.copy_start_to_end();
+			}
+		}
+
+
+
 
 
 
@@ -9237,16 +9696,17 @@ namespace Universe_
 				// lines.init_fractal_storm_fast();
 				// lines.init_celestial_orrery();
 				// lines.init_comets_collision_fast();
-
+				// lines.init_spiral_duet_fast();
 				
 				
 
 				
-
+				
 
 
 				// nah lines.init_pulsing_neural_mesh();
 				
+				lines.init_spiral_duet_fast();
 
 				
 				
