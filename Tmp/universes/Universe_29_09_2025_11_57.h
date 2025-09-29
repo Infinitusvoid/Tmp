@@ -25,7 +25,7 @@
 
 namespace Universe_
 {
-	struct XYZ
+	struct Vec3
 	{
 		float x = 0;
 		float y = 0;
@@ -40,11 +40,11 @@ namespace Universe_
 
 	struct Sphere
 	{
-		XYZ start_position = { 0.0, 0.0, 0.0 };
-		XYZ end_position = { 0.0, 0.0, 0.0 };
+		Vec3 start_position = { 0.0, 0.0, 0.0 };
+		Vec3 end_position = { 0.0, 0.0, 0.0 };
 
-		XYZ start_color = { 0.0, 0.0, 0.0 };
-		XYZ end_color = { 0.0, 0.0, 0.0 };
+		Vec3 start_color = { 0.0, 0.0, 0.0 };
+		Vec3 end_color = { 0.0, 0.0, 0.0 };
 
 		Float_start_end cube_size = { 0.0001f, 0.0001f };
 		Float_start_end radius = { 0.0, 0.0 };
@@ -264,8 +264,8 @@ namespace Universe_
 		Float_start_end y1 = { 0.0f, 0.0f }; // u4
 		Float_start_end z1 = { 0.0f, 0.0f }; // u5
 
-		XYZ rgb_t0 = { 0.0f, 0.0f, 0.0f }; // u6, u7, u8 
-		XYZ rgb_t1 = { 0.0f, 0.0f, 0.0f };
+		Vec3 rgb_t0 = { 0.0f, 0.0f, 0.0f }; // u6, u7, u8 
+		Vec3 rgb_t1 = { 0.0f, 0.0f, 0.0f };
 
 		Float_start_end thickness = { 0.0f, 0.0f }; // u9
 
@@ -309,9 +309,9 @@ namespace Universe_
 
 	struct Transform
 	{
-		XYZ position;
-		XYZ euler;
-		XYZ scale;
+		Vec3 position;
+		Vec3 euler;
+		Vec3 scale;
 	};
 
 	struct Lines
@@ -363,6 +363,197 @@ namespace Universe_
 			}
 
 
+		}
+
+		void init_sphere()
+		{
+			int num_lat_steps = 20; // Like lines of latitude
+			int num_lon_steps = 40; // Like lines of longitude
+			const float PI = 3.14159265359f;
+
+			for (int i = 0; i < num_lat_steps; i++)
+			{
+				// Polar angle (from top to bottom)
+				float polar_angle = (float(i) / float(num_lat_steps - 1)) * PI;
+
+				for (int j = 0; j < num_lon_steps; j++)
+				{
+					// Azimuthal angle (around the circle)
+					float azimuth_angle = (float(j) / float(num_lon_steps)) * 2.0f * PI;
+
+					Line& line = add_line();
+
+					// All lines start at the center
+					line.x0.start = 0.0f;
+					line.y0.start = 0.0f;
+					line.z0.start = 0.0f;
+
+					// Use spherical coordinates to find the endpoint
+					float start_radius = 0.5f;
+					line.x1.start = start_radius * sin(polar_angle) * cos(azimuth_angle);
+					line.y1.start = start_radius * cos(polar_angle);
+					line.z1.start = start_radius * sin(polar_angle) * sin(azimuth_angle);
+
+					// Color based on height (y-coordinate)
+					line.rgb_t0.x = 0.5f + 0.5f * line.y1.start; // Red channel for height
+					line.rgb_t0.y = 0.2f;
+					line.rgb_t0.z = 0.5f - 0.5f * line.y1.start; // Blue channel for inverse height
+
+					line.thickness.start = 0.005f;
+					line.number_of_cubes = 50;
+
+					line.copy_start_to_end();
+
+					// --- ANIMATION ---
+					// Make the sphere expand and twist
+					float end_radius = 0.8f;
+					float twist_factor = 1.5f; // Add a twist
+					line.x1.end = end_radius * sin(polar_angle) * cos(azimuth_angle * twist_factor);
+					line.y1.end = end_radius * cos(polar_angle);
+					line.z1.end = end_radius * sin(polar_angle) * sin(azimuth_angle * twist_factor);
+				}
+			}
+		}
+
+		void init_helix()
+		{
+			int number_of_lines = 200;
+			const float TAU = 6.2831853f;
+			const float PI = 3.14159265359;
+			float step_size = (1.0 / float(number_of_lines)) * TAU;
+			int num_twists = 5; // How many full rotations the helix makes
+
+			for (int i = 0; i < number_of_lines; i++)
+			{
+				Line& line = add_line();
+
+				// The line starts from the central axis and points outwards
+				line.x0.start = 0.0f;
+				line.y0.start = -1.0f + 2.0f * (float(i) / number_of_lines); // Move up the Y-axis
+				line.z0.start = 0.0f;
+
+				float angle = i * step_size * num_twists;
+				float radius = 0.4f;
+
+				// Endpoint forms the helix shape
+				line.x1.start = radius * cos(angle);
+				line.y1.start = line.y0.start; // y is the same as the start point's y
+				line.z1.start = radius * sin(angle);
+
+				// Color based on the angle
+				line.rgb_t0.x = 0.5f + 0.5f * cos(angle);
+				line.rgb_t0.y = 0.5f + 0.5f * sin(angle + PI / 2.0f);
+				line.rgb_t0.z = 0.5f + 0.5f * sin(angle);
+
+				line.thickness.start = 0.01f;
+				line.number_of_cubes = 30;
+
+				line.copy_start_to_end();
+
+				// --- ANIMATION ---
+				// Animate the helix to unwind into a straight vertical line
+				line.x1.end = 0.0f;
+				line.z1.end = 0.0f;
+				// The y-coordinate remains the same
+			}
+		}
+
+		void init_vortex()
+		{
+			int number_of_lines = 150;
+			const float TAU = 6.2831853f;
+			float step_size = (1.0f / float(number_of_lines)) * TAU;
+			int num_twists = 4;
+
+			for (int i = 0; i < number_of_lines; i++)
+			{
+				Line& line = add_line();
+
+				// All lines originate from the center
+				line.x0.start = 0.0f;
+				line.y0.start = 0.0f;
+				line.z0.start = 0.0f;
+
+				float progress = float(i) / number_of_lines;
+				float angle = i * step_size * num_twists;
+
+				// Radius decreases as we go down
+				float radius = 0.8f * (1.0f - progress);
+
+				// Endpoint calculation
+				line.x1.start = radius * cos(angle);
+				line.y1.start = 1.0f - 2.0f * progress; // Move from +1 down to -1 on Y-axis
+				line.z1.start = radius * sin(angle);
+
+				line.rgb_t0.x = 0.9f;
+				line.rgb_t0.y = 0.2f + 0.5f * progress;
+				line.rgb_t0.z = 0.1f;
+
+				line.thickness.start = 0.008f;
+				line.number_of_cubes = 70;
+
+				line.copy_start_to_end();
+
+				// --- ANIMATION ---
+				// Make the vortex spin faster and collapse inwards
+				float end_angle = angle * 3.0f; // Spin faster
+				line.x1.end = 0.0f; // Collapse radius to zero
+				line.y1.end = line.y1.start;
+				line.z1.end = 0.0f; // Collapse radius to zero
+			}
+		}
+
+		void init_torus()
+		{
+			int num_major_steps = 50; // Steps around the main ring
+			int num_minor_steps = 15; // Steps around the tube
+			const float TAU = 6.2831853f;
+
+			float major_radius = 0.6f;
+			float minor_radius = 0.2f;
+
+			for (int i = 0; i < num_major_steps; i++)
+			{
+				// Angle around the main ring
+				float major_angle = (float(i) / num_major_steps) * TAU;
+
+				// Calculate the center point of the tube slice (the line's start)
+				float ring_x = major_radius * cos(major_angle);
+				float ring_z = major_radius * sin(major_angle);
+
+				for (int j = 0; j < num_minor_steps; j++)
+				{
+					// Angle around the tube
+					float minor_angle = (float(j) / num_minor_steps) * TAU;
+
+					Line& line = add_line();
+
+					// Start point is on the central ring
+					line.x0.start = ring_x;
+					line.y0.start = 0.0f;
+					line.z0.start = ring_z;
+
+					// End point is on the surface of the torus
+					line.x1.start = (major_radius + minor_radius * cos(minor_angle)) * cos(major_angle);
+					line.y1.start = minor_radius * sin(minor_angle);
+					line.z1.start = (major_radius + minor_radius * cos(minor_angle)) * sin(major_angle);
+
+					line.rgb_t0.x = 0.5f + 0.5f * cos(minor_angle);
+					line.rgb_t0.y = 0.5f + 0.5f * sin(major_angle);
+					line.rgb_t0.z = 0.8f;
+
+					line.thickness.start = 0.006f;
+					line.number_of_cubes = 40;
+
+					line.copy_start_to_end();
+
+					// --- ANIMATION ---
+					// Make the lines retract to the center ring
+					line.x1.end = line.x0.start;
+					line.y1.end = line.y0.start;
+					line.z1.end = line.z0.start;
+				}
+			}
 		}
 
 		void draw(Scene_::Scene& scene)
@@ -502,10 +693,16 @@ namespace Universe_
 				sphere.draw(scene, 1000);
 			}
 
-			if (enable_shdaer_21) // lines
+			if (enable_shader_21) // lines
 			{
 				Lines lines;
-				lines.init();
+				// lines.init();
+				// lines.init_sphere();
+				// lines.init_helix();
+				// lines.init_vortex();
+				lines.init_torus();
+
+
 				lines.draw(scene);
 			}
 
@@ -549,7 +746,7 @@ namespace Universe_
 		const bool enable_shader_10_unit_cube = true;
 		const bool enable_shader_20 = true;
 
-		const bool enable_shdaer_21 = true;
+		const bool enable_shader_21 = true;
 
 	};
 
