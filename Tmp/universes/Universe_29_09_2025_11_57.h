@@ -9985,7 +9985,7 @@ namespace Universe_
 			program.le.exposure = 1.0;
 			program.le.msaaSamples = 10;
 
-			program.capture.capture = false;
+			program.capture.capture = true;
 			program.capture.capture_png = false;
 			program.capture.capture_bmp = true;
 
@@ -10082,16 +10082,98 @@ namespace Universe_
 				// lines.init_pulsing_neural_mesh();
 				// lines.init_vast_sea_and_sky();
 				// lines.init_pulsing_neural_mesh_2();
+				// lines.init_pulsing_neural_mesh_n2();
+
+				/*
+				if (number == 0)
+				{
+					lines.init();
+				}
+				else if (number == 1)
+				{
+					lines.init_sphere();
+				}
+				*/
+
+				{
+					constexpr int kSceneCount = 57; // Update if you add/remove scenes.
+					number = (number % kSceneCount + kSceneCount) % kSceneCount;
+
+					switch (number)
+					{
+					case 0:  lines.init(); break;
+					case 1:  lines.init_sphere(); break;
+					case 2:  lines.init_helix(); break;
+					case 3:  lines.init_vortex(); break;
+					case 4:  lines.init_torus(); break;
+					case 5:  lines.init_0000_swirling_vortex(); break;
+					case 6:  lines.init_random_walk_filaments(); break;
+					case 7:  lines.init_0001_random_walk_bloom(); break;
+					case 8:  lines.init_abstract_cityscape(); break;
+					case 9:  lines.init_0002_trefoil_weave(); break;
+					case 10: lines.init_letter_morph(); break;
+					case 11: lines.init_0003_floating_text(); break;
+					case 12: lines.init_spiral_galaxy(); break;
+					case 13: lines.init_wireframe_sphere(); break;
+					case 14: lines.init_particle_fountain(); break;
+					case 15: lines.init_dna_helix(); break;
+					case 16: lines.init_0004_letter_matrix_fly(); break;
+					case 17: lines.init_quantum_foam_nebula(); break;
+					case 18: lines.init_0005_letter_layers_fly_yz_swapped(); break;
+					case 19: lines.init_fractal_tree_3d(); break;
+					case 20: lines.init_crystal_fractal_tree(); break;
+					case 21: lines.init_0006_wavy_dune_landscape(); break;
+					case 22: lines.init_brutalist_monolith(); break;
+					case 23: lines.init_0007_tesseract_warp(); break;
+					case 24: lines.init_0008_supershape_ribbons(); break;
+					case 25: lines.init_0009_supershape_matrix_rain(); break;
+					case 26: lines.init_0011_flip_unique_matrix_orbit(); break;
+					case 27: lines.init_geometric_unfolding(); break;
+					case 28: lines.init_hyperbolic_gyroid_lattice(); break;
+					case 29: lines.init_0013_sea_and_sky_zup(); break;
+					case 30: lines.init_temporal_echo_cascade(); break;
+					case 31: lines.init_2010_ocean_glyph_overture(); break;
+					case 32: lines.init_solar_flare(); break;
+					case 33: lines.init_2020_glass_of_water(); break;
+					case 34: lines.init_calculus_morph(); break;
+					case 35: lines.init_2012_lowpoly_city_world(); break;
+					case 36: lines.init_2021_polygon_dance(); break;
+					case 37: lines.init_quantum_fluid_pool(); break;
+					case 38: lines.init_2030_airplane_wirefly(); break;
+					case 39: lines.init_rainy_window_final_v2(); break;
+					case 40: lines.init_spiral_torus_interference(); break;
+					case 41: lines.init_2031_airplane_stabilized(); break;
+					case 42: lines.init_living_coral(); break;
+					case 43: lines.init_2032_submarine_stabilized(); break;
+					case 44: lines.init_cosmic_carousel(); break;
+					case 45: lines.init_neural_aurora(); break;
+					case 46: lines.init_fractal_flow(); break;
+					case 47: lines.init_cube_sphere_morph(); break;
+					case 48: lines.init_fractal_pinwheel_supernova(); break;
+					case 49: lines.init_fractal_storm_fast(); break;
+					case 50: lines.init_celestial_orrery(); break;
+					case 51: lines.init_comets_collision_fast(); break;
+					case 52: lines.init_spiral_duet_fast(); break;
+					case 53: lines.init_pulsing_neural_mesh(); break;
+					case 54: lines.init_vast_sea_and_sky(); break;
+					case 55: lines.init_pulsing_neural_mesh_2(); break;
+					case 56: lines.init_pulsing_neural_mesh_n2(); break;
+
+					default:
+						// Should never hit due to wrap, but keep a sane fallback.
+						lines.init();
+						break;
+					}
+				}
 
 				
 				
 				
-				
 
 				
 
 
-				lines.init_pulsing_neural_mesh_n2();
+				
 				
 				// --
 				
@@ -10139,7 +10221,7 @@ namespace Universe_
 		const int clip_fps = 60;
 		const int clip_length_seconds = 4;
 
-		const bool enable_shader_10_unit_cube = true;
+		const bool enable_shader_10_unit_cube = false;
 		const bool enable_shader_20 = true;
 
 		const bool enable_shader_21 = true;
@@ -10155,7 +10237,11 @@ namespace Universe_
 		{
 			std::cout << "clip : " << clip.clip_number << "\n";
 
-			clip.generate(0);
+			for (int i = 1; i < 57; i++)
+			{
+				clip.generate(i);
+			}
+			
 		}
 
 
