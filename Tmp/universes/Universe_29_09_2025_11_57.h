@@ -9647,6 +9647,237 @@ namespace Universe_
 			}
 		}
 
+		void init_pulsing_neural_mesh_n2()
+		{
+			lines.clear();
+
+			const float TAU = 6.283185307179586f;
+			float t = static_cast<float>(fmod(time(nullptr), 1000)) * 0.08f; // Fast, happy time
+
+			const int cubes_per_line = 32;
+			const float BOUNCE_AMP = 0.75f;
+
+			// === 1. MULTIPLE BOUNCING ORBS (like happy atoms) ===
+			struct Orb {
+				float phase_offset;
+				float speed;
+				Vec3 color_base;
+				float size;
+				int id;
+			};
+
+			std::vector<Orb> orbs = {
+				{0.0f, 1.3f, {1.0f, 0.3f, 0.3f}, 0.10f, 0}, // Red
+				{1.0f, 1.1f, {0.3f, 1.0f, 0.3f}, 0.12f, 1}, // Green
+				{2.0f, 0.9f, {0.3f, 0.6f, 1.0f}, 0.11f, 2}, // Blue
+				{3.0f, 1.5f, {1.0f, 0.3f, 1.0f}, 0.09f, 3}, // Pink
+				{4.0f, 1.0f, {1.0f, 0.9f, 0.2f}, 0.13f, 4}, // Yellow
+			};
+
+			// Triangle wave for bouncy motion
+			auto bounceX = [&](float local_t, float speed) -> float {
+				float phase = fmod(local_t * speed, 2.0f);
+				return BOUNCE_AMP * (phase < 1.0f ? (2.0f * phase - 1.0f) : (3.0f - 2.0f * phase));
+				};
+
+			// Draw each orb as a cluster of "//" lines
+			for (const auto& orb : orbs) {
+				float x_now = bounceX(t + orb.phase_offset, orb.speed);
+				float x_next = bounceX(t + 0.016f * 15.0f + orb.phase_offset, orb.speed);
+
+				// Vertical joy-wave
+				float y_wave = sin((t + orb.phase_offset) * 2.5f) * 0.25f;
+				float y_wave_next = sin((t + 0.016f * 15.0f + orb.phase_offset) * 2.5f) * 0.25f;
+
+				// Draw 12 lines per orb (dense, joyful cluster)
+				for (int i = 0; i < 12; ++i) {
+					Line& line = add_line();
+					float angle = (float)i / 12.0f * TAU + t * 0.5f; // Slow spin
+					float r = orb.size;
+
+					// Start positions
+					line.x0.start = x_now + cos(angle) * r;
+					line.y0.start = y_wave + sin(angle * 0.7f) * r * 0.6f;
+					line.z0.start = sin(angle) * r * 0.8f;
+
+					line.x1.start = x_now + cos(angle + 0.4f) * r; // Offset = slash shape
+					line.y1.start = y_wave + sin((angle + 0.4f) * 0.7f) * r * 0.6f;
+					line.z1.start = sin(angle + 0.4f) * r * 0.8f;
+
+					// End positions (next frame)
+					line.x0.end = x_next + cos(angle + 0.016f * 5.0f) * r;
+					line.y0.end = y_wave_next + sin((angle + 0.016f * 5.0f) * 0.7f) * r * 0.6f;
+					line.z0.end = sin(angle + 0.016f * 5.0f) * r * 0.8f;
+
+					line.x1.end = x_next + cos(angle + 0.4f + 0.016f * 5.0f) * r;
+					line.y1.end = y_wave_next + sin((angle + 0.4f + 0.016f * 5.0f) * 0.7f) * r * 0.6f;
+					line.z1.end = sin(angle + 0.4f + 0.016f * 5.0f) * r * 0.8f;
+
+					// Joyful pulsing color
+					float pulse = (sin(t * 6.0f + orb.id * 2.0f + i) + 1.0f) * 0.5f;
+					float brightness = 0.6f + pulse * 0.4f;
+					line.rgb_t0 = {
+						orb.color_base.x * brightness,
+						orb.color_base.y * brightness,
+						orb.color_base.z * brightness
+					};
+					line.rgb_t1 = line.rgb_t0;
+
+					line.thickness.start = 0.005f + pulse * 0.007f;
+					line.thickness.end = line.thickness.start;
+					line.number_of_cubes = cubes_per_line;
+				}
+			}
+
+			// === 2. EXPLOSION RINGS (when orbs get close) ===
+			for (size_t i = 0; i < orbs.size(); ++i) {
+				for (size_t j = i + 1; j < orbs.size(); ++j) {
+					float x1 = bounceX(t + orbs[i].phase_offset, orbs[i].speed);
+					float x2 = bounceX(t + orbs[j].phase_offset, orbs[j].speed);
+					float dist = fabs(x1 - x2);
+
+					if (dist < 0.4f) { // Collision!
+						float intensity = (0.4f - dist) / 0.4f;
+						int ring_segments = 16 + (int)(intensity * 16.0f);
+
+						// Draw expanding ring
+						for (int s = 0; s < ring_segments; ++s) {
+							Line& ring = add_line();
+							float angle1 = (float)s / ring_segments * TAU;
+							float angle2 = (float)(s + 1) / ring_segments * TAU;
+							float ring_radius = 0.1f + intensity * 0.3f;
+
+							// Current ring
+							ring.x0.start = (x1 + x2) * 0.5f + cos(angle1) * ring_radius;
+							ring.y0.start = sin(t * 4.0f + s) * 0.1f;
+							ring.z0.start = sin(angle1) * ring_radius;
+
+							ring.x1.start = (x1 + x2) * 0.5f + cos(angle2) * ring_radius;
+							ring.y1.start = sin(t * 4.0f + s + 1) * 0.1f;
+							ring.z1.start = sin(angle2) * ring_radius;
+
+							// Next frame: ring expands and fades
+							float next_radius = ring_radius * 1.3f;
+							ring.x0.end = (x1 + x2) * 0.5f + cos(angle1) * next_radius;
+							ring.y0.end = sin((t + 0.016f) * 4.0f + s) * 0.1f;
+							ring.z0.end = sin(angle1) * next_radius;
+
+							ring.x1.end = (x1 + x2) * 0.5f + cos(angle2) * next_radius;
+							ring.y1.end = sin((t + 0.016f) * 4.0f + s + 1) * 0.1f;
+							ring.z1.end = sin(angle2) * next_radius;
+
+							// Rainbow ring color
+							float hue = fmod(t * 0.5f + s * 0.1f, 1.0f);
+							Vec3 ring_color;
+							if (hue < 0.33f) {
+								ring_color = { 1.0f, hue / 0.33f, 0.0f };
+							}
+							else if (hue < 0.66f) {
+								ring_color = { (0.66f - hue) / 0.33f, 1.0f, 0.0f };
+							}
+							else {
+								ring_color = { 0.0f, (1.0f - hue) / 0.34f, 1.0f };
+							}
+
+							ring.rgb_t0 = { ring_color.x * intensity, ring_color.y * intensity, ring_color.z * intensity };
+							ring.rgb_t1 = { 0, 0, 0 }; // Fade out
+
+							ring.thickness.start = intensity * 0.012f;
+							ring.thickness.end = 0.0f;
+							ring.number_of_cubes = 16;
+						}
+					}
+				}
+			}
+
+			// === 3. SPIRALING ENERGY TRAILS (behind each orb) ===
+			for (const auto& orb : orbs) {
+				float x_now = bounceX(t + orb.phase_offset, orb.speed);
+				float y_wave = sin((t + orb.phase_offset) * 2.5f) * 0.25f;
+
+				int trail_segments = 12;
+				for (int seg = 0; seg < trail_segments; ++seg) {
+					Line& trail = add_line();
+					float trail_t = t - (float)seg * 0.05f; // Past time
+					float trail_x = bounceX(trail_t + orb.phase_offset, orb.speed);
+					float trail_y = sin((trail_t + orb.phase_offset) * 2.5f) * 0.25f;
+					float spiral_angle = trail_t * 8.0f + orb.id * 2.0f;
+					float spiral_radius = (float)(trail_segments - seg) / trail_segments * 0.08f;
+
+					trail.x0.start = trail_x;
+					trail.y0.start = trail_y;
+					trail.z0.start = 0.0f;
+
+					trail.x1.start = trail_x + cos(spiral_angle) * spiral_radius;
+					trail.y1.start = trail_y + sin(spiral_angle) * spiral_radius;
+					trail.z1.start = sin(spiral_angle * 0.5f) * spiral_radius;
+
+					// End = slightly faded next frame
+					trail.x0.end = trail_x;
+					trail.y0.end = trail_y;
+					trail.z0.end = 0.0f;
+
+					trail.x1.end = trail_x + cos(spiral_angle + 0.1f) * spiral_radius * 0.9f;
+					trail.y1.end = trail_y + sin(spiral_angle + 0.1f) * spiral_radius * 0.9f;
+					trail.z1.end = sin((spiral_angle + 0.1f) * 0.5f) * spiral_radius * 0.9f;
+
+					float alpha = (float)(trail_segments - seg) / trail_segments;
+					trail.rgb_t0 = {
+						orb.color_base.x * 0.7f * alpha,
+						orb.color_base.y * 0.7f * alpha,
+						orb.color_base.z * 0.7f * alpha
+					};
+					trail.rgb_t1 = { 0, 0, 0 };
+
+					trail.thickness.start = alpha * 0.008f;
+					trail.thickness.end = 0.0f;
+					trail.number_of_cubes = 12;
+				}
+			}
+
+			// === 4. CONFETTI PARTICLES (floating joy) ===
+			int confetti_count = 40;
+			for (int c = 0; c < confetti_count; ++c) {
+				Line& confetti = add_line();
+				float confetti_phase = (float)c / confetti_count * TAU + t * 0.3f;
+				float confetti_x = cos(confetti_phase * 1.3f) * 0.6f;
+				float confetti_y = sin(t * 1.8f + c * 0.2f) * 0.5f + 0.3f * sin(confetti_phase);
+				float confetti_z = sin(confetti_phase * 0.9f) * 0.4f;
+
+				// Tiny slash
+				confetti.x0.start = confetti_x;
+				confetti.y0.start = confetti_y;
+				confetti.z0.start = confetti_z;
+
+				confetti.x1.start = confetti_x + 0.03f * cos(t + c);
+				confetti.y1.start = confetti_y + 0.03f * sin(t + c * 0.7f);
+				confetti.z1.start = confetti_z + 0.03f * sin(t * 1.2f + c);
+
+				// End = next position (floating)
+				confetti.x0.end = confetti_x + 0.005f * cos(t + c);
+				confetti.y0.end = confetti_y + 0.005f * sin(t + c * 0.7f);
+				confetti.z0.end = confetti_z + 0.005f * sin(t * 1.2f + c);
+
+				confetti.x1.end = confetti.x0.end + 0.03f * cos(t + 0.016f + c);
+				confetti.y1.end = confetti.y0.end + 0.03f * sin(t + 0.016f + c * 0.7f);
+				confetti.z1.end = confetti.z0.end + 0.03f * sin((t + 0.016f) * 1.2f + c);
+
+				// Random bright color
+				float hue = fmod(t * 0.2f + c * 0.17f, 1.0f);
+				Vec3 confetti_color;
+				if (hue < 0.25f) confetti_color = { 1.0f, hue * 4.0f, 0.0f };
+				else if (hue < 0.5f) confetti_color = { 1.0f - (hue - 0.25f) * 4.0f, 1.0f, 0.0f };
+				else if (hue < 0.75f) confetti_color = { 0.0f, 1.0f, (hue - 0.5f) * 4.0f };
+				else confetti_color = { (hue - 0.75f) * 4.0f, 1.0f - (hue - 0.75f) * 4.0f, 1.0f };
+
+				confetti.rgb_t0 = confetti_color;
+				confetti.rgb_t1 = confetti_color;
+				confetti.thickness.start = 0.003f;
+				confetti.thickness.end = 0.003f;
+				confetti.number_of_cubes = 8;
+			}
+		}
+
 
 		// ------
 
@@ -9743,7 +9974,7 @@ namespace Universe_
 	{
 
 
-		void generate()
+		void generate(int number)
 		{
 			engine_flush_frames();
 			engine_delete_flush_frames();
@@ -9850,6 +10081,7 @@ namespace Universe_
 				// lines.init_spiral_duet_fast();
 				// lines.init_pulsing_neural_mesh();
 				// lines.init_vast_sea_and_sky();
+				// lines.init_pulsing_neural_mesh_2();
 
 				
 				
@@ -9858,7 +10090,8 @@ namespace Universe_
 
 				
 
-				lines.init_pulsing_neural_mesh_2();
+
+				lines.init_pulsing_neural_mesh_n2();
 				
 				// --
 				
@@ -9922,7 +10155,7 @@ namespace Universe_
 		{
 			std::cout << "clip : " << clip.clip_number << "\n";
 
-			clip.generate();
+			clip.generate(0);
 		}
 
 
