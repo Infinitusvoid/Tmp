@@ -2109,11 +2109,306 @@ namespace Universe_
 		}
 
 
+		void init_fractal_tree_3d()
+		{
+			const float M_PI = 3.14159265359f;
+			int max_depth = 6;
+
+			auto add_leaf_cluster = [&](float x, float y, float z)
+				{
+					const float M_PI = 3.14159265359f;
+
+					for (int i = 0; i < 8; i++) {
+						Line& leaf = add_line();
+
+						float angle = i * (2.0f * M_PI / 8.0f);
+						float leaf_length = 0.05f + 0.02f * sin(i * 2.0f);
+
+						leaf.x0.start = x;
+						leaf.y0.start = y;
+						leaf.z0.start = z;
+
+						leaf.x1.start = x + leaf_length * sin(angle);
+						leaf.y1.start = y + leaf_length * 0.3f;
+						leaf.z1.start = z + leaf_length * cos(angle);
+
+						// Vibrant leaf colors
+						leaf.rgb_t0.x = 0.1f + 0.3f * sin(i);
+						leaf.rgb_t0.y = 0.6f + 0.3f * cos(i * 0.7f);
+						leaf.rgb_t0.z = 0.1f + 0.2f * sin(i * 1.3f);
+
+						leaf.thickness.start = 0.008f;
+						leaf.number_of_cubes = 8;
+
+						leaf.copy_start_to_end();
+
+						// Animate leaves - gentle floating motion
+						leaf.x1.end = x + leaf_length * sin(angle + 0.5f);
+						leaf.y1.end = y + leaf_length * 0.5f;
+						leaf.z1.end = z + leaf_length * cos(angle + 0.5f);
+					}
+				};
+
+			std::vector<std::tuple<float, float, float, float, float, float, float, int>> branches;
+			// x, y, z, angle_xy, angle_z, length, thickness, depth
+
+			// Start with trunk
+			branches.push_back({ 0.0f, -0.8f, 0.0f, 0.0f, 0.0f, 0.4f, 0.03f, 0 });
+
+			for (int depth = 0; depth < max_depth; depth++) {
+				int current_size = branches.size();
+				for (int i = 0; i < current_size; i++) {
+					auto [x, y, z, angle_xy, angle_z, length, thickness, d] = branches[i];
+					if (d != depth) continue;
+
+					if (depth < max_depth - 1) {
+						// Create 3-5 child branches in 3D space
+						int num_children = 3 + (depth % 3);
+						for (int j = 0; j < num_children; j++) {
+							float child_angle_xy = angle_xy + (M_PI * 0.4f) + (j * 2.0f * M_PI / num_children);
+							float child_angle_z = angle_z + (M_PI * 0.3f) * sin(j * 1.5f);
+							float child_length = length * (0.6f + 0.1f * sin(depth + j)) * 2.0;
+							float child_thickness = thickness * 0.7f;
+
+							branches.push_back({ x, y, z, child_angle_xy, child_angle_z, child_length, child_thickness, depth + 1 });
+						}
+					}
+				}
+			}
+
+			// Convert to animated lines with particles
+			for (auto [start_x, start_y, start_z, angle_xy, angle_z, length, thickness, depth] : branches) {
+				Line& line = add_line();
+
+				// Calculate end point in 3D
+				float end_x = start_x + length * sin(angle_xy) * cos(angle_z);
+				float end_y = start_y + length * cos(angle_xy);
+				float end_z = start_z + length * sin(angle_xy) * sin(angle_z);
+
+				line.x0.start = start_x;
+				line.y0.start = start_y;
+				line.z0.start = start_z;
+				line.x1.start = end_x;
+				line.y1.start = end_y;
+				line.z1.start = end_z;
+
+				// Dynamic color based on depth and position
+				float hue = depth * 0.15f + start_x * 0.5f;
+				line.rgb_t0.x = 0.3f + 0.5f * sin(hue);
+				line.rgb_t0.y = 0.2f + 0.6f * sin(hue + 2.0f);
+				line.rgb_t0.z = 0.1f + 0.4f * sin(hue + 4.0f);
+
+				line.thickness.start = thickness;
+				line.number_of_cubes = 15 + depth * 10;
+
+				line.copy_start_to_end();
+
+				// Animate branches - gentle swaying motion
+				float sway = 0.2f * sin(depth * 0.8f);
+				line.x1.end = end_x + sway * 0.1f;
+				line.y1.end = end_y + sway * 0.05f;
+				line.z1.end = end_z + sway * 0.1f;
+
+				// Add leaves at the ends of deepest branches
+				if (depth == max_depth - 1) {
+					add_leaf_cluster(end_x, end_y, end_z);
+				}
+			}
+		}
+
+		
+		
+
+		void init_glowing_fractal_tree()
+		{
+			const float M_PI = 3.14159265359f;
+			int max_depth = 5;
+
+			auto add_glowing_particle = [&](float x, float y, float z, int depth)
+				{
+					Line& particle = add_line();
+
+					// Very short line to represent a glowing point
+					particle.x0.start = x;
+					particle.y0.start = y;
+					particle.z0.start = z;
+					particle.x1.start = x + 0.001f;
+					particle.y1.start = y;
+					particle.z1.start = z;
+
+					// Bright, saturated colors
+					float hue = depth * 0.8f + x * 3.0f;
+					particle.rgb_t0.x = 0.7f + 0.3f * sin(hue);
+					particle.rgb_t0.y = 0.5f + 0.5f * sin(hue + 2.1f);
+					particle.rgb_t0.z = 0.8f + 0.2f * sin(hue + 4.2f);
+
+					particle.thickness.start = 0.02f * (1.0f - depth * 0.1f);
+					particle.number_of_cubes = 5;
+
+					particle.copy_start_to_end();
+
+					// Particle animation - gentle floating
+					particle.x1.end = x + 0.001f + 0.05f * sin(hue);
+					particle.y1.end = y + 0.03f * cos(hue * 2.0f);
+				};
+
+			// Generate fractal structure
+			std::function<void(float, float, float, float, float, int)> buildBranch;
+			buildBranch = [&](float x, float y, float z, float angle, float length, int depth) {
+				if (depth > max_depth) return;
+
+				float end_x = x + length * sin(angle);
+				float end_y = z + length * 0.2f * sin(angle * 2.0f);
+				float end_z = y + length * cos(angle);
+
+				// Create glowing branch
+				Line& branch = add_line();
+				branch.x0.start = x;
+				branch.y0.start = y;
+				branch.z0.start = z;
+				branch.x1.start = end_x;
+				branch.y1.start = end_y;
+				branch.z1.start = end_z;
+
+				// Electric glow colors
+				float pulse = sin(depth * 2.0f + x * 10.0f);
+				branch.rgb_t0.x = 0.1f + 0.4f * (1.0f + pulse) * 0.5f;
+				branch.rgb_t0.y = 0.3f + 0.6f * (1.0f + sin(pulse + 2.0f)) * 0.5f;
+				branch.rgb_t0.z = 0.8f + 0.2f * (1.0f + cos(pulse + 4.0f)) * 0.5f;
+
+				branch.thickness.start = 0.015f * pow(0.7f, depth);
+				branch.number_of_cubes = 20 + depth * 5;
+
+				// Animate with pulsing motion
+				branch.copy_start_to_end();
+				float sway = 0.3f * sin(depth * 3.0f + y * 5.0f);
+				branch.x1.end = end_x + sway * 0.08f;
+				branch.y1.end = end_y + sway * 0.04f;
+
+				// Add glowing particles along branch
+				for (int i = 1; i <= 3; i++) {
+					float t = i / 4.0f;
+					add_glowing_particle(
+						x + t * (end_x - x),
+						y + t * (end_y - y),
+						z + t * (end_z - z),
+						depth
+					);
+				}
+
+				// Recursive branches with variation
+				int num_children = 2 + (depth % 3);
+				for (int i = 0; i < num_children; i++) {
+					float child_angle = angle + (M_PI / 4.0f) * (i - (num_children - 1) / 2.0f) + 0.2f * sin(depth + i);
+					float child_length = length * (0.6f + 0.1f * cos(depth * 2.0f + i)) * 2.0;
+					buildBranch(end_x, end_y, end_z, child_angle, child_length, depth + 1);
+				}
+				};
+
+			// Start building from base
+			buildBranch(0.0f, -0.8f, 0.0f, 0.0f, 0.3f, 0);
+		}
+
+		
+		void init_crystal_fractal_tree()
+		{
+			const float M_PI = 3.14159265359f;
+			int max_depth = 6;
 
 
+			auto add_crystal_facets = [&](float x, float y, float z, float size, float rotation)
+				{
+					for (int i = 0; i < 6; i++) { // Hexagonal crystal pattern
+						Line& facet = add_line();
+
+						float angle1 = i * (M_PI / 3.0f) + rotation;
+						float angle2 = (i + 1) * (M_PI / 3.0f) + rotation;
+
+						facet.x0.start = x + size * 0.2f * sin(angle1);
+						facet.y0.start = y;
+						facet.z0.start = z + size * 0.2f * cos(angle1);
+
+						facet.x1.start = x + size * 0.2f * sin(angle2);
+						facet.y1.start = y;
+						facet.z1.start = z + size * 0.2f * cos(angle2);
+
+						// Bright crystal facet colors
+						facet.rgb_t0.x = 0.3f + 0.5f * sin(i);
+						facet.rgb_t0.y = 0.6f + 0.3f * cos(i * 1.5f);
+						facet.rgb_t0.z = 0.9f + 0.1f * sin(i * 2.0f);
+
+						facet.thickness.start = 0.006f;
+						facet.number_of_cubes = 8;
+						facet.copy_start_to_end();
+					}
+				};
 
 
+			std::vector<std::tuple<float, float, float, float, float, int, float>> crystals;
+			// x, y, z, angle, length, depth, rotation
 
+			crystals.push_back({ 0.0f, -0.8f, 0.0f, 0.0f, 0.35f, 0, 0.0f });
+
+			for (int depth = 0; depth < max_depth; depth++) {
+				int current_size = crystals.size();
+				for (int i = 0; i < current_size; i++) {
+					auto [x, y, z, angle, length, d, rot] = crystals[i];
+					if (d != depth) continue;
+
+					if (depth < max_depth - 1) {
+						// Crystal branching - precise geometric patterns
+						int branches = 4; // Square/crystal pattern
+						for (int j = 0; j < branches; j++) {
+							float branch_angle = angle + (j * M_PI / 2.0f) + (M_PI / 8.0f) * sin(depth);
+							float branch_length = length * (0.5f + 0.2f * cos(depth + j));
+							float branch_rotation = rot + (M_PI / 4.0f) * (j % 2);
+
+							crystals.push_back({ x, y, z, branch_angle, branch_length, depth + 1, branch_rotation });
+						}
+					}
+				}
+			}
+
+			// Create crystal branches with geometric precision
+			for (auto [start_x, start_y, start_z, angle, length, depth, rotation] : crystals) {
+				// Calculate crystal end point with rotation
+				float end_x = start_x + length * sin(angle) * cos(rotation);
+				float end_y = start_y + length * cos(angle);
+				float end_z = start_z + length * sin(angle) * sin(rotation);
+
+				Line& crystal = add_line();
+				crystal.x0.start = start_x;
+				crystal.y0.start = start_y;
+				crystal.z0.start = start_z;
+				crystal.x1.start = end_x;
+				crystal.y1.start = end_y;
+				crystal.z1.start = end_z;
+
+				// Icy crystal colors
+				float crystal_hue = depth * 0.3f + rotation * 2.0f;
+				crystal.rgb_t0.x = 0.2f + 0.3f * sin(crystal_hue);
+				crystal.rgb_t0.y = 0.4f + 0.4f * sin(crystal_hue + 1.0f);
+				crystal.rgb_t0.z = 0.8f + 0.2f * sin(crystal_hue + 2.0f);
+
+				crystal.thickness.start = 0.012f * pow(0.65f, depth);
+				crystal.number_of_cubes = 25;
+
+				crystal.copy_start_to_end();
+
+				// Crystal growth animation
+				crystal.x1.end = end_x + 0.1f * sin(depth * 5.0f);
+				crystal.y1.end = end_y + 0.05f * cos(depth * 5.0f);
+
+				// Add geometric crystal facets at ends
+				if (depth > 2) {
+					add_crystal_facets(end_x, end_y, end_z, length * 0.3f, rotation);
+				}
+			}
+		}
+
+		
+
+		
 
 
 
@@ -2283,8 +2578,18 @@ namespace Universe_
 				// lines.init_dna_helix();
 				// lines.init_0004_letter_matrix_fly();
 				// lines.init_quantum_foam_nebula();
-				lines.init_0005_letter_layers_fly_yz_swapped();
+				// lines.init_0005_letter_layers_fly_yz_swapped();
+				// lines.init_fractal_tree_3d();
+				lines.init_glowing_fractal_tree();
 
+
+				// lines.init_crystal_fractal_tree();
+
+
+
+
+				// lines.init_glowing_fractal_tree();
+				
 
 				lines.draw(scene);
 			}
