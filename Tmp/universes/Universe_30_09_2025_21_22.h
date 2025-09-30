@@ -260,9 +260,32 @@ namespace Universe_
 
 	struct Transform
 	{
-		Vec3 position;
-		Vec3 euler;
-		Vec3 scale;
+		Vec3 position{ 0.0f, 0.0f, 0.0f };
+		Vec3 euler{ 0.0f, 0.0f, 0.0f };
+		Vec3 scale{ 1.0f, 1.0f, 1.0f };
+	};
+
+	struct Transform_StartEnd
+	{
+		Transform start;
+		Transform end;
+
+		void copy_start_to_end()
+		{
+			end.position = start.position;
+			end.euler = start.euler;
+			end.scale = start.scale;
+		}
+
+		void send(Program::Shader::Instance& I)
+		{
+			I.set_position_start(start.position.x, start.position.y, start.position.z)
+				.set_position_end(end.position.x, end.position.y, end.position.z)
+				.set_euler_start(start.euler.x, start.euler.y, start.euler.z)
+				.set_euler_end(end.euler.x, end.euler.y, end.euler.z)
+				.set_scale_start(start.scale.x, start.scale.y, start.scale.z)
+				.set_scale_end(end.scale.x, end.scale.y, end.scale.z);
+		}
 	};
 
 	struct Lines
@@ -298,7 +321,7 @@ namespace Universe_
 
 					line.copy_start_to_end();
 
-					
+
 
 					line.x1.end = 0.5f * sin(i * step_size);
 					line.y1.end = 0.0f;
@@ -308,9 +331,9 @@ namespace Universe_
 					// line.z1.end = 1.0;
 				}
 
-				
 
-				
+
+
 			}
 
 
@@ -403,6 +426,13 @@ namespace Universe_
 
 	struct LineGeodesic
 	{
+		Transform_StartEnd transform_startEnd;
+
+		Float_start_end center_x{ 0.0f, 0.0f };
+		Float_start_end center_y{ 0.0f, 0.0f };
+		Float_start_end center_z{ 0.0f, 0.0f };
+
+
 		// Endpoints on the sphere (normalized)
 		Float_start_end lon0{ 0.0f, 0.0f };  // u0
 		Float_start_end lat0{ 0.0f, 0.0f };  // u1
@@ -411,8 +441,8 @@ namespace Universe_
 
 		// Sphere radius
 		Float_start_end radius{ 1.0f, 1.0f }; // u5
-		
-		
+
+
 		// Color (start -> end)
 		Vec3 rgb0{ 1.0f, 1.0f, 1.0f };  // u6, u7, u8
 		Vec3 rgb1{ 1.0f, 1.0f, 1.0f };
@@ -423,7 +453,7 @@ namespace Universe_
 		// How many cubes to sample along the arc (your instance X count)
 		int samples = 100;
 
-		Float_start_end turns{0.0f, 0.0f};
+		Float_start_end turns{ 0.0f, 0.0f };
 
 		// Send to shader uniforms (u0..u9). u4 is reserved for future use (set to 0).
 		void send(Program::Shader::Instance& I)
@@ -441,6 +471,8 @@ namespace Universe_
 			I.set_u_start_end(8, rgb0.z, rgb1.z);         // u8 = B
 
 			I.set_u_start_end(9, thickness.start, thickness.end); // u9 = thickness
+
+			transform_startEnd.send(I);
 		}
 
 		// Convenience: copy all "start" to "end" (static state)
@@ -454,6 +486,12 @@ namespace Universe_
 			radius.end = radius.start;
 			rgb1 = rgb0;
 			thickness.end = thickness.start;
+
+			center_x.end = center_x.start;
+			center_y.end = center_y.start;
+			center_z.end = center_z.start;
+
+			transform_startEnd.copy_start_to_end();
 		}
 
 		// Helpers (optional) ------------------------------------------------------
@@ -496,7 +534,7 @@ namespace Universe_
 		// Example init: 100 short arcs along the equator (clean visual baseline)
 		void init()
 		{
-			
+
 			{
 				LineGeodesic L;
 
@@ -521,8 +559,8 @@ namespace Universe_
 
 				lines.emplace_back(std::move(L));
 			}
-			
-			if(false)
+
+			if (false)
 			{
 
 				for (int i = 0; i < 100; i++)
@@ -550,9 +588,10 @@ namespace Universe_
 
 					lines.emplace_back(std::move(L));
 				}
-				
+
 			}
 
+			if(false)
 			{
 				LineGeodesic L;
 
@@ -563,9 +602,9 @@ namespace Universe_
 
 				L.lon1.start = 0.65f;
 				L.lat1.start = 0.80f;
-				
+
 				L.turns.start = 1.0f;
-				
+
 				L.radius.start = 0.5f;
 
 				// subtle color variation
@@ -603,11 +642,11 @@ namespace Universe_
 				// make static for now (engine can animate u* if desired)
 				L.copy_start_to_end();
 
-				
+
 
 				lines.emplace_back(std::move(L));
 			}
-			
+
 
 			{
 
@@ -628,7 +667,7 @@ namespace Universe_
 					case 4: return Vec3{ t, p, v };
 					default:return Vec3{ v, p, q };
 					}
-				};
+					};
 
 				// Aim for ~N segments along an arc based on radius, turns and thickness.
 				// Keeps rings smooth without crazy instance counts.
@@ -637,7 +676,7 @@ namespace Universe_
 					float L = 2.0f * PI * R * std::max(std::abs(turns), 0.05f); // never below a small fraction
 					float seg = std::max(thick * seg_mult, 1e-4f);
 					return std::max(16, (int)std::ceil(L / seg));
-				};
+					};
 
 
 
@@ -750,12 +789,16 @@ namespace Universe_
 						L.thickness = { 0.0035f, 0.0035f };
 						L.samples = ideal_samples_ring(R, 1.0f, L.thickness.start);
 						L.rgb0 = hsv2rgb(0.55f + 0.05f * i, 0.5f, 0.9f); L.rgb1 = L.rgb0;
+
+
+						L.center_z.start = 0.5f;
+
 						lines.emplace_back(L);
 					}
 				}
 			}
 
-			
+
 		}
 
 		void draw(Scene_::Scene& scene)
@@ -769,15 +812,11 @@ namespace Universe_
 						auto id = sh.create_instance();
 						auto I = sh.instance(id);
 
+
+
 						// one drawcall per arc
 						I.set_group_size(lines[i].samples, 1, 1)
-							.set_drawcalls(1)
-							.set_position_start(0.0f, 0.0f, 0.5f)
-							.set_position_end(0.0f, 0.0f, 0.0f)
-							.set_euler_start(90.0f, 0.0f, 0.0f)
-							.set_euler_end(0.0f, 0.0f, 0.0f)
-							.set_scale_start(1.0f, 1.0f, 1.0f)
-							.set_scale_end(1.0f, 1.0f, 1.0f);
+							.set_drawcalls(1);
 
 						lines[i].send(I);
 					}
@@ -815,7 +854,7 @@ namespace Universe_
 			program.render_display.number_of_frames = program.render_display.render_fps * clip_length_seconds;
 			program.render_display.render_time_start = 0.0;
 
-			
+
 			// CAPTURED: { pos: [-0.986564, 1.019589, 2.007937] , yaw : 46.080070, pitch : -17.400019, fov : 45.000000 }
 			program.camera_start.x = -0.986564;
 			program.camera_start.y = 1.019589;
@@ -851,7 +890,7 @@ namespace Universe_
 				lines.draw(scene);
 			}
 
-			if(enable_shader_22_geodesic_line) // lines with t
+			if (enable_shader_22_geodesic_line) // lines with t
 			{
 				LinesGeodesic lines_with_t;
 				lines_with_t.init();
@@ -917,13 +956,13 @@ namespace Universe_
 			// {
 			// 	clip.generate(i);
 			// }
-			
+
 		}
 
 
 
 
-		
+
 
 
 
