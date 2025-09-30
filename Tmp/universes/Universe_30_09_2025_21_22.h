@@ -535,6 +535,10 @@ namespace Universe_
 		void init()
 		{
 
+
+			
+
+			if(false)
 			{
 				LineGeodesic L;
 
@@ -548,6 +552,9 @@ namespace Universe_
 
 				L.radius.start = 0.5f;
 
+				L.turns.start = 0.4f;
+				
+
 				// subtle color variation
 				L.rgb0 = { 1.0, 1.0, 1.0 };
 
@@ -559,6 +566,89 @@ namespace Universe_
 
 				lines.emplace_back(std::move(L));
 			}
+
+			{
+
+				//for (int i = 0; i < 1; i++)
+				//{
+				//	LineGeodesic L;
+
+				//	L.samples = 1000;
+
+				//	L.lon0.start = 0.0;
+				//	L.lat0.start = 0.0;
+
+				//	L.lon1.start = 0.2;
+				//	L.lat1.start = 0.0;
+
+				//	L.radius.start = 0.5f;
+
+				//	L.turns.start = 0.01f;
+
+
+				//	// subtle color variation
+				//	L.rgb0 = { 1.0, 1.0, 1.0 };
+
+				//	L.thickness.start = 0.001f;
+
+				//	// make static for now (engine can animate u* if desired)
+				//	L.copy_start_to_end();
+
+
+				//	lines.emplace_back(std::move(L));
+				//}
+
+				LineGeodesic L;
+				L.samples = 600;
+				L.lon0 = { 0.0f, 0.0f };
+				L.lat0 = { 0.5f, 0.5f };   // equator
+				L.lon1 = { 0.0f, 0.0f };   // irrelevant for equator if turns!=0
+				L.lat1 = { 0.5f, 0.5f };
+				L.turns = { 1.0f, 1.0f };  // <- ring mode ON (one loop)
+				L.radius = { 0.5f, 0.5f };
+				L.thickness = { 0.004f, 0.004f };
+				L.rgb0 = { 1,1,1 };
+				L.copy_start_to_end();
+				lines.emplace_back(std::move(L));
+
+				//LineGeodesic L;
+				//L.samples = 600;
+				//L.lon0 = { 0.25f, 0.25f }; // pick meridian
+				//L.lon1 = L.lon0;
+				//L.lat0 = { 0.25f, 0.25f };
+				//L.lat1 = L.lat0;
+				//L.turns = { 1.0f, 1.0f }; // ring mode
+				//L.radius = { 0.5f, 0.5f };
+				//L.thickness = { 0.004f, 0.004f };
+				//L.copy_start_to_end();
+				//lines.emplace_back(L);
+
+				//LineGeodesic L;
+				//L.samples = 180;
+				//L.lon0 = { 0.95f, 0.95f };
+				//L.lat0 = { 0.40f, 0.40f };
+				//L.lon1 = { 0.05f, 0.05f };  // across the wrap
+				//L.lat1 = { 0.60f, 0.60f };
+				//L.turns = { 0.0f, 0.0f };   // geodesic mode
+				//L.radius = { 0.5f, 0.5f };
+				//L.thickness = { 0.006f, 0.006f };
+				//L.rgb0 = { 1,0.3f,0.3f }; L.rgb1 = { 0.3f,0.6f,1 };
+				//L.copy_start_to_end();
+				//lines.emplace_back(L);
+
+
+				//LineGeodesic L;
+				//L.samples = 800;
+				//L.lon0 = { 0.10f, 0.10f }; L.lat0 = { 0.30f, 0.30f };
+				//L.lon1 = { 0.65f, 0.65f }; L.lat1 = { 0.80f, 0.80f };
+				//L.turns = { 1.0f, 1.0f };  // ring mode ON
+				//L.radius = { 0.5f, 0.5f };
+				//L.thickness = { 0.005f, 0.005f };
+				//L.copy_start_to_end();
+				//lines.emplace_back(L);
+				
+			}
+			
 
 			if (false)
 			{
@@ -619,6 +709,7 @@ namespace Universe_
 				lines.emplace_back(std::move(L));
 			}
 
+			if(false)
 			{
 				LineGeodesic L;
 
@@ -648,6 +739,7 @@ namespace Universe_
 			}
 
 
+			if(false)
 			{
 
 				// --- Small helpers ----------------------------------------------------------
