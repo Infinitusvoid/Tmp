@@ -397,12 +397,106 @@ namespace Universe_
 
 	struct LineWithT
 	{
+		Line line;
+		float t;
 
+		
 	};
 
 	struct LinesWithT
 	{
+		std::vector<LineWithT> lines;
 
+		void init()
+		{
+			{
+				int number_of_lines = 100;
+				const float TAU = 6.2831853071795864769252867665590;
+				float step_size = (1.0 / float(number_of_lines)) * TAU;
+
+				for (int i = 0; i < number_of_lines; i++)
+				{
+					LineWithT& line = add_line();
+
+
+					line.line.x0.start = 0.0f;
+					line.line.y0.start = 0.0f;
+					line.line.z0.start = 0.0f;
+
+					line.line.x1.start = 0.5f * sin(i * step_size);
+					line.line.y1.start = 0.0f + i * 0.01;
+					line.line.z1.start = 0.5f * cos(i * step_size);
+
+					line.line.rgb_t0.x = 0.2 * Random::generate_random_float_0_to_1();
+					line.line.rgb_t0.y = 0.2 * Random::generate_random_float_0_to_1();
+					line.line.rgb_t0.z = 0.2 * Random::generate_random_float_0_to_1();
+
+					line.line.thickness.start = 0.01 * 0.2;
+					line.line.number_of_cubes = 100;
+
+					line.line.copy_start_to_end();
+
+
+
+					line.line.x1.end = 0.5f * cos(i * step_size);
+					line.line.y1.end = 0.0f;
+					line.line.z1.end = 0.5f * sin(i * step_size);
+
+					// line.y1.end = 1.0;
+					// line.z1.end = 1.0;
+				}
+
+
+
+
+			}
+
+
+		}
+
+		void draw(Scene_::Scene& scene)
+		{
+			const int shader_number = 22;
+
+			add_shader(scene, shader_number, [&](Program::Shader& sh) {
+
+
+				for (int i = 0; i < lines.size(); i++)
+				{
+					auto id = sh.create_instance();
+					auto I = sh.instance(id);
+
+					int grup_size_x = lines.at(i).line.number_of_cubes;
+					int grup_size_y = 1;
+					int grop_size_z = 1;
+					int drawcalls = 1;
+
+					assert(drawcalls == 1); // This shader works only if per each line we only use 1 drawcall
+
+					I.set_group_size(grup_size_x, grup_size_y, grop_size_z)
+						.set_drawcalls(drawcalls)
+						.set_position_start(0.0f, 0.0f, 0.0f)
+						.set_position_end(0.0f, 0.0f, 0.0f)
+						.set_euler_start(0.0f, 0.0f, 0.0f)
+						.set_euler_end(0.0f, 0.0f, 0.0f)
+						.set_scale_start(1.0f, 1.0f, 1.0f)
+						.set_scale_end(1.0f, 1.0f, 1.0f);
+
+					lines.at(i).line.send(I);
+				}
+
+				});
+		}
+
+		LineWithT& add_line()
+		{
+			LineWithT line_with_t;
+			line_with_t.line = Line();
+			line_with_t.t = 0.0;
+			lines.emplace_back(std::move(line_with_t));
+			return lines.back();
+		}
+		
 	};
 
 	struct Clip
@@ -462,6 +556,13 @@ namespace Universe_
 				Lines lines;
 				lines.init();
 				lines.draw(scene);
+			}
+
+			if(enable_shader_22_line_with_t) // lines with t
+			{
+				LinesWithT lines_with_t;
+				lines_with_t.init();
+				lines_with_t.draw(scene);
 			}
 
 			if (enable_shader_10_unit_cube)
