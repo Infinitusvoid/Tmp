@@ -124,160 +124,80 @@ vec3 localCubeFaceNormal(vec3 p) {
 
 void main()
 {
-    // ----- Per-instance parameter along the arc [0..1]
+    // ---- Instance param t in [0,1]
     int   N = max(uGrid.x, 1);
-    float s = (N == 1) ? 0.0 : float(gl_InstanceID) / float(N - 1);
+    float t = (N == 1) ? 0.0 : float(gl_InstanceID) / float(N - 1);
 
-    // ----- Endpoints on the sphere
-    float lon0 = fract(u0);
-    float lat0 = clamp(u1, 0.0, 1.0);
-    float lon1 = fract(u2);
-    float lat1 = clamp(u3, 0.0, 1.0);
+    // ---- Unwrapped inputs (no fract/clamp)
+   // Interpret x as longitude, y as latitude
+    float lon0 = u1;  // x0 = longitude start
+    float lat0 = u0;  // y0 = latitude start
+    float lon1 = u3;  // x1 = longitude end
+    float lat1 = u2;  // y1 = latitude end
+
+    float turns = u4;   // extra whole revolutions in longitude (1.0 == +360°)
     float R = max(u5, 1e-6);
-    float turns = u4;                // NEW: sweep control (0 keeps old behavior)
-
-    //vec3 d0 = dir_from_lonlat01(lon0, lat0);
-    //vec3 d1 = dir_from_lonlat01(lon1, lat1);
-
-    //// Great-circle plane normal
-    //vec3 n = normalize(cross(d0, d1));
-    //if (length(n) < 1e-5) {
-    //    // Degenerate (same/similar points): pick any perpendicular to d0
-    //    n = normalize(cross(d0, vec3(0.0, 1.0, 0.0)));
-    //    if (length(n) < 1e-5) n = normalize(cross(d0, vec3(1.0, 0.0, 0.0)));
-    //}
-
-    //// Position on the arc
-    //vec3 D = slerp_unit(d0, d1, s);     // radial direction
-    //vec3 P = D * R;                      // point on sphere
-
-    //// Build nice orientation for the cube:
-    //// Tangent along the great-circle, Radial normal outwards, Binormal completes basis.
-    //vec3 T = normalize(cross(n, D));     // tangent
-    //vec3 B = cross(D, T);                // binormal (already unit if D,T are)
-    //mat3 R3 = mat3(T, D, B);             // columns: X->tangent, Y->radial, Z->binormal
-
-    vec3 d0 = dir_from_lonlat01(lon0, lat0);
-    vec3 d1 = dir_from_lonlat01(lon1, lat1);
-
-    // classify for legacy behavior
-    float dLon = abs(wrap01(lon1 - lon0 + 0.5) - 0.5);
-    float dLat = abs(lat1 - lat0);
-    float ddot = dot(normalize(d0), normalize(d1));
-
-    bool horizontal = (dLat < 1e-5);     // constant latitude  -> parallel ring
-    bool vertical = (dLon < 1e-5);     // constant longitude -> meridian ring
-    bool antipodal = (ddot < -0.9999);  // opposite points
-
-    vec3 D, T, B;
-
-    // ---------- NEW: force ring mode when u4 != 0 ----------
-    if (abs(turns) > 1e-6) {
-        // Great-circle plane normal from the two endpoints
-        vec3 n = normalize(cross(d0, d1));
-        if (length(n) < 1e-6) {
-            // endpoints colinear (or identical)  pick any stable normal
-            n = normalize(cross(d0, vec3(0.0, 1.0, 0.0)));
-            if (length(n) < 1e-6) n = normalize(cross(d0, vec3(1.0, 0.0, 0.0)));
-        }
-
-        // Orthonormal basis in that plane using d0 as the start direction
-        vec3 u = normalize(d0 - n * dot(n, d0)); // project d0 into plane
-        vec3 v = cross(n, u);
-
-        float a = TAU * turns * s;  // sweep |turns| loops; sign controls direction
-        D = normalize(u * cos(a) + v * sin(a));      // radial
-        T = normalize(-u * sin(a) + v * cos(a));     // tangent
-        B = cross(D, T);
-    }
-    // ---------- Legacy behavior when u4 == 0 ----------
-    else if (horizontal) {
-        // Full parallel at latitude lat0
-        float theta = wrap01(lon0 + s);              // full 0..2 sweep
-        D = normalize(spherical01(1.0, theta, lat0));
-        T = normalize(cross(vec3(0.0, 1.0, 0.0), D)); if (length(T) < 1e-6) T = normalize(cross(D, vec3(1.0, 0.0, 0.0)));
-        B = cross(D, T);
-    }
-    else if (vertical || antipodal) {
-        // Full meridian at longitude lon0
-        float theta = lon0 * TAU;
-        vec3  u = vec3(cos(theta), 0.0, sin(theta));
-        vec3  v = vec3(0.0, 1.0, 0.0);
-        float a = TAU * s;
-        D = normalize(u * cos(a) + v * sin(a));
-        T = normalize(-u * sin(a) + v * cos(a));
-        B = cross(D, T);
-    }
-    else {
-        // Shortest geodesic segment between endpoints
-        vec3 n = normalize(cross(d0, d1));
-        if (length(n) < 1e-6) { // degenerate fallback
-            float theta = lon0 * TAU;
-            vec3  u = vec3(cos(theta), 0.0, sin(theta));
-            vec3  v = vec3(0.0, 1.0, 0.0);
-            float a = PI * s;
-            D = normalize(u * cos(a) + v * sin(a));
-            T = normalize(-u * sin(a) + v * cos(a));
-            B = cross(D, T);
-        }
-        else {
-            D = slerp_unit(normalize(d0), normalize(d1), s);
-            T = normalize(cross(n, D));
-            B = cross(D, T);
-        }
-    }
-    
-
-    // Position on sphere
-    vec3 P = D * R;
-    mat3 R3 = mat3(T, D, B);
-
-
-    // Thickness (uniform scale)
     float thick = max(u9, 1e-6);
 
-    // If your world expects Y/Z swapped (as in your previous shader), keep the swap:
-    vec3 pos_world = vec3(P.x, P.y, P.z);          // swap Y/Z
-    mat3 R3_swapped = mat3(
-        vec3(R3[0].x, R3[0].z, R3[0].y),  // swap Y/Z per column
-        vec3(R3[1].x, R3[1].z, R3[1].y),
-        vec3(R3[2].x, R3[2].z, R3[2].y)
-    );
+    // ---- Linear sweep in lon/lat space
+    float dLon = (lon1 - lon0) + turns;   // add full loops explicitly
+    float dLat = (lat1 - lat0);
+    float lon = lon0 + t * dLon;
+    float lat = lat0 + t * dLat;
 
-    // Build TRS
-    mat4 Tm = mat4(1.0); Tm[3] = vec4(pos_world, 1.0);
-    mat4 Rm = mat4(
-        vec4(R3_swapped[0], 0.0),
-        vec4(R3_swapped[1], 0.0),
-        vec4(R3_swapped[2], 0.0),
-        vec4(0, 0, 0, 1)
-    );
+    // ---- Map (lon,lat) -> unit direction D on a Y-up sphere
+    float theta = lon * TAU;          // azimuth
+    float phi = lat * PI;           // polar from +Y
+    float sphi = sin(phi), cphi = cos(phi);
+    float cth = cos(theta), sth = sin(theta);
+
+    vec3 D = normalize(vec3(sphi * cth,  // X
+        cphi,        // Y
+        sphi * sth));// Z
+
+    // ---- Analytic tangent (stable cube orientation)
+    vec3 dD_dlon = TAU * vec3(-sphi * sth, 0.0, sphi * cth);
+    vec3 dD_dlat = PI * vec3(cphi * cth, -sphi, cphi * sth);
+    vec3 dDds = dD_dlon * dLon + dD_dlat * dLat;
+
+    vec3 T = normalize(dDds);         // tangent along the sweep
+    vec3 B = normalize(cross(D, T));  // binormal
+    T = cross(B, D);             // re-orthonormalize
+
+    // ---- Place and orient the cube
+    vec3 P = D * R;
+    mat3 R3 = mat3(T, D, B);          // columns: X=tangent, Y=radial, Z=binormal
+
+    mat4 Tm = mat4(1.0); Tm[3] = vec4(P, 1.0);
+    mat4 Rm = mat4(vec4(R3[0], 0.0),
+        vec4(R3[1], 0.0),
+        vec4(R3[2], 0.0),
+        vec4(0.0, 0.0, 0.0, 1.0));
     mat4 Sm = mat4(1.0);
     Sm[0][0] = thick; Sm[1][1] = thick; Sm[2][2] = thick;
 
     mat4 instanceModel = Tm * Rm * Sm;
     mat4 M = model * instanceModel;
 
-    // World-space position for the cube vertex
+    // ---- World position
     vec4 wp = M * vec4(aPos, 1.0);
     vWorldPos = wp.xyz;
 
-    // World-space normal (uniform scale path)
+    // ---- World normal (uniform scale path -> just rotate)
     vec3 nLocal = localCubeFaceNormal(aPos);
-    vNormal = normalize(mat3(model) * (R3_swapped * nLocal));
+    vNormal = normalize(mat3(model) * (R3 * nLocal));
 
-    // Color (engine already interpolated u6..u8 for the current time)
+    // ---- Vertex color (already interpolated by host)
     color_vs = vec3(u6, u7, u8);
+    TexCoord = aTexCoord;
 
-    // Clip-space position with tiny deterministic jitter (to reduce aliasing)
+    // ---- Tiny deterministic jitter to reduce aliasing
     vec4 clip = projection * view * wp;
 
     uint j0 = pcg_hash(uint(gl_InstanceID) ^ (uDrawcallNumber * 0x85EBCA6Bu) ^ uSeed);
     uint j1 = pcg_hash(j0 ^ 0xB5297A4Du);
     vec2 jitterPx = vec2(float(j0 >> 8), float(j1 >> 8)) * (1.0 / 16777216.0) - 0.5;
     jitterPx *= 0.75; // ~±0.375 px
-
-    // pixel jitter -> clip: delta clip = (2 px / viewport) * w
     clip.xy += jitterPx * (2.0 / kViewportPx) * clip.w;
 
     uint jz = pcg_hash(j1 ^ 0x68BC21EBu);
@@ -285,6 +205,4 @@ void main()
     clip.z += dz * 1e-5 * clip.w;
 
     gl_Position = clip;
-
-    TexCoord = aTexCoord;
 }

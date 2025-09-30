@@ -428,16 +428,11 @@ namespace Universe_
 	{
 		Transform_StartEnd transform_startEnd;
 
-		Float_start_end center_x{ 0.0f, 0.0f };
-		Float_start_end center_y{ 0.0f, 0.0f };
-		Float_start_end center_z{ 0.0f, 0.0f };
-
-
 		// Endpoints on the sphere (normalized)
-		Float_start_end lon0{ 0.0f, 0.0f };  // u0
-		Float_start_end lat0{ 0.0f, 0.0f };  // u1
-		Float_start_end lon1{ 0.0f, 0.0f };  // u2
-		Float_start_end lat1{ 0.0f, 0.0f };  // u3
+		Float_start_end y0{ 0.0f, 0.0f };  // u0
+		Float_start_end x0{ 0.0f, 0.0f };  // u1
+		Float_start_end y1{ 0.0f, 0.0f };  // u2
+		Float_start_end x1{ 0.0f, 0.0f };  // u3
 
 		// Sphere radius
 		Float_start_end radius{ 1.0f, 1.0f }; // u5
@@ -458,10 +453,10 @@ namespace Universe_
 		// Send to shader uniforms (u0..u9). u4 is reserved for future use (set to 0).
 		void send(Program::Shader::Instance& I)
 		{
-			I.set_u_start_end(0, lon0.start, lon0.end);   // u0 = lon0
-			I.set_u_start_end(1, lat0.start, lat0.end);   // u1 = lat0
-			I.set_u_start_end(2, lon1.start, lon1.end);   // u2 = lon1
-			I.set_u_start_end(3, lat1.start, lat1.end);   // u3 = lat1
+			I.set_u_start_end(0, y0.start, y0.end);   // u0 = lon0
+			I.set_u_start_end(1, x0.start, x0.end);   // u1 = lat0
+			I.set_u_start_end(2, y1.start, y1.end);   // u2 = lon1
+			I.set_u_start_end(3, x1.start, x1.end);   // u3 = lat1
 
 			I.set_u_start_end(4, turns.start, turns.end);             // u4 = (reserved)
 			I.set_u_start_end(5, radius.start, radius.end); // u5 = radius
@@ -478,19 +473,15 @@ namespace Universe_
 		// Convenience: copy all "start" to "end" (static state)
 		void copy_start_to_end()
 		{
-			lon0.end = lon0.start;  lat0.end = lat0.start;
-			lon1.end = lon1.start;  lat1.end = lat1.start;
+			y0.end = y0.start;  x0.end = x0.start;
+			y1.end = y1.start;  x1.end = x1.start;
 
 			turns.end = turns.start;
 
 			radius.end = radius.start;
 			rgb1 = rgb0;
 			thickness.end = thickness.start;
-
-			center_x.end = center_x.start;
-			center_y.end = center_y.start;
-			center_z.end = center_z.start;
-
+			
 			transform_startEnd.copy_start_to_end();
 		}
 
@@ -515,13 +506,13 @@ namespace Universe_
 			float lon1_deg, float lat1_deg,
 			float R)
 		{
-			lon0.start = lon01_from_deg(lon0_deg);
-			lat0.start = lat01_from_deg(lat0_deg);
-			lon1.start = lon01_from_deg(lon1_deg);
-			lat1.start = lat01_from_deg(lat1_deg);
+			y0.start = lon01_from_deg(lon0_deg);
+			x0.start = lat01_from_deg(lat0_deg);
+			y1.start = lon01_from_deg(lon1_deg);
+			x1.start = lat01_from_deg(lat1_deg);
 
-			lon0.end = lon0.start; lat0.end = lat0.start;
-			lon1.end = lon1.start; lat1.end = lat1.start;
+			y0.end = y0.start; x0.end = x0.start;
+			y1.end = y1.start; x1.end = x1.start;
 
 			radius.start = radius.end = R;
 		}
@@ -544,11 +535,11 @@ namespace Universe_
 
 				L.samples = 100;
 
-				L.lon0.start = 0.0;
-				L.lat0.start = 0.5;
+				L.y0.start = 0.0;
+				L.x0.start = 0.5;
 
-				L.lon1.start = 0.2;
-				L.lat1.start = 0.5;
+				L.y1.start = 0.2;
+				L.x1.start = 0.5;
 
 				L.radius.start = 0.5f;
 
@@ -598,18 +589,103 @@ namespace Universe_
 				//	lines.emplace_back(std::move(L));
 				//}
 
-				LineGeodesic L;
-				L.samples = 600;
-				L.lon0 = { 0.0f, 0.0f };
-				L.lat0 = { 0.5f, 0.5f };   // equator
-				L.lon1 = { 0.0f, 0.0f };   // irrelevant for equator if turns!=0
-				L.lat1 = { 0.5f, 0.5f };
-				L.turns = { 1.0f, 1.0f };  // <- ring mode ON (one loop)
-				L.radius = { 0.5f, 0.5f };
-				L.thickness = { 0.004f, 0.004f };
-				L.rgb0 = { 1,1,1 };
-				L.copy_start_to_end();
-				lines.emplace_back(std::move(L));
+
+				for (int i = 0; i < 10; i++)
+				{
+					LineGeodesic L;
+					L.samples = 600;
+					L.radius.start = 0.5f;
+
+					L.x0.start = 0.0f;
+					L.y0.start = 0.1f * i;
+
+
+					L.x1.start = 1.0f;
+					L.y1.start = 0.1f * i;
+
+					L.thickness = { 0.004f, 0.004f };
+					L.rgb0 = { 1,0,0 };
+
+					L.transform_startEnd.start.position.y = 1.0f;
+
+					L.copy_start_to_end();
+					lines.emplace_back(std::move(L));
+				}
+
+				for (int i = 0; i < 10; i++)
+				{
+					LineGeodesic L;
+					L.samples = 600;
+					L.radius.start = 0.5f;
+
+					L.x0.start = 0.1f * i;
+					L.y0.start = 0.0f;
+
+
+					L.x1.start = 0.1f * i;
+					L.y1.start = 0.5f;
+
+					L.thickness = { 0.004f, 0.004f };
+					L.rgb0 = { 1,1,0 };
+
+					L.transform_startEnd.start.position.y = 1.0f;
+
+					L.copy_start_to_end();
+					lines.emplace_back(std::move(L));
+				}
+
+
+				for (int i = 0; i < 10; i++)
+				{
+					LineGeodesic L;
+					L.samples = 600;
+					L.radius.start = 0.5f;
+
+					L.x0.start = 0.1f * i;
+					L.y0.start = 0.5f;
+
+
+					L.x1.start = 0.1f * i;
+					L.y1.start = 1.0f;
+
+					L.thickness = { 0.004f, 0.004f };
+					L.rgb0 = { 1,0,1 };
+
+					L.transform_startEnd.start.position.y = 1.0f;
+
+					L.copy_start_to_end();
+					lines.emplace_back(std::move(L));
+				}
+
+				for (int j = 0; j < 10; j++)
+				{
+					for (int i = 0; i < 10; i++)
+					{
+						LineGeodesic L;
+						L.samples = 600;
+						L.radius.start = 0.5f;
+
+						L.x0.start = 0.1f * i;
+						L.y0.start = 0.1f * j;
+
+
+						L.x1.start = 0.1f * (i + 1);
+						L.y1.start = 0.1f * (j + 1);
+
+						L.thickness = { 0.001f, 0.001f };
+						L.rgb0 = { 1,1,1 };
+
+						L.transform_startEnd.start.position.y = 1.0f;
+
+						L.copy_start_to_end();
+						lines.emplace_back(std::move(L));
+					}
+				}
+				
+
+				
+
+				
 
 				//LineGeodesic L;
 				//L.samples = 600;
@@ -659,11 +735,11 @@ namespace Universe_
 
 					L.samples = 100;
 
-					L.lon0.start = Random::generate_random_float_0_to_1();
-					L.lat0.start = Random::generate_random_float_0_to_1();
+					L.y0.start = Random::generate_random_float_0_to_1();
+					L.x0.start = Random::generate_random_float_0_to_1();
 
-					L.lon1.start = L.lon0.start + Random::generate_random_float_minus_one_to_plus_one() * 0.1;
-					L.lat1.start = L.lat0.start + Random::generate_random_float_minus_one_to_plus_one() * 0.1;
+					L.y1.start = L.y0.start + Random::generate_random_float_minus_one_to_plus_one() * 0.1;
+					L.x1.start = L.x0.start + Random::generate_random_float_minus_one_to_plus_one() * 0.1;
 
 					L.radius.start = 0.5f;
 
@@ -687,11 +763,11 @@ namespace Universe_
 
 				L.samples = 1000;
 
-				L.lon0.start = 0.10f;
-				L.lat0.start = 0.30f;
+				L.y0.start = 0.10f;
+				L.x0.start = 0.30f;
 
-				L.lon1.start = 0.65f;
-				L.lat1.start = 0.80f;
+				L.y1.start = 0.65f;
+				L.x1.start = 0.80f;
 
 				L.turns.start = 1.0f;
 
@@ -715,11 +791,11 @@ namespace Universe_
 
 				L.samples = 1000;
 
-				L.lon0.start = 0.10f;
-				L.lat0.start = 0.30f;
+				L.y0.start = 0.10f;
+				L.x0.start = 0.30f;
 
-				L.lon1.start = 0.65f;
-				L.lat1.start = 0.80f;
+				L.y1.start = 0.65f;
+				L.x1.start = 0.80f;
 
 				L.turns.start = 0.0f;
 
@@ -779,10 +855,10 @@ namespace Universe_
 				{
 					LineGeodesic L;
 					L.radius = { R, R };
-					L.lat0 = { 0.5f, 0.5f };
-					L.lat1 = { 0.5f, 0.5f };
-					L.lon0 = { 0.00f, 0.00f };
-					L.lon1 = { 0.00f, 0.00f };
+					L.x0 = { 0.5f, 0.5f };
+					L.x1 = { 0.5f, 0.5f };
+					L.y0 = { 0.00f, 0.00f };
+					L.y1 = { 0.00f, 0.00f };
 					L.turns = { 0.0001f, 1.0f };          // avoid exactly 0 so ring mode stays on
 					L.thickness = { 0.01f, 0.01f };
 					L.samples = ideal_samples_ring(R, 1.0f, L.thickness.start);
@@ -794,10 +870,10 @@ namespace Universe_
 				{
 					LineGeodesic L;
 					L.radius = { R, R };
-					L.lon0 = { 0.25f, 0.25f };   // choose which meridian
-					L.lon1 = { 0.25f, 0.25f };
-					L.lat0 = { 0.25f, 0.25f };   // phase along the meridian
-					L.lat1 = { 0.25f, 0.25f };
+					L.y0 = { 0.25f, 0.25f };   // choose which meridian
+					L.y1 = { 0.25f, 0.25f };
+					L.x0 = { 0.25f, 0.25f };   // phase along the meridian
+					L.x1 = { 0.25f, 0.25f };
 					L.turns = { 0.0001f, 1.5f };
 					L.thickness = { 0.008f, 0.008f };
 					L.samples = ideal_samples_ring(R, 1.5f, L.thickness.start);
@@ -810,8 +886,8 @@ namespace Universe_
 				{
 					LineGeodesic L;
 					L.radius = { R, R };
-					L.lon0 = { 0.10f, 0.10f }; L.lat0 = { 0.30f, 0.30f };
-					L.lon1 = { 0.65f, 0.65f }; L.lat1 = { 0.80f, 0.80f };
+					L.y0 = { 0.10f, 0.10f }; L.x0 = { 0.30f, 0.30f };
+					L.y1 = { 0.65f, 0.65f }; L.x1 = { 0.80f, 0.80f };
 					L.turns = { 0.0001f, 1.0f };
 					L.thickness = { 0.006f, 0.006f };
 					L.samples = ideal_samples_ring(R, 1.0f, L.thickness.start);
@@ -823,8 +899,8 @@ namespace Universe_
 				{
 					LineGeodesic L;
 					L.radius = { R, R };
-					L.lon0 = { 0.70f, 0.70f }; L.lat0 = { 0.20f, 0.20f };
-					L.lon1 = { 0.20f, 0.20f }; L.lat1 = { 0.75f, 0.75f };
+					L.y0 = { 0.70f, 0.70f }; L.x0 = { 0.20f, 0.20f };
+					L.y1 = { 0.20f, 0.20f }; L.x1 = { 0.75f, 0.75f };
 					L.turns = { 0.25f, 0.75f };      // quarter  three quarters of the great circle
 					L.thickness = { 0.006f, 0.006f };
 					L.samples = ideal_samples_ring(R, 0.75f, L.thickness.start);
@@ -837,8 +913,8 @@ namespace Universe_
 					LineGeodesic L;
 					L.radius = { R, R };
 					// Start near seam on opposite sides; shader will choose the shortest arc
-					L.lon0 = { 0.95f, 0.95f };  L.lat0 = { 0.40f, 0.70f }; // animate lat to show path change
-					L.lon1 = { 0.05f, 0.05f };  L.lat1 = { 0.60f, 0.30f };
+					L.y0 = { 0.95f, 0.95f };  L.x0 = { 0.40f, 0.70f }; // animate lat to show path change
+					L.y1 = { 0.05f, 0.05f };  L.x1 = { 0.60f, 0.30f };
 					L.turns = { 0.0f, 0.0f };    // 0 => geodesic mode (no forced ring)
 					L.thickness = { 0.012f, 0.006f };   // animate thickness thinner
 					L.samples = 180; // static count is fine for single segment
@@ -854,10 +930,10 @@ namespace Universe_
 						float lat = 0.15f + 0.70f * t;            // avoid poles
 						LineGeodesic L;
 						L.radius = { R, R };
-						L.lat0 = { lat, lat };
-						L.lat1 = { lat, lat };
-						L.lon0 = { 0.0f, 0.0f };
-						L.lon1 = { 0.0f, 0.0f };
+						L.x0 = { lat, lat };
+						L.x1 = { lat, lat };
+						L.y0 = { 0.0f, 0.0f };
+						L.y1 = { 0.0f, 0.0f };
 						L.turns = { 0.0001f, (i % 2 == 0) ? 1.0f : -1.0f }; // alternate directions
 						L.thickness = { 0.0045f, 0.0045f };
 						L.samples = ideal_samples_ring(R, 1.0f, L.thickness.start);
@@ -873,17 +949,17 @@ namespace Universe_
 						float lon = float(i) / float(fan);
 						LineGeodesic L;
 						L.radius = { R, R };
-						L.lon0 = { lon, lon };
-						L.lon1 = { lon, lon };
-						L.lat0 = { 0.35f, 0.35f };
-						L.lat1 = { 0.35f, 0.35f };
+						L.y0 = { lon, lon };
+						L.y1 = { lon, lon };
+						L.x0 = { 0.35f, 0.35f };
+						L.x1 = { 0.35f, 0.35f };
 						L.turns = { 0.0001f, 1.0f };
 						L.thickness = { 0.0035f, 0.0035f };
 						L.samples = ideal_samples_ring(R, 1.0f, L.thickness.start);
 						L.rgb0 = hsv2rgb(0.55f + 0.05f * i, 0.5f, 0.9f); L.rgb1 = L.rgb0;
 
 
-						L.center_z.start = 0.5f;
+						
 
 						lines.emplace_back(L);
 					}
