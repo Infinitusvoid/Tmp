@@ -34,8 +34,8 @@
     <Filter Include="Source Files\Shaders\GUniverse">
       <UniqueIdentifier>{034d9a6a-fc5a-49af-97b0-d1a0ebd5b921}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Universe_29_09_2025_11_57">
-      <UniqueIdentifier>{779692d0-af41-4ef3-a0a8-e439792412db}</UniqueIdentifier>
+    <Filter Include="Source Files\NewFilter1">
+      <UniqueIdentifier>{8ee08dcb-a5bd-4cd5-865f-bfb5089c114b}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -125,8 +125,8 @@
     <ClInclude Include="Extension_Folder.h">
       <Filter>Source Files\Resource Files</Filter>
     </ClInclude>
-    <ClInclude Include="universes\Universe_29_09_2025_11_57.h">
-      <Filter>Source Files\Universe_29_09_2025_11_57</Filter>
+    <ClInclude Include="universes\Universe_30_09_2025_21_22.h">
+      <Filter>Source Files\NewFilter1</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
