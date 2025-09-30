@@ -423,6 +423,8 @@ namespace Universe_
 		// How many cubes to sample along the arc (your instance X count)
 		int samples = 100;
 
+		Float_start_end turns{0.0f, 0.0f};
+
 		// Send to shader uniforms (u0..u9). u4 is reserved for future use (set to 0).
 		void send(Program::Shader::Instance& I)
 		{
@@ -431,7 +433,7 @@ namespace Universe_
 			I.set_u_start_end(2, lon1.start, lon1.end);   // u2 = lon1
 			I.set_u_start_end(3, lat1.start, lat1.end);   // u3 = lat1
 
-			I.set_u_start_end(4, 0.0f, 0.0f);             // u4 = (reserved)
+			I.set_u_start_end(4, turns.start, turns.end);             // u4 = (reserved)
 			I.set_u_start_end(5, radius.start, radius.end); // u5 = radius
 
 			I.set_u_start_end(6, rgb0.x, rgb1.x);         // u6 = R
@@ -446,6 +448,8 @@ namespace Universe_
 		{
 			lon0.end = lon0.start;  lat0.end = lat0.start;
 			lon1.end = lon1.start;  lat1.end = lat1.start;
+
+			turns.end = turns.start;
 
 			radius.end = radius.start;
 			rgb1 = rgb0;
@@ -518,6 +522,7 @@ namespace Universe_
 				lines.emplace_back(std::move(L));
 			}
 			
+			if(false)
 			{
 
 				for (int i = 0; i < 100; i++)
@@ -548,7 +553,60 @@ namespace Universe_
 				
 			}
 
+			{
+				LineGeodesic L;
 
+				L.samples = 1000;
+
+				L.lon0.start = 0.10f;
+				L.lat0.start = 0.30f;
+
+				L.lon1.start = 0.65f;
+				L.lat1.start = 0.80f;
+				
+				L.turns.start = 1.0f;
+				
+				L.radius.start = 0.5f;
+
+				// subtle color variation
+				L.rgb0 = { 0.0, 1.0, 0.0 };
+
+				L.thickness.start = 0.0001f;
+
+				// make static for now (engine can animate u* if desired)
+				L.copy_start_to_end();
+
+
+				lines.emplace_back(std::move(L));
+			}
+
+			{
+				LineGeodesic L;
+
+				L.samples = 1000;
+
+				L.lon0.start = 0.10f;
+				L.lat0.start = 0.30f;
+
+				L.lon1.start = 0.65f;
+				L.lat1.start = 0.80f;
+
+				L.turns.start = 0.25f;
+
+				L.radius.start = 0.5f;
+
+				// subtle color variation
+				L.rgb0 = { 1.0, 1.0, 0.0 };
+
+				L.thickness.start = 0.0001f;
+
+				// make static for now (engine can animate u* if desired)
+				L.copy_start_to_end();
+
+				L.turns.end = -2.0f;
+
+				lines.emplace_back(std::move(L));
+			}
 			
 
 			

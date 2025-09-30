@@ -134,6 +134,7 @@ void main()
     float lon1 = fract(u2);
     float lat1 = clamp(u3, 0.0, 1.0);
     float R = max(u5, 1e-6);
+    float turns = u4;                // NEW: sweep control (0 keeps old behavior)
 
     //vec3 d0 = dir_from_lonlat01(lon0, lat0);
     //vec3 d1 = dir_from_lonlat01(lon1, lat1);
@@ -156,47 +157,61 @@ void main()
     //vec3 B = cross(D, T);                // binormal (already unit if D,T are)
     //mat3 R3 = mat3(T, D, B);             // columns: X->tangent, Y->radial, Z->binormal
 
-
     vec3 d0 = dir_from_lonlat01(lon0, lat0);
     vec3 d1 = dir_from_lonlat01(lon1, lat1);
 
-    // Classify intent
-    float dLon = abs(wrapDelta01(lon1 - lon0));
+    // classify for legacy behavior
+    float dLon = abs(wrap01(lon1 - lon0 + 0.5) - 0.5);
     float dLat = abs(lat1 - lat0);
     float ddot = dot(normalize(d0), normalize(d1));
 
-    bool vertical = (dLon < 1e-5);     // constant longitude -> full meridian ring
-    bool horizontal = (dLat < 1e-5);     // constant latitude  -> full parallel ring
-    bool antipodal = (ddot < -0.9999);  // opposite points -> treat as vertical ring
+    bool horizontal = (dLat < 1e-5);     // constant latitude  -> parallel ring
+    bool vertical = (dLon < 1e-5);     // constant longitude -> meridian ring
+    bool antipodal = (ddot < -0.9999);  // opposite points
 
-    vec3 D, T, B; // radial (out), tangent, binormal
+    vec3 D, T, B;
 
-    if (vertical || antipodal)
-    {
-        // Full meridian at longitude lon0: great circle using basis {u,v}
+    // ---------- NEW: force ring mode when u4 != 0 ----------
+    if (abs(turns) > 1e-6) {
+        // Great-circle plane normal from the two endpoints
+        vec3 n = normalize(cross(d0, d1));
+        if (length(n) < 1e-6) {
+            // endpoints colinear (or identical)  pick any stable normal
+            n = normalize(cross(d0, vec3(0.0, 1.0, 0.0)));
+            if (length(n) < 1e-6) n = normalize(cross(d0, vec3(1.0, 0.0, 0.0)));
+        }
+
+        // Orthonormal basis in that plane using d0 as the start direction
+        vec3 u = normalize(d0 - n * dot(n, d0)); // project d0 into plane
+        vec3 v = cross(n, u);
+
+        float a = TAU * turns * s;  // sweep |turns| loops; sign controls direction
+        D = normalize(u * cos(a) + v * sin(a));      // radial
+        T = normalize(-u * sin(a) + v * cos(a));     // tangent
+        B = cross(D, T);
+    }
+    // ---------- Legacy behavior when u4 == 0 ----------
+    else if (horizontal) {
+        // Full parallel at latitude lat0
+        float theta = wrap01(lon0 + s);              // full 0..2 sweep
+        D = normalize(spherical01(1.0, theta, lat0));
+        T = normalize(cross(vec3(0.0, 1.0, 0.0), D)); if (length(T) < 1e-6) T = normalize(cross(D, vec3(1.0, 0.0, 0.0)));
+        B = cross(D, T);
+    }
+    else if (vertical || antipodal) {
+        // Full meridian at longitude lon0
         float theta = lon0 * TAU;
-        vec3  u = vec3(cos(theta), 0.0, sin(theta)); // equator dir at lon0
-        vec3  v = vec3(0.0, 1.0, 0.0);               // +Y
-        float a = TAU * s;                            // sweep full 0..2
+        vec3  u = vec3(cos(theta), 0.0, sin(theta));
+        vec3  v = vec3(0.0, 1.0, 0.0);
+        float a = TAU * s;
         D = normalize(u * cos(a) + v * sin(a));
         T = normalize(-u * sin(a) + v * cos(a));
         B = cross(D, T);
     }
-    else if (horizontal)
-    {
-        // Full parallel at latitude lat0: sweep longitude 0..2
-        float theta = wrap01(lon0 + s);               // wrap 0..1
-        D = normalize(spherical01(1.0, theta, lat0)); // unit radial
-        // Eastward tangent
-        T = normalize(cross(vec3(0.0, 1.0, 0.0), D));
-        if (length(T) < 1e-6) T = normalize(cross(D, vec3(1.0, 0.0, 0.0)));
-        B = cross(D, T);
-    }
-    else
-    {
-        // Shortest geodesic segment
+    else {
+        // Shortest geodesic segment between endpoints
         vec3 n = normalize(cross(d0, d1));
-        if (length(n) < 1e-6) { // paranoid fallback
+        if (length(n) < 1e-6) { // degenerate fallback
             float theta = lon0 * TAU;
             vec3  u = vec3(cos(theta), 0.0, sin(theta));
             vec3  v = vec3(0.0, 1.0, 0.0);
@@ -211,6 +226,7 @@ void main()
             B = cross(D, T);
         }
     }
+    
 
     // Position on sphere
     vec3 P = D * R;
