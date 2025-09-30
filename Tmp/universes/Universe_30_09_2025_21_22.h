@@ -591,7 +591,7 @@ namespace Universe_
 				L.lon1.start = 0.65f;
 				L.lat1.start = 0.80f;
 
-				L.turns.start = 0.25f;
+				L.turns.start = 0.0f;
 
 				L.radius.start = 0.5f;
 
@@ -603,11 +603,157 @@ namespace Universe_
 				// make static for now (engine can animate u* if desired)
 				L.copy_start_to_end();
 
-				L.turns.end = -2.0f;
+				
 
 				lines.emplace_back(std::move(L));
 			}
 			
+
+			{
+
+				// --- Small helpers ----------------------------------------------------------
+				auto hsv2rgb = [](float h, float s, float v) {
+					h = h - std::floor(h);
+					float i = std::floor(h * 6.0f);
+					float f = h * 6.0f - i;
+					float p = v * (1.0f - s);
+					float q = v * (1.0f - f * s);
+					float t = v * (1.0f - (1.0f - f) * s);
+					int ii = int(i) % 6;
+					switch (ii) {
+					case 0: return Vec3{ v, t, p };
+					case 1: return Vec3{ q, v, p };
+					case 2: return Vec3{ p, v, t };
+					case 3: return Vec3{ p, q, v };
+					case 4: return Vec3{ t, p, v };
+					default:return Vec3{ v, p, q };
+					}
+				};
+
+				// Aim for ~N segments along an arc based on radius, turns and thickness.
+				// Keeps rings smooth without crazy instance counts.
+				auto ideal_samples_ring = [](float R, float turns, float thick, float seg_mult = 3.0f) {
+					const float PI = 3.14159265358979323846f;
+					float L = 2.0f * PI * R * std::max(std::abs(turns), 0.05f); // never below a small fraction
+					float seg = std::max(thick * seg_mult, 1e-4f);
+					return std::max(16, (int)std::ceil(L / seg));
+				};
+
+
+
+				// Common sphere radius for the showcase
+				const float R = 0.5f;
+
+				// 1) EQUATOR RING (lat=0.5). Full 360, animated turns 0.0001 -> 1.0
+				{
+					LineGeodesic L;
+					L.radius = { R, R };
+					L.lat0 = { 0.5f, 0.5f };
+					L.lat1 = { 0.5f, 0.5f };
+					L.lon0 = { 0.00f, 0.00f };
+					L.lon1 = { 0.00f, 0.00f };
+					L.turns = { 0.0001f, 1.0f };          // avoid exactly 0 so ring mode stays on
+					L.thickness = { 0.01f, 0.01f };
+					L.samples = ideal_samples_ring(R, 1.0f, L.thickness.start);
+					L.rgb0 = { 1.0f, 1.0f, 1.0f }; L.rgb1 = L.rgb0;
+					lines.emplace_back(L);
+				}
+
+				// 2) MERIDIAN RING (constant longitude). 0.0001 -> 1.5 turns (one and a half)
+				{
+					LineGeodesic L;
+					L.radius = { R, R };
+					L.lon0 = { 0.25f, 0.25f };   // choose which meridian
+					L.lon1 = { 0.25f, 0.25f };
+					L.lat0 = { 0.25f, 0.25f };   // phase along the meridian
+					L.lat1 = { 0.25f, 0.25f };
+					L.turns = { 0.0001f, 1.5f };
+					L.thickness = { 0.008f, 0.008f };
+					L.samples = ideal_samples_ring(R, 1.5f, L.thickness.start);
+					L.rgb0 = hsv2rgb(0.58f, 0.6f, 1.0f); L.rgb1 = L.rgb0;
+					lines.emplace_back(L);
+				}
+
+				// 3) DIAGONAL RING (arbitrary great circle defined by two non-colinear endpoints)
+				//    0.0001 -> 1.0 turn to show the "forced ring" using u4.
+				{
+					LineGeodesic L;
+					L.radius = { R, R };
+					L.lon0 = { 0.10f, 0.10f }; L.lat0 = { 0.30f, 0.30f };
+					L.lon1 = { 0.65f, 0.65f }; L.lat1 = { 0.80f, 0.80f };
+					L.turns = { 0.0001f, 1.0f };
+					L.thickness = { 0.006f, 0.006f };
+					L.samples = ideal_samples_ring(R, 1.0f, L.thickness.start);
+					L.rgb0 = hsv2rgb(0.10f, 0.7f, 1.0f); L.rgb1 = L.rgb0;
+					lines.emplace_back(L);
+				}
+
+				// 4) PARTIAL DIAGONAL RING (quarter loop -> three quarters), showing arc length control via u4
+				{
+					LineGeodesic L;
+					L.radius = { R, R };
+					L.lon0 = { 0.70f, 0.70f }; L.lat0 = { 0.20f, 0.20f };
+					L.lon1 = { 0.20f, 0.20f }; L.lat1 = { 0.75f, 0.75f };
+					L.turns = { 0.25f, 0.75f };      // quarter  three quarters of the great circle
+					L.thickness = { 0.006f, 0.006f };
+					L.samples = ideal_samples_ring(R, 0.75f, L.thickness.start);
+					L.rgb0 = hsv2rgb(0.85f, 0.7f, 1.0f); L.rgb1 = L.rgb0;
+					lines.emplace_back(L);
+				}
+
+				// 5) SHORTEST GEODESIC (segment) that crosses the seam: animate endpoints across lon=10
+				{
+					LineGeodesic L;
+					L.radius = { R, R };
+					// Start near seam on opposite sides; shader will choose the shortest arc
+					L.lon0 = { 0.95f, 0.95f };  L.lat0 = { 0.40f, 0.70f }; // animate lat to show path change
+					L.lon1 = { 0.05f, 0.05f };  L.lat1 = { 0.60f, 0.30f };
+					L.turns = { 0.0f, 0.0f };    // 0 => geodesic mode (no forced ring)
+					L.thickness = { 0.012f, 0.006f };   // animate thickness thinner
+					L.samples = 180; // static count is fine for single segment
+					L.rgb0 = { 1.0f, 0.2f, 0.2f }; L.rgb1 = { 0.2f, 0.6f, 1.0f };
+					lines.emplace_back(L);
+				}
+
+				// 6) LATITUDE BANDS (stack a few parallels), all spinning with turns
+				{
+					const int bands = 7;
+					for (int i = 0; i < bands; ++i) {
+						float t = (i + 0.5f) / float(bands);      // 0..1
+						float lat = 0.15f + 0.70f * t;            // avoid poles
+						LineGeodesic L;
+						L.radius = { R, R };
+						L.lat0 = { lat, lat };
+						L.lat1 = { lat, lat };
+						L.lon0 = { 0.0f, 0.0f };
+						L.lon1 = { 0.0f, 0.0f };
+						L.turns = { 0.0001f, (i % 2 == 0) ? 1.0f : -1.0f }; // alternate directions
+						L.thickness = { 0.0045f, 0.0045f };
+						L.samples = ideal_samples_ring(R, 1.0f, L.thickness.start);
+						L.rgb0 = hsv2rgb(0.08f + 0.10f * i, 0.6f, 0.95f); L.rgb1 = L.rgb0;
+						lines.emplace_back(L);
+					}
+				}
+
+				// 7) MERIDIAN FAN (several great circles rotated by longitude)
+				{
+					const int fan = 8;
+					for (int i = 0; i < fan; ++i) {
+						float lon = float(i) / float(fan);
+						LineGeodesic L;
+						L.radius = { R, R };
+						L.lon0 = { lon, lon };
+						L.lon1 = { lon, lon };
+						L.lat0 = { 0.35f, 0.35f };
+						L.lat1 = { 0.35f, 0.35f };
+						L.turns = { 0.0001f, 1.0f };
+						L.thickness = { 0.0035f, 0.0035f };
+						L.samples = ideal_samples_ring(R, 1.0f, L.thickness.start);
+						L.rgb0 = hsv2rgb(0.55f + 0.05f * i, 0.5f, 0.9f); L.rgb1 = L.rgb0;
+						lines.emplace_back(L);
+					}
+				}
+			}
 
 			
 		}
@@ -626,9 +772,9 @@ namespace Universe_
 						// one drawcall per arc
 						I.set_group_size(lines[i].samples, 1, 1)
 							.set_drawcalls(1)
-							.set_position_start(0.0f, 0.0f, 0.0f)
+							.set_position_start(0.0f, 0.0f, 0.5f)
 							.set_position_end(0.0f, 0.0f, 0.0f)
-							.set_euler_start(0.0f, 0.0f, 0.0f)
+							.set_euler_start(90.0f, 0.0f, 0.0f)
 							.set_euler_end(0.0f, 0.0f, 0.0f)
 							.set_scale_start(1.0f, 1.0f, 1.0f)
 							.set_scale_end(1.0f, 1.0f, 1.0f);
