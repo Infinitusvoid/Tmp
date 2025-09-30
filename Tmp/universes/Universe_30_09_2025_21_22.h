@@ -25,6 +25,12 @@
 
 namespace Universe_
 {
+	struct Vec2
+	{
+		float x;
+		float y;
+	};
+
 	struct Vec3
 	{
 		float x = 0;
@@ -294,9 +300,9 @@ namespace Universe_
 
 					
 
-					line.x1.end = 0.5f * cos(i * step_size);
+					line.x1.end = 0.5f * sin(i * step_size);
 					line.y1.end = 0.0f;
-					line.z1.end = 0.5f * sin(i * step_size);
+					line.z1.end = 0.5f * cos(i * step_size);
 
 					// line.y1.end = 1.0;
 					// line.z1.end = 1.0;
@@ -395,108 +401,165 @@ namespace Universe_
 		}
 	};
 
-	struct LineWithT
+	struct LineGeodesic
 	{
-		Line line;
-		float t;
+		// Endpoints on the sphere (normalized)
+		Float_start_end lon0{ 0.0f, 0.0f };  // u0
+		Float_start_end lat0{ 0.0f, 0.0f };  // u1
+		Float_start_end lon1{ 0.0f, 0.0f };  // u2
+		Float_start_end lat1{ 0.0f, 0.0f };  // u3
 
+		// Sphere radius
+		Float_start_end radius{ 1.0f, 1.0f }; // u5
 		
+		
+		// Color (start -> end)
+		Vec3 rgb0{ 1.0f, 1.0f, 1.0f };  // u6, u7, u8
+		Vec3 rgb1{ 1.0f, 1.0f, 1.0f };
+
+		// Thickness / cube scale along the arc
+		Float_start_end thickness{ 0.01f, 0.01f }; // u9
+
+		// How many cubes to sample along the arc (your instance X count)
+		int samples = 100;
+
+		// Send to shader uniforms (u0..u9). u4 is reserved for future use (set to 0).
+		void send(Program::Shader::Instance& I)
+		{
+			I.set_u_start_end(0, lon0.start, lon0.end);   // u0 = lon0
+			I.set_u_start_end(1, lat0.start, lat0.end);   // u1 = lat0
+			I.set_u_start_end(2, lon1.start, lon1.end);   // u2 = lon1
+			I.set_u_start_end(3, lat1.start, lat1.end);   // u3 = lat1
+
+			I.set_u_start_end(4, 0.0f, 0.0f);             // u4 = (reserved)
+			I.set_u_start_end(5, radius.start, radius.end); // u5 = radius
+
+			I.set_u_start_end(6, rgb0.x, rgb1.x);         // u6 = R
+			I.set_u_start_end(7, rgb0.y, rgb1.y);         // u7 = G
+			I.set_u_start_end(8, rgb0.z, rgb1.z);         // u8 = B
+
+			I.set_u_start_end(9, thickness.start, thickness.end); // u9 = thickness
+		}
+
+		// Convenience: copy all "start" to "end" (static state)
+		void copy_start_to_end()
+		{
+			lon0.end = lon0.start;  lat0.end = lat0.start;
+			lon1.end = lon1.start;  lat1.end = lat1.start;
+
+			radius.end = radius.start;
+			rgb1 = rgb0;
+			thickness.end = thickness.start;
+		}
+
+		// Helpers (optional) ------------------------------------------------------
+
+		// Convert degrees to normalized lon/lat.
+		// lon_deg is elemnet (-infitiy,+infinity), lat_deg is element [-90,+90].
+		static float lon01_from_deg(float lon_deg) {
+			// wrap to [0,1)
+			float x = lon_deg / 360.0f;
+			x = x - std::floor(x); // fract
+			return x;
+		}
+		static float lat01_from_deg(float lat_deg) {
+			// 0 at north pole (+90 degress), 0.5 at equator (0 degress), 1 at south (-90 degress)
+			float t = (90.0f - std::clamp(lat_deg, -90.0f, 90.0f)) / 180.0f;
+			return std::clamp(t, 0.0f, 1.0f);
+		}
+
+		// Set both endpoints from degrees (+ radius & color/thickness if you want)
+		void set_from_degrees(float lon0_deg, float lat0_deg,
+			float lon1_deg, float lat1_deg,
+			float R)
+		{
+			lon0.start = lon01_from_deg(lon0_deg);
+			lat0.start = lat01_from_deg(lat0_deg);
+			lon1.start = lon01_from_deg(lon1_deg);
+			lat1.start = lat01_from_deg(lat1_deg);
+
+			lon0.end = lon0.start; lat0.end = lat0.start;
+			lon1.end = lon1.start; lat1.end = lat1.start;
+
+			radius.start = radius.end = R;
+		}
 	};
 
-	struct LinesWithT
+	struct LinesGeodesic
 	{
-		std::vector<LineWithT> lines;
+		std::vector<LineGeodesic> lines;
 
+		// Example init: 100 short arcs along the equator (clean visual baseline)
 		void init()
 		{
+			const int number_of_lines = 100;
+			const float radius = 0.6f;
+			const int samples = 120;     // instances per arc
+			const float lat_equator = 0.5f;
+			const int span = 6;          // how many segments forward each arc connects to
+
+			lines.clear();
+			lines.reserve(number_of_lines);
+
+			for (int i = 0; i < number_of_lines; ++i)
 			{
-				int number_of_lines = 100;
-				const float TAU = 6.2831853071795864769252867665590;
-				float step_size = (1.0 / float(number_of_lines)) * TAU;
+				float lon0 = float(i) / float(number_of_lines);           // 0..1
+				float lon1 = float(i + span) / float(number_of_lines);    // a bit ahead (wraps naturally)
+				if (lon1 >= 1.0f) lon1 -= 1.0f;
 
-				for (int i = 0; i < number_of_lines; i++)
-				{
-					LineWithT& line = add_line();
+				LineGeodesic L;
+				L.lon0.start = lon0;     L.lat0.start = lat_equator;
+				L.lon1.start = lon1;     L.lat1.start = lat_equator;
 
+				// make static for now (engine can animate u* if desired)
+				L.copy_start_to_end();
 
-					line.line.x0.start = 0.0f;
-					line.line.y0.start = 0.0f;
-					line.line.z0.start = 0.0f;
+				// sphere & style
+				L.radius.start = L.radius.end = radius;
+				L.samples = samples;
+				L.thickness.start = L.thickness.end = 0.006f;
 
-					line.line.x1.start = 0.5f * sin(i * step_size);
-					line.line.y1.start = 0.0f + i * 0.01;
-					line.line.z1.start = 0.5f * cos(i * step_size);
+				// subtle color variation
+				float hue = Random::generate_random_float_0_to_1();
+				L.rgb0 = { 0.25f + 0.75f * hue, 0.35f, 0.65f * (1.0f - hue) };
+				L.rgb1 = L.rgb0; // flat color; set different for gradient
 
-					line.line.rgb_t0.x = 0.2 * Random::generate_random_float_0_to_1();
-					line.line.rgb_t0.y = 0.2 * Random::generate_random_float_0_to_1();
-					line.line.rgb_t0.z = 0.2 * Random::generate_random_float_0_to_1();
-
-					line.line.thickness.start = 0.01 * 0.2;
-					line.line.number_of_cubes = 100;
-
-					line.line.copy_start_to_end();
-
-
-
-					line.line.x1.end = 0.5f * cos(i * step_size);
-					line.line.y1.end = 0.0f;
-					line.line.z1.end = 0.5f * sin(i * step_size);
-
-					// line.y1.end = 1.0;
-					// line.z1.end = 1.0;
-				}
-
-
-
-
+				lines.emplace_back(std::move(L));
 			}
-
-
 		}
 
 		void draw(Scene_::Scene& scene)
 		{
-			const int shader_number = 22;
+			const int shader_number = 22;  // your geodesic-line shader
 
-			add_shader(scene, shader_number, [&](Program::Shader& sh) {
-
-
-				for (int i = 0; i < lines.size(); i++)
+			add_shader(scene, shader_number, [&](Program::Shader& sh)
 				{
-					auto id = sh.create_instance();
-					auto I = sh.instance(id);
+					for (size_t i = 0; i < lines.size(); ++i)
+					{
+						auto id = sh.create_instance();
+						auto I = sh.instance(id);
 
-					int grup_size_x = lines.at(i).line.number_of_cubes;
-					int grup_size_y = 1;
-					int grop_size_z = 1;
-					int drawcalls = 1;
+						// one drawcall per arc
+						I.set_group_size(lines[i].samples, 1, 1)
+							.set_drawcalls(1)
+							.set_position_start(0.0f, 0.0f, 0.0f)
+							.set_position_end(0.0f, 0.0f, 0.0f)
+							.set_euler_start(0.0f, 0.0f, 0.0f)
+							.set_euler_end(0.0f, 0.0f, 0.0f)
+							.set_scale_start(1.0f, 1.0f, 1.0f)
+							.set_scale_end(1.0f, 1.0f, 1.0f);
 
-					assert(drawcalls == 1); // This shader works only if per each line we only use 1 drawcall
-
-					I.set_group_size(grup_size_x, grup_size_y, grop_size_z)
-						.set_drawcalls(drawcalls)
-						.set_position_start(0.0f, 0.0f, 0.0f)
-						.set_position_end(0.0f, 0.0f, 0.0f)
-						.set_euler_start(0.0f, 0.0f, 0.0f)
-						.set_euler_end(0.0f, 0.0f, 0.0f)
-						.set_scale_start(1.0f, 1.0f, 1.0f)
-						.set_scale_end(1.0f, 1.0f, 1.0f);
-
-					lines.at(i).line.send(I);
-				}
-
+						lines[i].send(I);
+					}
 				});
 		}
 
-		LineWithT& add_line()
+		// Utility to append and get a reference
+		LineGeodesic& add_line()
 		{
-			LineWithT line_with_t;
-			line_with_t.line = Line();
-			line_with_t.t = 0.0;
-			lines.emplace_back(std::move(line_with_t));
+			lines.emplace_back(LineGeodesic{});
 			return lines.back();
 		}
-		
 	};
 
 	struct Clip
@@ -560,7 +623,7 @@ namespace Universe_
 
 			if(enable_shader_22_line_with_t) // lines with t
 			{
-				LinesWithT lines_with_t;
+				LinesGeodesic lines_with_t;
 				lines_with_t.init();
 				lines_with_t.draw(scene);
 			}

@@ -53,6 +53,23 @@ float rand01(inout uint s) {
     return float(z >> 8) * (1.0 / 16777216.0);
 }
 
+// Map (lon01, lat01) in [0,1]x[0,1] to unit direction on Y-up sphere
+vec3 dir_from_lonlat01(float lon01, float lat01) {
+    float theta = lon01 * TAU; // azimuth around Y
+    float phi = lat01 * PI;  // polar from +Y
+    float sphi = sin(phi);
+    return vec3(sphi * cos(theta), cos(phi), sphi * sin(theta));
+}
+
+// Slerp between unit vectors (shortest arc)
+vec3 slerp_unit(vec3 a, vec3 b, float t) {
+    float d = clamp(dot(a, b), -1.0, 1.0);
+    float w = acos(d);
+    if (w < 1e-5) return normalize(mix(a, b, t));
+    float s = sin(w);
+    return (sin((1.0 - t) * w) / s) * a + (sin(t * w) / s) * b;
+}
+
 // Drop-in replacement: same signature
 /*
 float rand01(inout uint s)
@@ -103,212 +120,90 @@ vec3 localCubeFaceNormal(vec3 p) {
 
 void main()
 {
-    int id = gl_InstanceID;
+    // ----- Per-instance parameter along the arc [0..1]
+    int   N = max(uGrid.x, 1);
+    float s = (N == 1) ? 0.0 : float(gl_InstanceID) / float(N - 1);
 
-    id =  id + (uGrid.x * uGrid.y * uGrid.z) * int(uDrawcallNumber);
+    // ----- Endpoints on the sphere
+    float lon0 = fract(u0);
+    float lat0 = clamp(u1, 0.0, 1.0);
+    float lon1 = fract(u2);
+    float lat1 = clamp(u3, 0.0, 1.0);
+    float R = max(u5, 1e-6);
 
+    vec3 d0 = dir_from_lonlat01(lon0, lat0);
+    vec3 d1 = dir_from_lonlat01(lon1, lat1);
 
-    // well could be calculate the id max ? 
-    // well yea well if we are going to have just one draw call per line which is kinda resonable as we will only have up to 1 million cube per one line which can be drawn in one drawcall 
-    // than sure we can calculate that
-    // the maximum is (uGrid.x * uGrid.y * uGrid.z) 
-    
-    int drawcalls_max = 1;
-    int id_max = uGrid.x * uGrid.y * uGrid.z * drawcalls_max;
-    float step_one_id = 1.0 / float(id_max);
+    // Great-circle plane normal
+    vec3 n = normalize(cross(d0, d1));
+    if (length(n) < 1e-5) {
+        // Degenerate (same/similar points): pick any perpendicular to d0
+        n = normalize(cross(d0, vec3(0.0, 1.0, 0.0)));
+        if (length(n) < 1e-5) n = normalize(cross(d0, vec3(1.0, 0.0, 0.0)));
+    }
 
-    float factor_id = float(id) * step_one_id;
+    // Position on the arc
+    vec3 D = slerp_unit(d0, d1, s);     // radial direction
+    vec3 P = D * R;                      // point on sphere
 
+    // Build nice orientation for the cube:
+    // Tangent along the great-circle, Radial normal outwards, Binormal completes basis.
+    vec3 T = normalize(cross(n, D));     // tangent
+    vec3 B = cross(D, T);                // binormal (already unit if D,T are)
+    mat3 R3 = mat3(T, D, B);             // columns: X->tangent, Y->radial, Z->binormal
 
-    
-    // Per-instance randomness
-        // uint s0 = uSeed + uint(id + 23);
-        // uint s1 = uSeed + uint(id + 42);
-        // uint s2 = uSeed + uint(id + 142);
+    // Thickness (uniform scale)
+    float thick = max(u9, 1e-6);
 
-        uint s0 = (id ^ (uSeed * 0xA511E9B3u)) + 0x9E3779B9u;
-        uint s1 = (id ^ (uSeed * 0xC2B2AE35u)) + 0x85EBCA6Bu;
-        uint s2 = (id ^ (uSeed * 0x27D4EB2Du)) + 0x165667B1u;
+    // If your world expects Y/Z swapped (as in your previous shader), keep the swap:
+    vec3 pos_world = vec3(P.x, P.z, P.y);          // swap Y/Z
+    mat3 R3_swapped = mat3(
+        vec3(R3[0].x, R3[0].z, R3[0].y),  // swap Y/Z per column
+        vec3(R3[1].x, R3[1].z, R3[1].y),
+        vec3(R3[2].x, R3[2].z, R3[2].y)
+    );
 
-        float rnd_x = rand01(s0);
-        float rnd_y = rand01(s1);
-        float rnd_z = rand01(s2);
+    // Build TRS
+    mat4 Tm = mat4(1.0); Tm[3] = vec4(pos_world, 1.0);
+    mat4 Rm = mat4(
+        vec4(R3_swapped[0], 0.0),
+        vec4(R3_swapped[1], 0.0),
+        vec4(R3_swapped[2], 0.0),
+        vec4(0, 0, 0, 1)
+    );
+    mat4 Sm = mat4(1.0);
+    Sm[0][0] = thick; Sm[1][1] = thick; Sm[2][2] = thick;
 
-        
+    mat4 instanceModel = Tm * Rm * Sm;
+    mat4 M = model * instanceModel;
 
-        uint s0r = uSeed + uint(id + 140);
-        uint s1g = uSeed + uint(id + 2742);
-        uint s2b = uSeed + uint(id + 32142);
-        float rnd_r = rand01(s0r);
-        float rnd_g = rand01(s1g);
-        float rnd_b = rand01(s2b);
-    
-        // The instancd cube rotation randomization
-        uint s0_rot_x = uSeed + uint(id + 2431);
-        uint s1_rot_y = uSeed + uint(id + 4412);
-        uint s2_rot_y = uSeed + uint(id + 1234);
-        uint s3_rot_angle = uSeed + uint(id + 2332);
-        float rnd_cube_rotation_x = rand01(s0_rot_x);
-        float rnd_cube_rotation_y = rand01(s1_rot_y);
-        float rnd_cube_rotation_z = rand01(s2_rot_y);
-        float rnd_cube_rotation_angle = rand01(s3_rot_angle);
+    // World-space position for the cube vertex
+    vec4 wp = M * vec4(aPos, 1.0);
+    vWorldPos = wp.xyz;
 
-    
-    const float jitter_scale = 1.0;
+    // World-space normal (uniform scale path)
+    vec3 nLocal = localCubeFaceNormal(aPos);
+    vNormal = normalize(mat3(model) * (R3_swapped * nLocal));
 
-    /*
-    I.set_u_start_end(0, x0.start, x0.end); // u0
-			I.set_u_start_end(1, y0.start, y0.end); // u1
-			I.set_u_start_end(2, z0.start, z0.end); // u2
+    // Color (engine already interpolated u6..u8 for the current time)
+    color_vs = vec3(u6, u7, u8);
 
-			I.set_u_start_end(3, x1.start, x1.end); // u3
-			I.set_u_start_end(4, y1.start, y1.end); // u4
-			I.set_u_start_end(5, z1.start, z1.end); // u5
+    // Clip-space position with tiny deterministic jitter (to reduce aliasing)
+    vec4 clip = projection * view * wp;
 
-			I.set_u_start_end(6, rgb_t0.x, rgb_t1.x); // u6
-			I.set_u_start_end(7, rgb_t0.y, rgb_t1.y); // u7
-			I.set_u_start_end(8, rgb_t0.z, rgb_t1.z); // u8
+    uint j0 = pcg_hash(uint(gl_InstanceID) ^ (uDrawcallNumber * 0x85EBCA6Bu) ^ uSeed);
+    uint j1 = pcg_hash(j0 ^ 0xB5297A4Du);
+    vec2 jitterPx = vec2(float(j0 >> 8), float(j1 >> 8)) * (1.0 / 16777216.0) - 0.5;
+    jitterPx *= 0.75; // ~±0.375 px
 
-			I.set_u_start_end(9, thickness.start, thickness.end); // u9
-    */
+    // pixel jitter -> clip: delta clip = (2 px / viewport) * w
+    clip.xy += jitterPx * (2.0 / kViewportPx) * clip.w;
 
-    vec3 position_0 = vec3(u0, u1, u2);
-    vec3 position_1 = vec3(u3, u4, u5);
-    vec3 position = mix(position_0, position_1, factor_id);
+    uint jz = pcg_hash(j1 ^ 0x68BC21EBu);
+    float dz = (float(jz >> 8) * (1.0 / 16777216.0) - 0.5);
+    clip.z += dz * 1e-5 * clip.w;
 
-    float color_r = u6;
-    float color_g = u7;
-    float color_b = u8;
+    gl_Position = clip;
 
-    float scale_cube = u9;
-
-    
-    float px = position.x;
-    float py = position.y;
-    float pz = position.z;
-    
-    // Instances Cube Scale
-    // float scale_cube = 0.001 * 0.1;
-    vec3  pos = vec3(px, pz, py);
-    vec3  scale = vec3(scale_cube, scale_cube, scale_cube);
-    
-    
-    // Whole object rotation
-    vec3 rotation_axis = vec3(0.0, 1.0, 0.0);
-    float rotation_angle = uTime * 0.0; // using uTime will not be wise after we will be interpolating between two values
-    
-    // Whole object scale
-    vec3 scale_object = vec3(1.0, 1.0, 1.0);
-    
-    
-    vec4 new_position = vec4(vec3(pos), 1.0);
-    
-        if (true) {
-    
-            uint s0_instance_0 = uSeed + uint(uint(u0 * 1000.0f));
-            uint s0_instance_1 = uSeed + uint(uint(u0 * 1421.0f));
-            float rnd_instance_0 = rand01(s0_instance_0);
-            float rnd_instance_1 = rand01(s0_instance_1);
-    
-            uint s0_instance_x_scale = uSeed + uint(uint(u0 * 14024.0f));
-            uint s0_instance_y_scale = uSeed + uint(uint(u0 * 15214.0f));
-            uint s0_instance_z_scale = uSeed + uint(uint(u0 * 14215.0f));
-            float rnd_instance_scale_x = rand01(s0_instance_x_scale);
-            float rnd_instance_scale_y = rand01(s0_instance_y_scale);
-            float rnd_instance_scale_z = rand01(s0_instance_z_scale);
-    
-            // Rotation
-            // vec3 axis = normalize(vec3(0.0, 1.0, 1.0));
-            vec3 axis = normalize(rotation_axis);
-            // float angle = uTime;
-            float angle = rotation_angle;
-            mat3 R3 = axisAngleToMat3(axis, angle);
-            mat4 R = mat4(vec4(R3[0], 0.0), vec4(R3[1], 0.0), vec4(R3[2], 0.0), vec4(0, 0, 0, 1));
-    
-            // Translation
-            mat4 T = mat4(1.0);
-            vec3 offset = vec3(sin(uTime + rnd_instance_0 * 10.0) * 10.0, sin(uTime + rnd_instance_1 * 0.0) * 10.0, 0.0);
-            offset = vec3(0.5, 0.5, 0.5);
-            T[3] = vec4(offset, 1.0);
-    
-    
-    
-            // Scale
-            mat4 S = mat4(1.0);
-            S[0][0] = scale_object.x;
-            S[1][1] = scale_object.y;
-            S[2][2] = scale_object.z;
-    
-            new_position = T * R * S * new_position;
-        }
-    
-    
-    
-        pos = new_position.xyz;
-        
-    
-    
-    
-    
-    
-        
-        // Per-instance tint (kept neutral here)
-        color_vs = vec3(color_r, color_g, color_b);
-    
-        // Build TRS
-        mat4 T = mat4(1.0); T[3] = vec4(pos, 1.0);
-        vec3 axis = normalize(vec3(rnd_cube_rotation_x, rnd_cube_rotation_y, rnd_cube_rotation_z));
-        float angle = rnd_cube_rotation_angle;//uTime * 0.0;
-        mat3 R3 = axisAngleToMat3(axis, angle);
-        mat4 R = mat4(vec4(R3[0], 0.0), vec4(R3[1], 0.0), vec4(R3[2], 0.0), vec4(0, 0, 0, 1));
-        mat4 S = mat4(1.0); S[0][0] = scale.x; S[1][1] = scale.y; S[2][2] = scale.z;
-    
-        mat4 instanceModel = T * R * S;
-        mat4 M = model * instanceModel;
-    
-        // World-space position (for lighting)
-        vec4 wp = M * vec4(aPos, 1.0);
-        vWorldPos = wp.xyz;
-    
-        // World-space normal:
-        // Fast path (assumes uniform scale): rotate the face normal by model rotation and R3.
-        // If you later use non-uniform model scale, switch to normal matrix:
-        //   mat3 N = transpose(inverse(mat3(M)));
-        //   vNormal = normalize(N * nLocal);
-        vec3 nLocal = localCubeFaceNormal(aPos);
-        vNormal = normalize(mat3(model) * (R3 * nLocal)); // uniform-scale assumption
-    
-        // Clip-space position and UV
-        // gl_Position = projection * view * wp;
-        // ... after you compute wp (world pos) and BEFORE gl_Position:
-        vec4 clip = projection * view * wp;
-
-        // per-instance deterministic jitter in pixels (apporximitly +-0.5 px)
-        uint j0 = pcg_hash(uint(gl_InstanceID) ^ (uDrawcallNumber * 0x85EBCA6Bu) ^ uSeed);
-        uint j1 = pcg_hash(j0 ^ 0xB5297A4Du);
-        vec2 jitterPx = vec2(float(j0 >> 8), float(j1 >> 8)) * (1.0 / 16777216.0) - 0.5;
-
-        // scale if you want (0.0-1.0 px is typical)
-        jitterPx *= 0.75 * 1.0 * jitter_scale;
-
-        // convert pixel jitter -> clip-space: delta clip = (2 px / viewport) * w
-        clip.xy += jitterPx * (2.0 / kViewportPx) * clip.w;
-
-        // add this:
-        uint jz = pcg_hash(j1 ^ 0x68BC21EBu);
-        float dz = (float(jz >> 8) * (1.0 / 16777216.0) - 0.5);
-        clip.z += dz * 1e-5 * clip.w;
-
-        gl_Position = clip; // instead of projection*view*wp
-        
-        
-        TexCoord = aTexCoord;
-    
-    
-        // World position color
-    
-        // float world_x = wp.x;
-        // float world_y = wp.y;
-        // float world_z = wp.z;
-        // color_vs = vec3(sin(world_x * 10.0), sin(world_y * 10.0), sin(world_z * 10.0)) * vec3(0.01, 0.01, 0.01);
+    TexCoord = aTexCoord;
 }
