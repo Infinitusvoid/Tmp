@@ -34,6 +34,10 @@ const vec2 kViewportPx = vec2(3840.0, 2160.0); // UHD-4K
 float saturate(float x) { return clamp(x, 0.0, 1.0); }
 
 
+// Wrap helpers (0..1 domain)
+float wrap01(float x) { return x - floor(x); }
+float wrapDelta01(float d) { return wrap01(d + 0.5) - 0.5; } // shortest wrapped delta
+
 uint pcg_hash(uint x) {
     x = x * 747796405u + 2891336453u;
     x = ((x >> ((x >> 28u) + 4u)) ^ x) * 277803737u;
@@ -131,32 +135,93 @@ void main()
     float lat1 = clamp(u3, 0.0, 1.0);
     float R = max(u5, 1e-6);
 
+    //vec3 d0 = dir_from_lonlat01(lon0, lat0);
+    //vec3 d1 = dir_from_lonlat01(lon1, lat1);
+
+    //// Great-circle plane normal
+    //vec3 n = normalize(cross(d0, d1));
+    //if (length(n) < 1e-5) {
+    //    // Degenerate (same/similar points): pick any perpendicular to d0
+    //    n = normalize(cross(d0, vec3(0.0, 1.0, 0.0)));
+    //    if (length(n) < 1e-5) n = normalize(cross(d0, vec3(1.0, 0.0, 0.0)));
+    //}
+
+    //// Position on the arc
+    //vec3 D = slerp_unit(d0, d1, s);     // radial direction
+    //vec3 P = D * R;                      // point on sphere
+
+    //// Build nice orientation for the cube:
+    //// Tangent along the great-circle, Radial normal outwards, Binormal completes basis.
+    //vec3 T = normalize(cross(n, D));     // tangent
+    //vec3 B = cross(D, T);                // binormal (already unit if D,T are)
+    //mat3 R3 = mat3(T, D, B);             // columns: X->tangent, Y->radial, Z->binormal
+
+
     vec3 d0 = dir_from_lonlat01(lon0, lat0);
     vec3 d1 = dir_from_lonlat01(lon1, lat1);
 
-    // Great-circle plane normal
-    vec3 n = normalize(cross(d0, d1));
-    if (length(n) < 1e-5) {
-        // Degenerate (same/similar points): pick any perpendicular to d0
-        n = normalize(cross(d0, vec3(0.0, 1.0, 0.0)));
-        if (length(n) < 1e-5) n = normalize(cross(d0, vec3(1.0, 0.0, 0.0)));
+    // Classify intent
+    float dLon = abs(wrapDelta01(lon1 - lon0));
+    float dLat = abs(lat1 - lat0);
+    float ddot = dot(normalize(d0), normalize(d1));
+
+    bool vertical = (dLon < 1e-5);     // constant longitude -> full meridian ring
+    bool horizontal = (dLat < 1e-5);     // constant latitude  -> full parallel ring
+    bool antipodal = (ddot < -0.9999);  // opposite points -> treat as vertical ring
+
+    vec3 D, T, B; // radial (out), tangent, binormal
+
+    if (vertical || antipodal)
+    {
+        // Full meridian at longitude lon0: great circle using basis {u,v}
+        float theta = lon0 * TAU;
+        vec3  u = vec3(cos(theta), 0.0, sin(theta)); // equator dir at lon0
+        vec3  v = vec3(0.0, 1.0, 0.0);               // +Y
+        float a = TAU * s;                            // sweep full 0..2
+        D = normalize(u * cos(a) + v * sin(a));
+        T = normalize(-u * sin(a) + v * cos(a));
+        B = cross(D, T);
+    }
+    else if (horizontal)
+    {
+        // Full parallel at latitude lat0: sweep longitude 0..2
+        float theta = wrap01(lon0 + s);               // wrap 0..1
+        D = normalize(spherical01(1.0, theta, lat0)); // unit radial
+        // Eastward tangent
+        T = normalize(cross(vec3(0.0, 1.0, 0.0), D));
+        if (length(T) < 1e-6) T = normalize(cross(D, vec3(1.0, 0.0, 0.0)));
+        B = cross(D, T);
+    }
+    else
+    {
+        // Shortest geodesic segment
+        vec3 n = normalize(cross(d0, d1));
+        if (length(n) < 1e-6) { // paranoid fallback
+            float theta = lon0 * TAU;
+            vec3  u = vec3(cos(theta), 0.0, sin(theta));
+            vec3  v = vec3(0.0, 1.0, 0.0);
+            float a = PI * s;
+            D = normalize(u * cos(a) + v * sin(a));
+            T = normalize(-u * sin(a) + v * cos(a));
+            B = cross(D, T);
+        }
+        else {
+            D = slerp_unit(normalize(d0), normalize(d1), s);
+            T = normalize(cross(n, D));
+            B = cross(D, T);
+        }
     }
 
-    // Position on the arc
-    vec3 D = slerp_unit(d0, d1, s);     // radial direction
-    vec3 P = D * R;                      // point on sphere
+    // Position on sphere
+    vec3 P = D * R;
+    mat3 R3 = mat3(T, D, B);
 
-    // Build nice orientation for the cube:
-    // Tangent along the great-circle, Radial normal outwards, Binormal completes basis.
-    vec3 T = normalize(cross(n, D));     // tangent
-    vec3 B = cross(D, T);                // binormal (already unit if D,T are)
-    mat3 R3 = mat3(T, D, B);             // columns: X->tangent, Y->radial, Z->binormal
 
     // Thickness (uniform scale)
     float thick = max(u9, 1e-6);
 
     // If your world expects Y/Z swapped (as in your previous shader), keep the swap:
-    vec3 pos_world = vec3(P.x, P.z, P.y);          // swap Y/Z
+    vec3 pos_world = vec3(P.x, P.y, P.z);          // swap Y/Z
     mat3 R3_swapped = mat3(
         vec3(R3[0].x, R3[0].z, R3[0].y),  // swap Y/Z per column
         vec3(R3[1].x, R3[1].z, R3[1].y),

@@ -492,40 +492,66 @@ namespace Universe_
 		// Example init: 100 short arcs along the equator (clean visual baseline)
 		void init()
 		{
-			const int number_of_lines = 100;
-			const float radius = 0.6f;
-			const int samples = 120;     // instances per arc
-			const float lat_equator = 0.5f;
-			const int span = 6;          // how many segments forward each arc connects to
-
-			lines.clear();
-			lines.reserve(number_of_lines);
-
-			for (int i = 0; i < number_of_lines; ++i)
+			
 			{
-				float lon0 = float(i) / float(number_of_lines);           // 0..1
-				float lon1 = float(i + span) / float(number_of_lines);    // a bit ahead (wraps naturally)
-				if (lon1 >= 1.0f) lon1 -= 1.0f;
-
 				LineGeodesic L;
-				L.lon0.start = lon0;     L.lat0.start = lat_equator;
-				L.lon1.start = lon1;     L.lat1.start = lat_equator;
+
+				L.samples = 100;
+
+				L.lon0.start = 0.0;
+				L.lat0.start = 0.5;
+
+				L.lon1.start = 0.2;
+				L.lat1.start = 0.5;
+
+				L.radius.start = 0.5f;
+
+				// subtle color variation
+				L.rgb0 = { 1.0, 1.0, 1.0 };
+
+				L.thickness.start = 0.001f;
 
 				// make static for now (engine can animate u* if desired)
 				L.copy_start_to_end();
 
-				// sphere & style
-				L.radius.start = L.radius.end = radius;
-				L.samples = samples;
-				L.thickness.start = L.thickness.end = 0.006f;
-
-				// subtle color variation
-				float hue = Random::generate_random_float_0_to_1();
-				L.rgb0 = { 0.25f + 0.75f * hue, 0.35f, 0.65f * (1.0f - hue) };
-				L.rgb1 = L.rgb0; // flat color; set different for gradient
 
 				lines.emplace_back(std::move(L));
 			}
+			
+			{
+
+				for (int i = 0; i < 100; i++)
+				{
+					LineGeodesic L;
+
+					L.samples = 100;
+
+					L.lon0.start = Random::generate_random_float_0_to_1();
+					L.lat0.start = Random::generate_random_float_0_to_1();
+
+					L.lon1.start = L.lon0.start + Random::generate_random_float_minus_one_to_plus_one() * 0.1;
+					L.lat1.start = L.lat0.start + Random::generate_random_float_minus_one_to_plus_one() * 0.1;
+
+					L.radius.start = 0.5f;
+
+					// subtle color variation
+					L.rgb0 = { 0.0, 1.0, 0.0 };
+
+					L.thickness.start = 0.0001f;
+
+					// make static for now (engine can animate u* if desired)
+					L.copy_start_to_end();
+
+
+					lines.emplace_back(std::move(L));
+				}
+				
+			}
+
+
+			
+
+			
 		}
 
 		void draw(Scene_::Scene& scene)
@@ -621,7 +647,7 @@ namespace Universe_
 				lines.draw(scene);
 			}
 
-			if(enable_shader_22_line_with_t) // lines with t
+			if(enable_shader_22_geodesic_line) // lines with t
 			{
 				LinesGeodesic lines_with_t;
 				lines_with_t.init();
@@ -666,9 +692,9 @@ namespace Universe_
 		const int clip_length_seconds = 4;
 
 		const bool enable_shader_10_unit_cube = true;
-		const bool enable_shader_20_sphere = true; // sphere
-		const bool enable_shader_21_line = true; // line
-		const bool enable_shader_22_line_with_t = true; // line with t
+		const bool enable_shader_20_sphere = false; // sphere
+		const bool enable_shader_21_line = false; // line
+		const bool enable_shader_22_geodesic_line = true; // line with t
 
 	};
 
