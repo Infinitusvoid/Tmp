@@ -34,24 +34,27 @@ namespace Universe_
 
 	// (Add these functions before your 'struct Lines')
 
-	inline Vec3 vec_add(const Vec3& a, const Vec3& b) {
-		return { a.x + b.x, a.y + b.y, a.z + b.z };
-	}
-
-	inline Vec3 vec_scale(const Vec3& v, float s) {
-		return { v.x * s, v.y * s, v.z * s };
-	}
-
-	inline float vec_length(const Vec3& v) {
-		return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-	}
-
-	inline Vec3 vec_normalize(const Vec3& v) {
-		float len = vec_length(v);
-		if (len > 0.0f) {
-			return vec_scale(v, 1.0f / len);
+	namespace Vec3_
+	{
+		inline Vec3 vec_add(const Vec3& a, const Vec3& b) {
+			return { a.x + b.x, a.y + b.y, a.z + b.z };
 		}
-		return { 0.0f, 0.0f, 0.0f }; // Return zero vector if length is zero
+
+		inline Vec3 vec_scale(const Vec3& v, float s) {
+			return { v.x * s, v.y * s, v.z * s };
+		}
+
+		inline float vec_length(const Vec3& v) {
+			return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+		}
+
+		inline Vec3 vec_normalize(const Vec3& v) {
+			float len = vec_length(v);
+			if (len > 0.0f) {
+				return vec_scale(v, 1.0f / len);
+			}
+			return { 0.0f, 0.0f, 0.0f }; // Return zero vector if length is zero
+		}
 	}
 
 	struct Float_start_end
@@ -84,7 +87,6 @@ namespace Universe_
 	{
 		std::vector<Sphere> spheres;
 
-
 		void init_0(int number)
 		{
 			for (int i = 0; i < number; i++)
@@ -115,9 +117,6 @@ namespace Universe_
 				spheres.push_back(std::move(sphere));
 			}
 		}
-
-
-
 
 		void init_1(int number)
 		{
@@ -159,23 +158,11 @@ namespace Universe_
 			}
 		}
 
-
-
-
-
-
-
-
-
 		void draw(Scene_::Scene& scene, int number_of_cube_per_sphere)
 		{
 			const int sqrt_number_of_cube_per_sphere = int(sqrtf(float(number_of_cube_per_sphere)));
 
 			add_shader(scene, 20, [&](Program::Shader& sh) {
-
-
-				// Instance 0
-
 
 
 				for (Sphere& sphere : spheres)
@@ -205,70 +192,6 @@ namespace Universe_
 					I.set_u_start_end(8, sphere.thickness.start, sphere.thickness.end); // u8 thickness
 
 					I.set_u_start_end(9, sphere.jitter.start, sphere.jitter.end); // u9 jitter scale
-
-					//constexpr int kU = 10;
-					//for (int u = 0; u < kU; ++u)
-					//{
-					//	float v_start = 0.1f * static_cast<float>(u);
-					//	float v_end = 1.0f - 0.1f * static_cast<float>(u);
-
-					//	v_start = 0.0;
-					//	v_end = 0.0;
-
-					//	if (u == 0) // color_r
-					//	{
-					//		v_start = 0.0;
-					//		v_end = 1.0;
-					//	}
-					//	else if (u == 1) // color_g
-					//	{
-					//		v_start = 1.0;
-					//		v_end = 1.0;
-					//	}
-					//	else if (u == 2) // color_b
-					//	{
-					//		v_start = 0.0;
-					//		v_end = 1.0;
-					//	}
-					//	else if (u == 3) // cube_size
-					//	{
-					//		v_start = 0.0001;
-					//		v_end = 0.0001;
-					//	}
-					//	else if (u == 4) // rnd_x_min
-					//	{
-					//		v_start = 0.0;
-					//		v_end = 0.0;
-					//	}
-					//	else if (u == 5) // rnd_x_max
-					//	{
-					//		v_start = 0.5;
-					//		v_end = 0.5;
-					//	}
-					//	else if (u == 6) // rnd_y_min
-					//	{
-					//		v_start = 0.0;
-					//		v_end = 0.0;
-					//	}
-					//	else if (u == 7) // rnd_y_max
-					//	{
-					//		v_start = 0.5;
-					//		v_end = 0.5;
-					//	}
-					//	else if (u == 8) // thickness
-					//	{
-					//		v_start = 0.1;
-					//		v_end = 0.1;
-					//	}
-					//	else if (u == 9) // jitter scale
-					//	{
-					//		v_start = 0.0;
-					//		v_end = 0.0;
-					//	}
-
-					//	I.set_u_start_end(u, v_start, v_end);
-					//}
-
 				}
 
 
@@ -472,6 +395,16 @@ namespace Universe_
 		}
 	};
 
+	struct LineWithT
+	{
+
+	};
+
+	struct LinesWithT
+	{
+
+	};
+
 	struct Clip
 	{
 
@@ -517,14 +450,14 @@ namespace Universe_
 			Scene_::Scene scene = Scene_::Scene();
 			program.configure(scene);
 
-			if (enable_shader_20) // sphered
+			if (enable_shader_20_sphere) // sphered
 			{
 				Spheres sphere;
 				sphere.init_1(10);
 				sphere.draw(scene, 1000);
 			}
 
-			if (enable_shader_21) // lines
+			if (enable_shader_21_line) // lines
 			{
 				Lines lines;
 				lines.init();
@@ -568,10 +501,10 @@ namespace Universe_
 		const int clip_fps = 60;
 		const int clip_length_seconds = 4;
 
-		const bool enable_shader_10_unit_cube = false;
-		const bool enable_shader_20 = true;
-
-		const bool enable_shader_21 = true;
+		const bool enable_shader_10_unit_cube = true;
+		const bool enable_shader_20_sphere = true; // sphere
+		const bool enable_shader_21_line = true; // line
+		const bool enable_shader_22_line_with_t = true; // line with t
 
 	};
 
