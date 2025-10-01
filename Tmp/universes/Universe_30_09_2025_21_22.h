@@ -558,6 +558,7 @@ namespace Universe_
 				lines.emplace_back(std::move(L));
 			}
 
+			if(false)
 			{
 
 				//for (int i = 0; i < 1; i++)
@@ -633,7 +634,6 @@ namespace Universe_
 					L.copy_start_to_end();
 					lines.emplace_back(std::move(L));
 				}
-
 
 				for (int i = 0; i < 10; i++)
 				{
@@ -725,6 +725,125 @@ namespace Universe_
 				
 			}
 			
+
+			if (true)
+			{
+				auto draw_sphere = [](std::vector<LineGeodesic>& l, float radius, float x, float y, float z, float thickness)
+					{
+						for (int i = 0; i < 10; i++)
+						{
+							LineGeodesic L;
+							L.samples = 600;
+							L.radius.start = radius;
+
+							L.x0.start = 0.0f;
+							L.y0.start = 0.1f * i;
+
+
+							L.x1.start = 1.0f;
+							L.y1.start = 0.1f * i;
+
+							L.thickness = { thickness, thickness };
+							L.rgb0 = { 1,0,0 };
+
+							L.transform_startEnd.start.position.x = x;
+							L.transform_startEnd.start.position.y = y;
+							L.transform_startEnd.start.position.z = z;
+
+							L.copy_start_to_end();
+							l.emplace_back(std::move(L));
+						}
+
+						for (int i = 0; i < 10; i++)
+						{
+							LineGeodesic L;
+							L.samples = 600;
+							L.radius.start = radius;
+
+							L.x0.start = 0.1f * i;
+							L.y0.start = 0.0f;
+
+
+							L.x1.start = 0.1f * i;
+							L.y1.start = 0.5f;
+
+							L.thickness = { thickness, thickness };
+							L.rgb0 = { 1,1,0 };
+
+							L.transform_startEnd.start.position.x = x;
+							L.transform_startEnd.start.position.y = y;
+							L.transform_startEnd.start.position.z = z;
+
+							L.copy_start_to_end();
+							l.emplace_back(std::move(L));
+						}
+
+						for (int i = 0; i < 10; i++)
+						{
+							LineGeodesic L;
+							L.samples = 600;
+							L.radius.start = radius;
+
+							L.x0.start = 0.1f * i;
+							L.y0.start = 0.5f;
+
+
+							L.x1.start = 0.1f * i;
+							L.y1.start = 1.0f;
+
+							L.thickness = { thickness, thickness };
+							L.rgb0 = { 1,0,1 };
+
+							L.transform_startEnd.start.position.x = x;
+							L.transform_startEnd.start.position.y = y;
+							L.transform_startEnd.start.position.z = z;
+
+							L.copy_start_to_end();
+							l.emplace_back(std::move(L));
+						}
+
+						for (int j = 0; j < 10; j++)
+						{
+							for (int i = 0; i < 10; i++)
+							{
+								LineGeodesic L;
+								L.samples = 600;
+								L.radius.start = radius;
+
+								L.x0.start = 0.1f * i;
+								L.y0.start = 0.1f * j;
+
+
+								L.x1.start = 0.1f * (i + 1);
+								L.y1.start = 0.1f * (j + 1);
+
+								L.thickness = { thickness, thickness };
+								L.rgb0 = { 1,1,1 };
+
+								L.transform_startEnd.start.position.x = x;
+								L.transform_startEnd.start.position.y = y;
+								L.transform_startEnd.start.position.z = z;
+
+								L.copy_start_to_end();
+								l.emplace_back(std::move(L));
+							}
+						}
+
+					};
+				
+				draw_sphere(lines, 0.025, 0.5, 0.5, 0.5, 0.00025);
+
+				draw_sphere(lines, 0.1, 0.0, 0.0, 0.0, 0.001);
+				draw_sphere(lines, 0.1, 0.0, 0.0, 1.0, 0.001);
+				draw_sphere(lines, 0.1, 0.0, 1.0, 0.0, 0.001);
+				draw_sphere(lines, 0.1, 0.0, 1.0, 1.0, 0.001);
+				
+				draw_sphere(lines, 0.1, 1.0, 0.0, 0.0, 0.001);
+				draw_sphere(lines, 0.1, 1.0, 0.0, 1.0, 0.001);
+				draw_sphere(lines, 0.1, 1.0, 1.0, 0.0, 0.001);
+				draw_sphere(lines, 0.1, 1.0, 1.0, 1.0, 0.001);
+				
+			}
 
 			if (false)
 			{
