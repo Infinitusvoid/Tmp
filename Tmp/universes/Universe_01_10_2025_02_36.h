@@ -306,102 +306,103 @@ namespace Vibe_01_10_2025_11_21_
 		}
 	};
 
-	struct LineGeodesic
+	struct LinesGeodesic_shader_22
 	{
-		Transform_StartEnd transform_startEnd;
 
-		// Endpoints on the sphere (normalized)
-		Float_start_end y0{ 0.0f, 0.0f };  // u0
-		Float_start_end x0{ 0.0f, 0.0f };  // u1
-		Float_start_end y1{ 0.0f, 0.0f };  // u2
-		Float_start_end x1{ 0.0f, 0.0f };  // u3
-
-		// Sphere radius
-		Float_start_end radius{ 1.0f, 1.0f }; // u5
-
-
-		// Color (start -> end)
-		Vec3 rgb0{ 1.0f, 1.0f, 1.0f };  // u6, u7, u8
-		Vec3 rgb1{ 1.0f, 1.0f, 1.0f };
-
-		// Thickness / cube scale along the arc
-		Float_start_end thickness{ 0.01f, 0.01f }; // u9
-
-		// How many cubes to sample along the arc (your instance X count)
-		int samples = 100;
-
-		Float_start_end turns{ 0.0f, 0.0f };
-
-		// Send to shader uniforms (u0..u9). u4 is reserved for future use (set to 0).
-		void send(Program::Shader::Instance& I)
+		struct LineGeodesic
 		{
-			I.set_u_start_end(0, y0.start, y0.end);   // u0 = lon0
-			I.set_u_start_end(1, x0.start, x0.end);   // u1 = lat0
-			I.set_u_start_end(2, y1.start, y1.end);   // u2 = lon1
-			I.set_u_start_end(3, x1.start, x1.end);   // u3 = lat1
+			Transform_StartEnd transform_startEnd;
 
-			I.set_u_start_end(4, turns.start, turns.end);             // u4 = (reserved)
-			I.set_u_start_end(5, radius.start, radius.end); // u5 = radius
+			// Endpoints on the sphere (normalized)
+			Float_start_end y0{ 0.0f, 0.0f };  // u0
+			Float_start_end x0{ 0.0f, 0.0f };  // u1
+			Float_start_end y1{ 0.0f, 0.0f };  // u2
+			Float_start_end x1{ 0.0f, 0.0f };  // u3
 
-			I.set_u_start_end(6, rgb0.x, rgb1.x);         // u6 = R
-			I.set_u_start_end(7, rgb0.y, rgb1.y);         // u7 = G
-			I.set_u_start_end(8, rgb0.z, rgb1.z);         // u8 = B
+			// Sphere radius
+			Float_start_end radius{ 1.0f, 1.0f }; // u5
 
-			I.set_u_start_end(9, thickness.start, thickness.end); // u9 = thickness
 
-			transform_startEnd.send(I);
-		}
+			// Color (start -> end)
+			Vec3 rgb0{ 1.0f, 1.0f, 1.0f };  // u6, u7, u8
+			Vec3 rgb1{ 1.0f, 1.0f, 1.0f };
 
-		// Convenience: copy all "start" to "end" (static state)
-		void copy_start_to_end()
-		{
-			y0.end = y0.start;  x0.end = x0.start;
-			y1.end = y1.start;  x1.end = x1.start;
+			// Thickness / cube scale along the arc
+			Float_start_end thickness{ 0.01f, 0.01f }; // u9
 
-			turns.end = turns.start;
+			// How many cubes to sample along the arc (your instance X count)
+			int samples = 100;
 
-			radius.end = radius.start;
-			rgb1 = rgb0;
-			thickness.end = thickness.start;
+			Float_start_end turns{ 0.0f, 0.0f };
 
-			transform_startEnd.copy_start_to_end();
-		}
+			// Send to shader uniforms (u0..u9). u4 is reserved for future use (set to 0).
+			void send(Program::Shader::Instance& I)
+			{
+				I.set_u_start_end(0, y0.start, y0.end);   // u0 = lon0
+				I.set_u_start_end(1, x0.start, x0.end);   // u1 = lat0
+				I.set_u_start_end(2, y1.start, y1.end);   // u2 = lon1
+				I.set_u_start_end(3, x1.start, x1.end);   // u3 = lat1
 
-		// Helpers (optional) ------------------------------------------------------
+				I.set_u_start_end(4, turns.start, turns.end);             // u4 = (reserved)
+				I.set_u_start_end(5, radius.start, radius.end); // u5 = radius
 
-		// Convert degrees to normalized lon/lat.
-		// lon_deg is elemnet (-infitiy,+infinity), lat_deg is element [-90,+90].
-		static float lon01_from_deg(float lon_deg) {
-			// wrap to [0,1)
-			float x = lon_deg / 360.0f;
-			x = x - std::floor(x); // fract
-			return x;
-		}
-		static float lat01_from_deg(float lat_deg) {
-			// 0 at north pole (+90 degress), 0.5 at equator (0 degress), 1 at south (-90 degress)
-			float t = (90.0f - std::clamp(lat_deg, -90.0f, 90.0f)) / 180.0f;
-			return std::clamp(t, 0.0f, 1.0f);
-		}
+				I.set_u_start_end(6, rgb0.x, rgb1.x);         // u6 = R
+				I.set_u_start_end(7, rgb0.y, rgb1.y);         // u7 = G
+				I.set_u_start_end(8, rgb0.z, rgb1.z);         // u8 = B
 
-		// Set both endpoints from degrees (+ radius & color/thickness if you want)
-		void set_from_degrees(float lon0_deg, float lat0_deg,
-			float lon1_deg, float lat1_deg,
-			float R)
-		{
-			y0.start = lon01_from_deg(lon0_deg);
-			x0.start = lat01_from_deg(lat0_deg);
-			y1.start = lon01_from_deg(lon1_deg);
-			x1.start = lat01_from_deg(lat1_deg);
+				I.set_u_start_end(9, thickness.start, thickness.end); // u9 = thickness
 
-			y0.end = y0.start; x0.end = x0.start;
-			y1.end = y1.start; x1.end = x1.start;
+				transform_startEnd.send(I);
+			}
 
-			radius.start = radius.end = R;
-		}
-	};
+			// Convenience: copy all "start" to "end" (static state)
+			void copy_start_to_end()
+			{
+				y0.end = y0.start;  x0.end = x0.start;
+				y1.end = y1.start;  x1.end = x1.start;
 
-	struct LinesGeodesic
-	{
+				turns.end = turns.start;
+
+				radius.end = radius.start;
+				rgb1 = rgb0;
+				thickness.end = thickness.start;
+
+				transform_startEnd.copy_start_to_end();
+			}
+
+			// Helpers (optional) ------------------------------------------------------
+
+			// Convert degrees to normalized lon/lat.
+			// lon_deg is elemnet (-infitiy,+infinity), lat_deg is element [-90,+90].
+			static float lon01_from_deg(float lon_deg) {
+				// wrap to [0,1)
+				float x = lon_deg / 360.0f;
+				x = x - std::floor(x); // fract
+				return x;
+			}
+			static float lat01_from_deg(float lat_deg) {
+				// 0 at north pole (+90 degress), 0.5 at equator (0 degress), 1 at south (-90 degress)
+				float t = (90.0f - std::clamp(lat_deg, -90.0f, 90.0f)) / 180.0f;
+				return std::clamp(t, 0.0f, 1.0f);
+			}
+
+			// Set both endpoints from degrees (+ radius & color/thickness if you want)
+			void set_from_degrees(float lon0_deg, float lat0_deg,
+				float lon1_deg, float lat1_deg,
+				float R)
+			{
+				y0.start = lon01_from_deg(lon0_deg);
+				x0.start = lat01_from_deg(lat0_deg);
+				y1.start = lon01_from_deg(lon1_deg);
+				x1.start = lat01_from_deg(lat1_deg);
+
+				y0.end = y0.start; x0.end = x0.start;
+				y1.end = y1.start; x1.end = x1.start;
+
+				radius.start = radius.end = R;
+			}
+		};
+
 		std::vector<LineGeodesic> lines;
 
 		// Example init: 100 short arcs along the equator (clean visual baseline)
@@ -567,7 +568,7 @@ namespace Universe_
 
 	}
 
-	void init_lines_geodesic(LinesGeodesic& lines_geodesic)
+	void init_lines_geodesic(LinesGeodesic_shader_22& lines_geodesic)
 	{
 
 
@@ -575,7 +576,7 @@ namespace Universe_
 
 		if (false)
 		{
-			LineGeodesic L;
+			LinesGeodesic_shader_22::LineGeodesic L;
 
 			L.samples = 100;
 
@@ -637,7 +638,7 @@ namespace Universe_
 
 			for (int i = 0; i < 10; i++)
 			{
-				LineGeodesic L;
+				LinesGeodesic_shader_22::LineGeodesic L;
 				L.samples = 600;
 				L.radius.start = 0.5f;
 
@@ -659,7 +660,7 @@ namespace Universe_
 
 			for (int i = 0; i < 10; i++)
 			{
-				LineGeodesic L;
+				LinesGeodesic_shader_22::LineGeodesic L;
 				L.samples = 600;
 				L.radius.start = 0.5f;
 
@@ -681,7 +682,7 @@ namespace Universe_
 
 			for (int i = 0; i < 10; i++)
 			{
-				LineGeodesic L;
+				LinesGeodesic_shader_22::LineGeodesic L;
 				L.samples = 600;
 				L.radius.start = 0.5f;
 
@@ -705,7 +706,7 @@ namespace Universe_
 			{
 				for (int i = 0; i < 10; i++)
 				{
-					LineGeodesic L;
+					LinesGeodesic_shader_22::LineGeodesic L;
 					L.samples = 600;
 					L.radius.start = 0.5f;
 
@@ -772,11 +773,11 @@ namespace Universe_
 
 		if (true)
 		{
-			auto draw_sphere = [](std::vector<LineGeodesic>& l, float radius, float x, float y, float z, float thickness)
+			auto draw_sphere = [](std::vector<LinesGeodesic_shader_22::LineGeodesic>& l, float radius, float x, float y, float z, float thickness)
 				{
 					for (int i = 0; i < 10; i++)
 					{
-						LineGeodesic L;
+						LinesGeodesic_shader_22::LineGeodesic L;
 						L.samples = 600;
 						L.radius.start = radius;
 
@@ -800,7 +801,7 @@ namespace Universe_
 
 					for (int i = 0; i < 10; i++)
 					{
-						LineGeodesic L;
+						LinesGeodesic_shader_22::LineGeodesic L;
 						L.samples = 600;
 						L.radius.start = radius;
 
@@ -824,7 +825,7 @@ namespace Universe_
 
 					for (int i = 0; i < 10; i++)
 					{
-						LineGeodesic L;
+						LinesGeodesic_shader_22::LineGeodesic L;
 						L.samples = 600;
 						L.radius.start = radius;
 
@@ -850,7 +851,7 @@ namespace Universe_
 					{
 						for (int i = 0; i < 10; i++)
 						{
-							LineGeodesic L;
+							LinesGeodesic_shader_22::LineGeodesic L;
 							L.samples = 600;
 							L.radius.start = radius;
 
@@ -894,7 +895,7 @@ namespace Universe_
 
 			for (int i = 0; i < 1000; i++)
 			{
-				LineGeodesic& L = lines_geodesic.add_line();
+				LinesGeodesic_shader_22::LineGeodesic& L = lines_geodesic.add_line();
 
 				L.samples = 1000;
 
@@ -929,7 +930,7 @@ namespace Universe_
 
 		if (false)
 		{
-			LineGeodesic L;
+			LinesGeodesic_shader_22::LineGeodesic L;
 
 			L.samples = 1000;
 
@@ -957,7 +958,7 @@ namespace Universe_
 
 		if (false)
 		{
-			LineGeodesic L;
+			LinesGeodesic_shader_22::LineGeodesic L;
 
 			L.samples = 1000;
 
@@ -1023,7 +1024,7 @@ namespace Universe_
 
 			// 1) EQUATOR RING (lat=0.5). Full 360, animated turns 0.0001 -> 1.0
 			{
-				LineGeodesic L;
+				LinesGeodesic_shader_22::LineGeodesic L;
 				L.radius = { R, R };
 				L.x0 = { 0.5f, 0.5f };
 				L.x1 = { 0.5f, 0.5f };
@@ -1038,7 +1039,7 @@ namespace Universe_
 
 			// 2) MERIDIAN RING (constant longitude). 0.0001 -> 1.5 turns (one and a half)
 			{
-				LineGeodesic L;
+				LinesGeodesic_shader_22::LineGeodesic L;
 				L.radius = { R, R };
 				L.y0 = { 0.25f, 0.25f };   // choose which meridian
 				L.y1 = { 0.25f, 0.25f };
@@ -1054,7 +1055,7 @@ namespace Universe_
 			// 3) DIAGONAL RING (arbitrary great circle defined by two non-colinear endpoints)
 			//    0.0001 -> 1.0 turn to show the "forced ring" using u4.
 			{
-				LineGeodesic L;
+				LinesGeodesic_shader_22::LineGeodesic L;
 				L.radius = { R, R };
 				L.y0 = { 0.10f, 0.10f }; L.x0 = { 0.30f, 0.30f };
 				L.y1 = { 0.65f, 0.65f }; L.x1 = { 0.80f, 0.80f };
@@ -1067,7 +1068,7 @@ namespace Universe_
 
 			// 4) PARTIAL DIAGONAL RING (quarter loop -> three quarters), showing arc length control via u4
 			{
-				LineGeodesic L;
+				LinesGeodesic_shader_22::LineGeodesic L;
 				L.radius = { R, R };
 				L.y0 = { 0.70f, 0.70f }; L.x0 = { 0.20f, 0.20f };
 				L.y1 = { 0.20f, 0.20f }; L.x1 = { 0.75f, 0.75f };
@@ -1080,7 +1081,7 @@ namespace Universe_
 
 			// 5) SHORTEST GEODESIC (segment) that crosses the seam: animate endpoints across lon=10
 			{
-				LineGeodesic L;
+				LinesGeodesic_shader_22::LineGeodesic L;
 				L.radius = { R, R };
 				// Start near seam on opposite sides; shader will choose the shortest arc
 				L.y0 = { 0.95f, 0.95f };  L.x0 = { 0.40f, 0.70f }; // animate lat to show path change
@@ -1098,7 +1099,7 @@ namespace Universe_
 				for (int i = 0; i < bands; ++i) {
 					float t = (i + 0.5f) / float(bands);      // 0..1
 					float lat = 0.15f + 0.70f * t;            // avoid poles
-					LineGeodesic L;
+					LinesGeodesic_shader_22::LineGeodesic L;
 					L.radius = { R, R };
 					L.x0 = { lat, lat };
 					L.x1 = { lat, lat };
@@ -1117,7 +1118,7 @@ namespace Universe_
 				const int fan = 8;
 				for (int i = 0; i < fan; ++i) {
 					float lon = float(i) / float(fan);
-					LineGeodesic L;
+					LinesGeodesic_shader_22::LineGeodesic L;
 					L.radius = { R, R };
 					L.y0 = { lon, lon };
 					L.y1 = { lon, lon };
@@ -1214,7 +1215,7 @@ namespace Universe_
 
 			if (enable_shader_22_geodesic_line) // lines with t
 			{
-				LinesGeodesic lines_with_t;
+				LinesGeodesic_shader_22 lines_with_t;
 				init_lines_geodesic(lines_with_t);
 				lines_with_t.draw(scene);
 			}
