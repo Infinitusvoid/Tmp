@@ -21,10 +21,22 @@
 #include "../CppCommponents/Random.h"
 
 
+namespace Vibe_01_10_2025_11_21_
+{
+	// Write the document explaing the concept of vibes 
+	// Write about how  the code is about expression and understanding not just utility or a way to build tools but itself a peace of art well yea 
+}
 
+// TODO
+// enigine set use F drive
+// write the motion extraction kind of thing 
+// some format like ply write and read, texture write and read ( you will generate model that you will upload to sketfab, usual polygon based with textures that go along and pointclouds)
+// audio reading, writing we need first steps into generating visuals that are aligned with audio explore procedural audio generation 
 
 namespace Universe_
 {
+	// using namespace Vibe_01_10_2025_11_21_;
+
 	struct Vec2
 	{
 		float x;
