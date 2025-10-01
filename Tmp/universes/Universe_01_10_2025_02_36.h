@@ -5,10 +5,74 @@ namespace Universe_
 {
 	using namespace Vibe_01_10_2025_11_21_;
 
-
+	
+	struct Vec3_StartEnd
+	{
+		Vec3 start;
+		Vec3 end;
+	};
 
 	
+	
+	void add_sphere
+	(
+		Spheres_shader_20& spheres_shader_20,
+		Vec3_StartEnd position,
+		Float_start_end radius,
+		Vec3_StartEnd color,
+		Float_start_end cube_size, 
+		Float_start_end x_rnd_min,
+		Float_start_end x_rnd_max,
+		Float_start_end y_rnd_min,
+		Float_start_end y_rnd_max, 
+		Float_start_end thickness,
+		Float_start_end jitter
+	)
+	{
+		Spheres_shader_20::Sphere sphere;
 
+		sphere.radius = radius;
+
+		sphere.start_position.x = position.start.x - radius.start * 0.5f;
+		sphere.start_position.y = position.start.y - radius.start * 0.5f;
+		sphere.start_position.z = position.start.z - radius.start * 0.5f;
+
+		sphere.end_position.x = position.end.x - radius.end * 0.5f;
+		sphere.end_position.y = position.end.y - radius.end * 0.5f;
+		sphere.end_position.z = position.end.z - radius.end * 0.5f;
+
+		sphere.cube_size = cube_size;
+
+		sphere.x_rnd_min = x_rnd_min;
+		sphere.x_rnd_max = x_rnd_max;
+
+		sphere.y_rnd_min = y_rnd_min;
+		sphere.y_rnd_max = y_rnd_max;
+
+		sphere.start_color = color.start;
+		sphere.end_color = color.end;
+
+		sphere.thickness = thickness;
+		sphere.jitter = jitter;
+
+		spheres_shader_20.spheres.push_back(std::move(sphere));
+		
+	}
+	
+	
+	
+	
+	
+
+	void bug_fix_line_position(float& x, float& y, float& z)
+	{
+		std::swap(y, z);
+
+		z -= 0.5f;
+		x -= 0.5f;
+		y -= 0.5f;
+	}
+	
 	
 
 	void init(Scene_::Scene& scene, const int clip_number, const int clip_fps, const int clip_length_seconds, const bool capture, const bool capture_png, const bool capture_bmp)
@@ -16,7 +80,7 @@ namespace Universe_
 		const bool enable_shader_10_unit_cube = true;
 		const bool enable_shader_20_sphere = true; // sphere
 		const bool enable_shader_21_line = false; // line
-		const bool enable_shader_22_geodesic_line = true; // line with t
+		const bool enable_shader_22_geodesic_line = false; // line with t
 
 
 		{
@@ -73,51 +137,97 @@ namespace Universe_
 		if (enable_shader_20_sphere) // sphered
 		{
 
-			auto spheres_init = [](Spheres_shader_20& spheres, int number)
+			auto spheres_connected_with_lines_init = [](Spheres_shader_20& spheres, Lines_shader_21& lines, int number)
 				{
+
 					for (int i = 0; i < number; i++)
 					{
-						Spheres_shader_20::Sphere sphere;
+						// Spheres_shader_20::Sphere sphere;
+
 
 						float factor_i = (1.0f / float(number)) * i;
 
-
-						sphere.start_position = { factor_i * 10.0f, 0.0f, Random::generate_random_float_minus_one_to_plus_one() * 2.0f };
-						sphere.end_position =
 						{
-							sphere.start_position.x,
-							sphere.start_position.y + 2.0f,
-							sphere.start_position.z
-						};
+							Lines_shader_21::Line& line = lines.add_line();
 
-						sphere.start_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
-						sphere.end_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
+							line.x0.start = 0.5;
+							line.y0.start = 0.5;
+							line.z0.start = 0.5;
 
-						sphere.radius = { 0.02f + Random::generate_random_float_0_to_1() * 0.02f, 0.02f + Random::generate_random_float_0_to_1() * 0.02f };
+							line.x1.start = 0.5;
+							line.y1.start = 1.0;
+							line.z1.start = 0.5;
 
-						sphere.cube_size = { 0.01, 0.01 };
+							line.thickness.start = 0.01f;
 
-						sphere.x_rnd_min = { 0.0, 0.0 };
-						sphere.x_rnd_max = { 1.0, 1.0 };
+							line.rgb_t0.x = 1.0;
+							line.rgb_t0.y = 1.0;
+							line.rgb_t0.z = 1.0;
 
-						sphere.y_rnd_min = { 0.0, 0.0 };
-						sphere.y_rnd_max = { 1.0, 1.0 };
+							bug_fix_line_position(line.x0.start, line.y0.start, line.z0.start);
+							bug_fix_line_position(line.x1.start, line.y1.start, line.z1.start);
 
-						sphere.thickness = { 0.1, 0.1 };
+							line.copy_start_to_end();
 
-						sphere.jitter.start = 1.0f;
-						sphere.jitter.end = 1.0f;
+							line.number_of_cubes = 1000;
+						}
 
-						spheres.spheres.push_back(std::move(sphere));
+
+						Vec3 position_start = { 0.5, 1.0, 0.5 };
+
+						Vec3 position_end = { 0.5, 0.5, 0.5 };
+
+						float radius_start = 0.1;
+						float radius_end = 0.4;
+
+						Vec3 color_start = { 1.0, 1.0, 1.0 };
+						Vec3 color_end = { 1.0, 1.0, 1.0 };
+					
+						float cube_size_start = 0.01;
+						float cube_size_end = 0.01;
+
+						Float_start_end x_rnd_min{ 0.0, 0.0 };
+						Float_start_end x_rnd_max{ 1.0, 1.0 };
+						Float_start_end y_rnd_min{ 0.0, 0.0 };
+						Float_start_end y_rnd_max{ 1.0, 1.0 };
+						Float_start_end thickness{ 0.1, 0.1 };
+						Float_start_end jitter{ 1.0, 1.0 };
+						
+
+						add_sphere
+						(
+							spheres,
+							{ 
+								position_start,
+								position_end
+							},
+							{
+								radius_start,
+								radius_end
+							},
+							{
+								color_start,
+								color_end
+							},
+							{ cube_size_start, cube_size_end },
+							x_rnd_min,
+							x_rnd_max,
+							y_rnd_min,
+							y_rnd_max,
+							thickness,
+							jitter
+						);
 					}
 				};
 
-			Spheres_shader_20 sphere;
+			Spheres_shader_20 spheres;
 			// spheres_init_1(sphere, 10);
+			Lines_shader_21 lines;
 
-			spheres_init(sphere, 10);
+			spheres_connected_with_lines_init(spheres, lines, 1);
 
-			sphere.draw(scene, 1000);
+			spheres.draw(scene, 1000);
+			lines.draw(scene);
 		}
 
 		if (enable_shader_21_line) // lines
@@ -175,202 +285,6 @@ namespace Universe_
 		{
 			auto init_lines_geodesic = [](LinesGeodesic_shader_22& lines_geodesic)
 			{
-				if (false)
-				{
-					LinesGeodesic_shader_22::LineGeodesic L;
-
-					L.samples = 100;
-
-					L.y0.start = 0.0;
-					L.x0.start = 0.5;
-
-					L.y1.start = 0.2;
-					L.x1.start = 0.5;
-
-					L.radius.start = 0.5f;
-
-					L.turns.start = 0.4f;
-
-
-					// subtle color variation
-					L.rgb0 = { 1.0, 1.0, 1.0 };
-
-					L.thickness.start = 0.001f;
-
-					// make static for now (engine can animate u* if desired)
-					L.copy_start_to_end();
-
-
-					lines_geodesic.lines.emplace_back(std::move(L));
-				}
-
-				if (false)
-				{
-
-					//for (int i = 0; i < 1; i++)
-					//{
-					//	LineGeodesic L;
-
-					//	L.samples = 1000;
-
-					//	L.lon0.start = 0.0;
-					//	L.lat0.start = 0.0;
-
-					//	L.lon1.start = 0.2;
-					//	L.lat1.start = 0.0;
-
-					//	L.radius.start = 0.5f;
-
-					//	L.turns.start = 0.01f;
-
-
-					//	// subtle color variation
-					//	L.rgb0 = { 1.0, 1.0, 1.0 };
-
-					//	L.thickness.start = 0.001f;
-
-					//	// make static for now (engine can animate u* if desired)
-					//	L.copy_start_to_end();
-
-
-					//	lines.emplace_back(std::move(L));
-					//}
-
-
-					for (int i = 0; i < 10; i++)
-					{
-						LinesGeodesic_shader_22::LineGeodesic L;
-						L.samples = 600;
-						L.radius.start = 0.5f;
-
-						L.x0.start = 0.0f;
-						L.y0.start = 0.1f * i;
-
-
-						L.x1.start = 1.0f;
-						L.y1.start = 0.1f * i;
-
-						L.thickness = { 0.004f, 0.004f };
-						L.rgb0 = { 1,0,0 };
-
-						L.transform_startEnd.start.position.y = 1.0f;
-
-						L.copy_start_to_end();
-						lines_geodesic.lines.emplace_back(std::move(L));
-					}
-
-					for (int i = 0; i < 10; i++)
-					{
-						LinesGeodesic_shader_22::LineGeodesic L;
-						L.samples = 600;
-						L.radius.start = 0.5f;
-
-						L.x0.start = 0.1f * i;
-						L.y0.start = 0.0f;
-
-
-						L.x1.start = 0.1f * i;
-						L.y1.start = 0.5f;
-
-						L.thickness = { 0.004f, 0.004f };
-						L.rgb0 = { 1,1,0 };
-
-						L.transform_startEnd.start.position.y = 1.0f;
-
-						L.copy_start_to_end();
-						lines_geodesic.lines.emplace_back(std::move(L));
-					}
-
-					for (int i = 0; i < 10; i++)
-					{
-						LinesGeodesic_shader_22::LineGeodesic L;
-						L.samples = 600;
-						L.radius.start = 0.5f;
-
-						L.x0.start = 0.1f * i;
-						L.y0.start = 0.5f;
-
-
-						L.x1.start = 0.1f * i;
-						L.y1.start = 1.0f;
-
-						L.thickness = { 0.004f, 0.004f };
-						L.rgb0 = { 1,0,1 };
-
-						L.transform_startEnd.start.position.y = 1.0f;
-
-						L.copy_start_to_end();
-						lines_geodesic.lines.emplace_back(std::move(L));
-					}
-
-					for (int j = 0; j < 10; j++)
-					{
-						for (int i = 0; i < 10; i++)
-						{
-							LinesGeodesic_shader_22::LineGeodesic L;
-							L.samples = 600;
-							L.radius.start = 0.5f;
-
-							L.x0.start = 0.1f * i;
-							L.y0.start = 0.1f * j;
-
-
-							L.x1.start = 0.1f * (i + 1);
-							L.y1.start = 0.1f * (j + 1);
-
-							L.thickness = { 0.001f, 0.001f };
-							L.rgb0 = { 1,1,1 };
-
-							L.transform_startEnd.start.position.y = 1.0f;
-
-							L.copy_start_to_end();
-							lines_geodesic.lines.emplace_back(std::move(L));
-						}
-					}
-
-
-
-
-
-
-					//LineGeodesic L;
-					//L.samples = 600;
-					//L.lon0 = { 0.25f, 0.25f }; // pick meridian
-					//L.lon1 = L.lon0;
-					//L.lat0 = { 0.25f, 0.25f };
-					//L.lat1 = L.lat0;
-					//L.turns = { 1.0f, 1.0f }; // ring mode
-					//L.radius = { 0.5f, 0.5f };
-					//L.thickness = { 0.004f, 0.004f };
-					//L.copy_start_to_end();
-					//lines.emplace_back(L);
-
-					//LineGeodesic L;
-					//L.samples = 180;
-					//L.lon0 = { 0.95f, 0.95f };
-					//L.lat0 = { 0.40f, 0.40f };
-					//L.lon1 = { 0.05f, 0.05f };  // across the wrap
-					//L.lat1 = { 0.60f, 0.60f };
-					//L.turns = { 0.0f, 0.0f };   // geodesic mode
-					//L.radius = { 0.5f, 0.5f };
-					//L.thickness = { 0.006f, 0.006f };
-					//L.rgb0 = { 1,0.3f,0.3f }; L.rgb1 = { 0.3f,0.6f,1 };
-					//L.copy_start_to_end();
-					//lines.emplace_back(L);
-
-
-					//LineGeodesic L;
-					//L.samples = 800;
-					//L.lon0 = { 0.10f, 0.10f }; L.lat0 = { 0.30f, 0.30f };
-					//L.lon1 = { 0.65f, 0.65f }; L.lat1 = { 0.80f, 0.80f };
-					//L.turns = { 1.0f, 1.0f };  // ring mode ON
-					//L.radius = { 0.5f, 0.5f };
-					//L.thickness = { 0.005f, 0.005f };
-					//L.copy_start_to_end();
-					//lines.emplace_back(L);
-
-				}
-
 				if (true)
 				{
 					auto draw_sphere = [](std::vector<LinesGeodesic_shader_22::LineGeodesic>& l, float radius, float x, float y, float z, float thickness)
@@ -476,7 +390,7 @@ namespace Universe_
 
 						};
 
-					draw_sphere(lines_geodesic.lines, 0.025, 0.5, 0.5, 0.5, 0.00025);
+					draw_sphere(lines_geodesic.lines, 0.025, 0.5, 0.5, 0.5, 0.00025); // center of unit cube
 
 					draw_sphere(lines_geodesic.lines, 0.1, 0.0, 0.0, 0.0, 0.001);
 					draw_sphere(lines_geodesic.lines, 0.1, 0.0, 0.0, 1.0, 0.001);
@@ -528,213 +442,7 @@ namespace Universe_
 
 				}
 
-				if (false)
-				{
-					LinesGeodesic_shader_22::LineGeodesic L;
-
-					L.samples = 1000;
-
-					L.y0.start = 0.10f;
-					L.x0.start = 0.30f;
-
-					L.y1.start = 0.65f;
-					L.x1.start = 0.80f;
-
-					L.turns.start = 1.0f;
-
-					L.radius.start = 0.5f;
-
-					// subtle color variation
-					L.rgb0 = { 0.0, 1.0, 0.0 };
-
-					L.thickness.start = 0.0001f;
-
-					// make static for now (engine can animate u* if desired)
-					L.copy_start_to_end();
-
-
-					lines_geodesic.lines.emplace_back(std::move(L));
-				}
-
-				if (false)
-				{
-					LinesGeodesic_shader_22::LineGeodesic L;
-
-					L.samples = 1000;
-
-					L.y0.start = 0.10f;
-					L.x0.start = 0.30f;
-
-					L.y1.start = 0.65f;
-					L.x1.start = 0.80f;
-
-					L.turns.start = 0.0f;
-
-					L.radius.start = 0.5f;
-
-					// subtle color variation
-					L.rgb0 = { 1.0, 1.0, 0.0 };
-
-					L.thickness.start = 0.0001f;
-
-					// make static for now (engine can animate u* if desired)
-					L.copy_start_to_end();
-
-
-
-					lines_geodesic.lines.emplace_back(std::move(L));
-				}
-
-				if (false)
-				{
-
-					// --- Small helpers ----------------------------------------------------------
-					auto hsv2rgb = [](float h, float s, float v) {
-						h = h - std::floor(h);
-						float i = std::floor(h * 6.0f);
-						float f = h * 6.0f - i;
-						float p = v * (1.0f - s);
-						float q = v * (1.0f - f * s);
-						float t = v * (1.0f - (1.0f - f) * s);
-						int ii = int(i) % 6;
-						switch (ii) {
-						case 0: return Vec3{ v, t, p };
-						case 1: return Vec3{ q, v, p };
-						case 2: return Vec3{ p, v, t };
-						case 3: return Vec3{ p, q, v };
-						case 4: return Vec3{ t, p, v };
-						default:return Vec3{ v, p, q };
-						}
-						};
-
-					// Aim for ~N segments along an arc based on radius, turns and thickness.
-					// Keeps rings smooth without crazy instance counts.
-					auto ideal_samples_ring = [](float R, float turns, float thick, float seg_mult = 3.0f) {
-						const float PI = 3.14159265358979323846f;
-						float L = 2.0f * PI * R * std::max(std::abs(turns), 0.05f); // never below a small fraction
-						float seg = std::max(thick * seg_mult, 1e-4f);
-						return std::max(16, (int)std::ceil(L / seg));
-						};
-
-
-
-					// Common sphere radius for the showcase
-					const float R = 0.5f;
-
-					// 1) EQUATOR RING (lat=0.5). Full 360, animated turns 0.0001 -> 1.0
-					{
-						LinesGeodesic_shader_22::LineGeodesic L;
-						L.radius = { R, R };
-						L.x0 = { 0.5f, 0.5f };
-						L.x1 = { 0.5f, 0.5f };
-						L.y0 = { 0.00f, 0.00f };
-						L.y1 = { 0.00f, 0.00f };
-						L.turns = { 0.0001f, 1.0f };          // avoid exactly 0 so ring mode stays on
-						L.thickness = { 0.01f, 0.01f };
-						L.samples = ideal_samples_ring(R, 1.0f, L.thickness.start);
-						L.rgb0 = { 1.0f, 1.0f, 1.0f }; L.rgb1 = L.rgb0;
-						lines_geodesic.lines.emplace_back(L);
-					}
-
-					// 2) MERIDIAN RING (constant longitude). 0.0001 -> 1.5 turns (one and a half)
-					{
-						LinesGeodesic_shader_22::LineGeodesic L;
-						L.radius = { R, R };
-						L.y0 = { 0.25f, 0.25f };   // choose which meridian
-						L.y1 = { 0.25f, 0.25f };
-						L.x0 = { 0.25f, 0.25f };   // phase along the meridian
-						L.x1 = { 0.25f, 0.25f };
-						L.turns = { 0.0001f, 1.5f };
-						L.thickness = { 0.008f, 0.008f };
-						L.samples = ideal_samples_ring(R, 1.5f, L.thickness.start);
-						L.rgb0 = hsv2rgb(0.58f, 0.6f, 1.0f); L.rgb1 = L.rgb0;
-						lines_geodesic.lines.emplace_back(L);
-					}
-
-					// 3) DIAGONAL RING (arbitrary great circle defined by two non-colinear endpoints)
-					//    0.0001 -> 1.0 turn to show the "forced ring" using u4.
-					{
-						LinesGeodesic_shader_22::LineGeodesic L;
-						L.radius = { R, R };
-						L.y0 = { 0.10f, 0.10f }; L.x0 = { 0.30f, 0.30f };
-						L.y1 = { 0.65f, 0.65f }; L.x1 = { 0.80f, 0.80f };
-						L.turns = { 0.0001f, 1.0f };
-						L.thickness = { 0.006f, 0.006f };
-						L.samples = ideal_samples_ring(R, 1.0f, L.thickness.start);
-						L.rgb0 = hsv2rgb(0.10f, 0.7f, 1.0f); L.rgb1 = L.rgb0;
-						lines_geodesic.lines.emplace_back(L);
-					}
-
-					// 4) PARTIAL DIAGONAL RING (quarter loop -> three quarters), showing arc length control via u4
-					{
-						LinesGeodesic_shader_22::LineGeodesic L;
-						L.radius = { R, R };
-						L.y0 = { 0.70f, 0.70f }; L.x0 = { 0.20f, 0.20f };
-						L.y1 = { 0.20f, 0.20f }; L.x1 = { 0.75f, 0.75f };
-						L.turns = { 0.25f, 0.75f };      // quarter  three quarters of the great circle
-						L.thickness = { 0.006f, 0.006f };
-						L.samples = ideal_samples_ring(R, 0.75f, L.thickness.start);
-						L.rgb0 = hsv2rgb(0.85f, 0.7f, 1.0f); L.rgb1 = L.rgb0;
-						lines_geodesic.lines.emplace_back(L);
-					}
-
-					// 5) SHORTEST GEODESIC (segment) that crosses the seam: animate endpoints across lon=10
-					{
-						LinesGeodesic_shader_22::LineGeodesic L;
-						L.radius = { R, R };
-						// Start near seam on opposite sides; shader will choose the shortest arc
-						L.y0 = { 0.95f, 0.95f };  L.x0 = { 0.40f, 0.70f }; // animate lat to show path change
-						L.y1 = { 0.05f, 0.05f };  L.x1 = { 0.60f, 0.30f };
-						L.turns = { 0.0f, 0.0f };    // 0 => geodesic mode (no forced ring)
-						L.thickness = { 0.012f, 0.006f };   // animate thickness thinner
-						L.samples = 180; // static count is fine for single segment
-						L.rgb0 = { 1.0f, 0.2f, 0.2f }; L.rgb1 = { 0.2f, 0.6f, 1.0f };
-						lines_geodesic.lines.emplace_back(L);
-					}
-
-					// 6) LATITUDE BANDS (stack a few parallels), all spinning with turns
-					{
-						const int bands = 7;
-						for (int i = 0; i < bands; ++i) {
-							float t = (i + 0.5f) / float(bands);      // 0..1
-							float lat = 0.15f + 0.70f * t;            // avoid poles
-							LinesGeodesic_shader_22::LineGeodesic L;
-							L.radius = { R, R };
-							L.x0 = { lat, lat };
-							L.x1 = { lat, lat };
-							L.y0 = { 0.0f, 0.0f };
-							L.y1 = { 0.0f, 0.0f };
-							L.turns = { 0.0001f, (i % 2 == 0) ? 1.0f : -1.0f }; // alternate directions
-							L.thickness = { 0.0045f, 0.0045f };
-							L.samples = ideal_samples_ring(R, 1.0f, L.thickness.start);
-							L.rgb0 = hsv2rgb(0.08f + 0.10f * i, 0.6f, 0.95f); L.rgb1 = L.rgb0;
-							lines_geodesic.lines.emplace_back(L);
-						}
-					}
-
-					// 7) MERIDIAN FAN (several great circles rotated by longitude)
-					{
-						const int fan = 8;
-						for (int i = 0; i < fan; ++i) {
-							float lon = float(i) / float(fan);
-							LinesGeodesic_shader_22::LineGeodesic L;
-							L.radius = { R, R };
-							L.y0 = { lon, lon };
-							L.y1 = { lon, lon };
-							L.x0 = { 0.35f, 0.35f };
-							L.x1 = { 0.35f, 0.35f };
-							L.turns = { 0.0001f, 1.0f };
-							L.thickness = { 0.0035f, 0.0035f };
-							L.samples = ideal_samples_ring(R, 1.0f, L.thickness.start);
-							L.rgb0 = hsv2rgb(0.55f + 0.05f * i, 0.5f, 0.9f); L.rgb1 = L.rgb0;
-
-
-
-
-							lines_geodesic.lines.emplace_back(L);
-						}
-					}
-				}
+				
 			};
 
 			LinesGeodesic_shader_22 lines_with_t;
@@ -781,8 +489,16 @@ namespace Universe_
 
 		// Write about how  the code is about expression and understanding not just utility or a way to build tools but itself a peace of art well yea 
 
+		// The coordinate system that we use
+		// Y is up 
+		// Z is forward 
+		// X with Z forms the plane 
 
-
+		// Unit cube 
+		// center 
+		// x 0.5
+		// y 0.5 when 1.0 top side
+		// z 0.5
 
 	}
 
