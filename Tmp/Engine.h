@@ -13,31 +13,61 @@
 
 #include "Utils.h"
 
-const std::string folder_output = "C:/Users/Cosmos/Desktop/output/tmp/";
-const std::string folder_output_shaders = folder_output + "shaders/";
-const std::string folder_output_frames = folder_output + "frames/";
-const std::string folder_output_commands = folder_output + "commands/";
-const std::string folder_output_fushed_frames = folder_output_frames + "flushed_frames/";
 
-
-void init()
+struct EngineFileOutputFilepats
 {
+	void init_as_f_drive()
+	{
+		Folder::create_folder_if_does_not_exist_already("F:/output/");
+
+		folder_output = "F:/output/tmp/";
+		folder_output_shaders = folder_output + "shaders/";
+		folder_output_frames = folder_output + "frames/";
+		folder_output_commands = folder_output + "commands/";
+		folder_output_fushed_frames = folder_output_frames + "flushed_frames/";
+		
+	}
+
+	const std::string& get_folder_output() { return folder_output; };
+	const std::string& get_folder_output_shaders() { return folder_output_shaders; };
+	const std::string& get_folder_output_frames() { return folder_output_frames; };
+	const std::string& get_folder_output_commands() { return folder_output_commands; };
+	const std::string& get_folder_output_fushed_frames() { return folder_output_fushed_frames; };
+
+private:
+	std::string folder_output = "C:/Users/Cosmos/Desktop/output/tmp/";
+	std::string folder_output_shaders = folder_output + "shaders/";
+	std::string folder_output_frames = folder_output + "frames/";
+	std::string folder_output_commands = folder_output + "commands/";
+	std::string folder_output_fushed_frames = folder_output_frames + "flushed_frames/";
+};
+
+EngineFileOutputFilepats engine_file_output_filepats;
+
+void init(bool use_f_drive = false)
+{
+	if (use_f_drive)
+	{
+		engine_file_output_filepats.init_as_f_drive();
+	}
+	
+
 	// Init
-	Folder::create_folder_if_does_not_exist_already(folder_output);
-	Folder::create_folder_if_does_not_exist_already(folder_output_shaders);
-	Folder::create_folder_if_does_not_exist_already(folder_output_frames);
-	Folder::create_folder_if_does_not_exist_already(folder_output_commands);
+	Folder::create_folder_if_does_not_exist_already(engine_file_output_filepats.get_folder_output());
+	Folder::create_folder_if_does_not_exist_already(engine_file_output_filepats.get_folder_output_shaders());
+	Folder::create_folder_if_does_not_exist_already(engine_file_output_filepats.get_folder_output_frames());
+	Folder::create_folder_if_does_not_exist_already(engine_file_output_filepats.get_folder_output_commands());
 }
 
 void engine_flush_frames()
 {
 	
-	Extension_Folder_::move_images_to_subfolder(folder_output_frames, folder_output_fushed_frames);
+	Extension_Folder_::move_images_to_subfolder(engine_file_output_filepats.get_folder_output_frames(), engine_file_output_filepats.get_folder_output_fushed_frames());
 }
 
 void engine_delete_flush_frames()
 {
-	Extension_Folder_::delete_folder_dangerous_skips_trash(folder_output_fushed_frames);
+	Extension_Folder_::delete_folder_dangerous_skips_trash(engine_file_output_filepats.get_folder_output_fushed_frames());
 }
 
 struct ShadersFilepath
@@ -65,7 +95,7 @@ struct Video
 	static int generate(std::string name = "output", std::string fileformat_frames = "png")
 	{
 		FFmpeg_::FfmpegImageToVideo job;
-		job.input_dir = folder_output_frames; // "C:/renders/shot01";     // folder with frame_000000.png etc.
+		job.input_dir = engine_file_output_filepats.get_folder_output_frames(); // "C:/renders/shot01";     // folder with frame_000000.png etc.
 		job.input_pattern = std::string("frame_%06d.") + fileformat_frames;        // change if your naming differs
 		job.start_number = 0;
 		job.input_fps = 60;
@@ -74,7 +104,7 @@ struct Video
 		job.crf = 14;
 		job.pix_fmt = "yuv420p";
 		job.faststart = true;
-		job.output_path = folder_output_frames + name + std::string(".mp4"); //"C:/renders/shot01/output.mp4";
+		job.output_path = engine_file_output_filepats.get_folder_output_frames() + name + std::string(".mp4"); //"C:/renders/shot01/output.mp4";
 
 		return job.run();
 	}
@@ -84,13 +114,13 @@ struct Video
 
 static void run_program(const std::string& name)
 {
-	std::string cmd = std::string("C:/Users/Cosmos/Documents/GitHub/Tmp/Tmp/LightPainting_v_0_1_1.exe") + std::string(" ") + folder_output_commands + std::string(name) + std::string(" ") + std::string(folder_output_frames);
+	std::string cmd = std::string("C:/Users/Cosmos/Documents/GitHub/Tmp/Tmp/LightPainting_v_0_1_1.exe") + std::string(" ") + engine_file_output_filepats.get_folder_output_commands() + std::string(name) + std::string(" ") + std::string(engine_file_output_filepats.get_folder_output_frames());
 	int exitCode = std::system(cmd.c_str());
 }
 
 static void save_program(Scene_::Scene& scene, const std::string& name)
 {
-	std::string filepath = folder_output_commands + name;
+	std::string filepath = engine_file_output_filepats.get_folder_output_commands() + name;
 	Scene_::save(scene, filepath);
 }
 

@@ -469,7 +469,15 @@ namespace Vibe_01_10_2025_11_21_
 
 				int i = clip_number;
 				std::string name = "output_" + std::to_string(i);
-				Video::generate(name, "bmp");
+				
+				if (capture_bmp)
+				{
+					Video::generate(name, "bmp");
+				}
+				else if (capture_png)
+				{
+					Video::generate(name, "png");
+				}
 
 
 			}
@@ -1293,9 +1301,9 @@ namespace Universe_
 		{
 			std::cout << "clip : " << clip.clip_number << "\n";
 
-			clip.capture = false;
-			clip.capture_png = false;
-			clip.capture_bmp = true;
+			clip.capture = true;
+			clip.capture_png = true;
+			clip.capture_bmp = false;
 
 			clip.generate(0, init);
 

@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
 
 
 
-	init();
+	init(true);
 
 	universe(argc, argv);
 
