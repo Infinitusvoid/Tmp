@@ -845,14 +845,14 @@ namespace Universe_
 				
 			}
 
-			if (false)
+			if (true)
 			{
 
-				for (int i = 0; i < 100; i++)
+				for (int i = 0; i < 1000; i++)
 				{
-					LineGeodesic L;
+					LineGeodesic& L = add_line();
 
-					L.samples = 100;
+					L.samples = 1000;
 
 					L.y0.start = Random::generate_random_float_0_to_1();
 					L.x0.start = Random::generate_random_float_0_to_1();
@@ -864,14 +864,21 @@ namespace Universe_
 
 					// subtle color variation
 					L.rgb0 = { 0.0, 1.0, 0.0 };
+					
 
 					L.thickness.start = 0.0001f;
+
+
+					L.transform_startEnd.start.position.x = 0.5f;
+					L.transform_startEnd.start.position.y = 0.5f;
+					L.transform_startEnd.start.position.z = 0.5f;
 
 					// make static for now (engine can animate u* if desired)
 					L.copy_start_to_end();
 
+					L.rgb1 = { 0.2, 0.7, 4.0 };
 
-					lines.emplace_back(std::move(L));
+					L.radius.end = 1.0f;
 				}
 
 			}
