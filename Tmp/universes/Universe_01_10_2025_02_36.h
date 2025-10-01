@@ -259,138 +259,6 @@ namespace Vibe_01_10_2025_11_21_
 			return lines.back();
 		}
 	};
-}
-
-// TODO
-// enigine set use F drive ( well in that mode create new folder for each run so that you can run generate many concurently nicely )
-// write the motion extraction kind of thing 
-// some format like ply write and read, texture write and read ( you will generate model that you will upload to sketfab, usual polygon based with textures that go along and pointclouds)
-// audio reading, writing we need first steps into generating visuals that are aligned with audio explore procedural audio generation 
-
-namespace Universe_
-{
-	using namespace Vibe_01_10_2025_11_21_;
-
-	void spheres_init_0(Spheres& spheres, int number)
-	{
-		for (int i = 0; i < number; i++)
-		{
-			Spheres::Sphere sphere;
-
-			sphere.start_position = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
-			sphere.end_position = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
-
-			sphere.start_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
-			sphere.end_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
-
-			sphere.radius = { 0.02f + Random::generate_random_float_0_to_1() * 0.02f, 0.02f + Random::generate_random_float_0_to_1() * 0.02f };
-
-			sphere.cube_size = { 0.001, 0.001 };
-
-			sphere.x_rnd_min = { 0.0, 0.0 };
-			sphere.x_rnd_max = { 1.0, 1.0 };
-
-			sphere.y_rnd_min = { 0.0, 0.0 };
-			sphere.y_rnd_max = { 1.0, 1.0 };
-
-			sphere.thickness = { 0.0, 0.0 };
-
-			sphere.jitter.start = 1.0f;
-			sphere.jitter.end = 1.0f;
-
-			spheres.spheres.push_back(std::move(sphere));
-		}
-	}
-
-	void spheres_init_1(Spheres& spheres, int number)
-	{
-
-		for (int i = 0; i < number; i++)
-		{
-			Spheres::Sphere sphere;
-
-			float factor_i = (1.0f / float(number)) * i;
-
-
-			sphere.start_position = { factor_i * 10.0f, 0.0f, Random::generate_random_float_minus_one_to_plus_one() * 2.0f };
-			sphere.end_position =
-			{
-				sphere.start_position.x,
-				sphere.start_position.y + 2.0f,
-				sphere.start_position.z
-			};
-
-			sphere.start_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
-			sphere.end_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
-
-			sphere.radius = { 0.02f + Random::generate_random_float_0_to_1() * 0.02f, 0.02f + Random::generate_random_float_0_to_1() * 0.02f };
-
-			sphere.cube_size = { 0.01, 0.01 };
-
-			sphere.x_rnd_min = { 0.0, 0.0 };
-			sphere.x_rnd_max = { 1.0, 1.0 };
-
-			sphere.y_rnd_min = { 0.0, 0.0 };
-			sphere.y_rnd_max = { 1.0, 1.0 };
-
-			sphere.thickness = { 0.1, 0.1 };
-
-			sphere.jitter.start = 1.0f;
-			sphere.jitter.end = 1.0f;
-
-			spheres.spheres.push_back(std::move(sphere));
-		}
-
-	}
-
-	
-	void lines_init(Lines_shader_21& lines)
-	{
-		{
-			int number_of_lines = 100;
-			const float TAU = 6.2831853071795864769252867665590;
-			float step_size = (1.0 / float(number_of_lines)) * TAU;
-
-			for (int i = 0; i < number_of_lines; i++)
-			{
-				Line& line = lines.add_line();
-
-
-				line.x0.start = 0.0f;
-				line.y0.start = 0.0f;
-				line.z0.start = 0.0f;
-
-				line.x1.start = 0.5f * sin(i * step_size);
-				line.y1.start = 0.0f;
-				line.z1.start = 0.5f * cos(i * step_size);
-
-				line.rgb_t0.x = 0.2 * Random::generate_random_float_0_to_1();
-				line.rgb_t0.y = 0.2 * Random::generate_random_float_0_to_1();
-				line.rgb_t0.z = 0.2 * Random::generate_random_float_0_to_1();
-
-				line.thickness.start = 0.01 * 0.2;
-				line.number_of_cubes = 100;
-
-				line.copy_start_to_end();
-
-
-
-				line.x1.end = 0.5f * sin(i * step_size);
-				line.y1.end = 0.0f;
-				line.z1.end = 0.5f * cos(i * step_size);
-
-				// line.y1.end = 1.0;
-				// line.z1.end = 1.0;
-			}
-
-
-
-
-		}
-
-
-	}
-
 
 	struct UnitCube
 	{
@@ -531,583 +399,145 @@ namespace Universe_
 			radius.start = radius.end = R;
 		}
 	};
+}
+
+// TODO
+// enigine set use F drive ( well in that mode create new folder for each run so that you can run generate many concurently nicely )
+// write the motion extraction kind of thing 
+// some format like ply write and read, texture write and read ( you will generate model that you will upload to sketfab, usual polygon based with textures that go along and pointclouds)
+// audio reading, writing we need first steps into generating visuals that are aligned with audio explore procedural audio generation 
+
+namespace Universe_
+{
+	using namespace Vibe_01_10_2025_11_21_;
+
+	void spheres_init_0(Spheres& spheres, int number)
+	{
+		for (int i = 0; i < number; i++)
+		{
+			Spheres::Sphere sphere;
+
+			sphere.start_position = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
+			sphere.end_position = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
+
+			sphere.start_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
+			sphere.end_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
+
+			sphere.radius = { 0.02f + Random::generate_random_float_0_to_1() * 0.02f, 0.02f + Random::generate_random_float_0_to_1() * 0.02f };
+
+			sphere.cube_size = { 0.001, 0.001 };
+
+			sphere.x_rnd_min = { 0.0, 0.0 };
+			sphere.x_rnd_max = { 1.0, 1.0 };
+
+			sphere.y_rnd_min = { 0.0, 0.0 };
+			sphere.y_rnd_max = { 1.0, 1.0 };
+
+			sphere.thickness = { 0.0, 0.0 };
+
+			sphere.jitter.start = 1.0f;
+			sphere.jitter.end = 1.0f;
+
+			spheres.spheres.push_back(std::move(sphere));
+		}
+	}
+
+	void spheres_init_1(Spheres& spheres, int number)
+	{
+
+		for (int i = 0; i < number; i++)
+		{
+			Spheres::Sphere sphere;
+
+			float factor_i = (1.0f / float(number)) * i;
+
+
+			sphere.start_position = { factor_i * 10.0f, 0.0f, Random::generate_random_float_minus_one_to_plus_one() * 2.0f };
+			sphere.end_position =
+			{
+				sphere.start_position.x,
+				sphere.start_position.y + 2.0f,
+				sphere.start_position.z
+			};
+
+			sphere.start_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
+			sphere.end_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
+
+			sphere.radius = { 0.02f + Random::generate_random_float_0_to_1() * 0.02f, 0.02f + Random::generate_random_float_0_to_1() * 0.02f };
+
+			sphere.cube_size = { 0.01, 0.01 };
+
+			sphere.x_rnd_min = { 0.0, 0.0 };
+			sphere.x_rnd_max = { 1.0, 1.0 };
+
+			sphere.y_rnd_min = { 0.0, 0.0 };
+			sphere.y_rnd_max = { 1.0, 1.0 };
+
+			sphere.thickness = { 0.1, 0.1 };
+
+			sphere.jitter.start = 1.0f;
+			sphere.jitter.end = 1.0f;
+
+			spheres.spheres.push_back(std::move(sphere));
+		}
+
+	}
+
+	void lines_init(Lines_shader_21& lines)
+	{
+		{
+			int number_of_lines = 100;
+			const float TAU = 6.2831853071795864769252867665590;
+			float step_size = (1.0 / float(number_of_lines)) * TAU;
+
+			for (int i = 0; i < number_of_lines; i++)
+			{
+				Line& line = lines.add_line();
+
+
+				line.x0.start = 0.0f;
+				line.y0.start = 0.0f;
+				line.z0.start = 0.0f;
+
+				line.x1.start = 0.5f * sin(i * step_size);
+				line.y1.start = 0.0f;
+				line.z1.start = 0.5f * cos(i * step_size);
+
+				line.rgb_t0.x = 0.2 * Random::generate_random_float_0_to_1();
+				line.rgb_t0.y = 0.2 * Random::generate_random_float_0_to_1();
+				line.rgb_t0.z = 0.2 * Random::generate_random_float_0_to_1();
+
+				line.thickness.start = 0.01 * 0.2;
+				line.number_of_cubes = 100;
+
+				line.copy_start_to_end();
+
+
+
+				line.x1.end = 0.5f * sin(i * step_size);
+				line.y1.end = 0.0f;
+				line.z1.end = 0.5f * cos(i * step_size);
+
+				// line.y1.end = 1.0;
+				// line.z1.end = 1.0;
+			}
+
+
+
+
+		}
+
+
+	}
+
+
 
 	struct LinesGeodesic
 	{
 		std::vector<LineGeodesic> lines;
 
 		// Example init: 100 short arcs along the equator (clean visual baseline)
-		void init()
-		{
-
-
-
-
-			if (false)
-			{
-				LineGeodesic L;
-
-				L.samples = 100;
-
-				L.y0.start = 0.0;
-				L.x0.start = 0.5;
-
-				L.y1.start = 0.2;
-				L.x1.start = 0.5;
-
-				L.radius.start = 0.5f;
-
-				L.turns.start = 0.4f;
-
-
-				// subtle color variation
-				L.rgb0 = { 1.0, 1.0, 1.0 };
-
-				L.thickness.start = 0.001f;
-
-				// make static for now (engine can animate u* if desired)
-				L.copy_start_to_end();
-
-
-				lines.emplace_back(std::move(L));
-			}
-
-			if (false)
-			{
-
-				//for (int i = 0; i < 1; i++)
-				//{
-				//	LineGeodesic L;
-
-				//	L.samples = 1000;
-
-				//	L.lon0.start = 0.0;
-				//	L.lat0.start = 0.0;
-
-				//	L.lon1.start = 0.2;
-				//	L.lat1.start = 0.0;
-
-				//	L.radius.start = 0.5f;
-
-				//	L.turns.start = 0.01f;
-
-
-				//	// subtle color variation
-				//	L.rgb0 = { 1.0, 1.0, 1.0 };
-
-				//	L.thickness.start = 0.001f;
-
-				//	// make static for now (engine can animate u* if desired)
-				//	L.copy_start_to_end();
-
-
-				//	lines.emplace_back(std::move(L));
-				//}
-
-
-				for (int i = 0; i < 10; i++)
-				{
-					LineGeodesic L;
-					L.samples = 600;
-					L.radius.start = 0.5f;
-
-					L.x0.start = 0.0f;
-					L.y0.start = 0.1f * i;
-
-
-					L.x1.start = 1.0f;
-					L.y1.start = 0.1f * i;
-
-					L.thickness = { 0.004f, 0.004f };
-					L.rgb0 = { 1,0,0 };
-
-					L.transform_startEnd.start.position.y = 1.0f;
-
-					L.copy_start_to_end();
-					lines.emplace_back(std::move(L));
-				}
-
-				for (int i = 0; i < 10; i++)
-				{
-					LineGeodesic L;
-					L.samples = 600;
-					L.radius.start = 0.5f;
-
-					L.x0.start = 0.1f * i;
-					L.y0.start = 0.0f;
-
-
-					L.x1.start = 0.1f * i;
-					L.y1.start = 0.5f;
-
-					L.thickness = { 0.004f, 0.004f };
-					L.rgb0 = { 1,1,0 };
-
-					L.transform_startEnd.start.position.y = 1.0f;
-
-					L.copy_start_to_end();
-					lines.emplace_back(std::move(L));
-				}
-
-				for (int i = 0; i < 10; i++)
-				{
-					LineGeodesic L;
-					L.samples = 600;
-					L.radius.start = 0.5f;
-
-					L.x0.start = 0.1f * i;
-					L.y0.start = 0.5f;
-
-
-					L.x1.start = 0.1f * i;
-					L.y1.start = 1.0f;
-
-					L.thickness = { 0.004f, 0.004f };
-					L.rgb0 = { 1,0,1 };
-
-					L.transform_startEnd.start.position.y = 1.0f;
-
-					L.copy_start_to_end();
-					lines.emplace_back(std::move(L));
-				}
-
-				for (int j = 0; j < 10; j++)
-				{
-					for (int i = 0; i < 10; i++)
-					{
-						LineGeodesic L;
-						L.samples = 600;
-						L.radius.start = 0.5f;
-
-						L.x0.start = 0.1f * i;
-						L.y0.start = 0.1f * j;
-
-
-						L.x1.start = 0.1f * (i + 1);
-						L.y1.start = 0.1f * (j + 1);
-
-						L.thickness = { 0.001f, 0.001f };
-						L.rgb0 = { 1,1,1 };
-
-						L.transform_startEnd.start.position.y = 1.0f;
-
-						L.copy_start_to_end();
-						lines.emplace_back(std::move(L));
-					}
-				}
-
-
-
-
-
-
-				//LineGeodesic L;
-				//L.samples = 600;
-				//L.lon0 = { 0.25f, 0.25f }; // pick meridian
-				//L.lon1 = L.lon0;
-				//L.lat0 = { 0.25f, 0.25f };
-				//L.lat1 = L.lat0;
-				//L.turns = { 1.0f, 1.0f }; // ring mode
-				//L.radius = { 0.5f, 0.5f };
-				//L.thickness = { 0.004f, 0.004f };
-				//L.copy_start_to_end();
-				//lines.emplace_back(L);
-
-				//LineGeodesic L;
-				//L.samples = 180;
-				//L.lon0 = { 0.95f, 0.95f };
-				//L.lat0 = { 0.40f, 0.40f };
-				//L.lon1 = { 0.05f, 0.05f };  // across the wrap
-				//L.lat1 = { 0.60f, 0.60f };
-				//L.turns = { 0.0f, 0.0f };   // geodesic mode
-				//L.radius = { 0.5f, 0.5f };
-				//L.thickness = { 0.006f, 0.006f };
-				//L.rgb0 = { 1,0.3f,0.3f }; L.rgb1 = { 0.3f,0.6f,1 };
-				//L.copy_start_to_end();
-				//lines.emplace_back(L);
-
-
-				//LineGeodesic L;
-				//L.samples = 800;
-				//L.lon0 = { 0.10f, 0.10f }; L.lat0 = { 0.30f, 0.30f };
-				//L.lon1 = { 0.65f, 0.65f }; L.lat1 = { 0.80f, 0.80f };
-				//L.turns = { 1.0f, 1.0f };  // ring mode ON
-				//L.radius = { 0.5f, 0.5f };
-				//L.thickness = { 0.005f, 0.005f };
-				//L.copy_start_to_end();
-				//lines.emplace_back(L);
-
-			}
-
-
-			if (true)
-			{
-				auto draw_sphere = [](std::vector<LineGeodesic>& l, float radius, float x, float y, float z, float thickness)
-					{
-						for (int i = 0; i < 10; i++)
-						{
-							LineGeodesic L;
-							L.samples = 600;
-							L.radius.start = radius;
-
-							L.x0.start = 0.0f;
-							L.y0.start = 0.1f * i;
-
-
-							L.x1.start = 1.0f;
-							L.y1.start = 0.1f * i;
-
-							L.thickness = { thickness, thickness };
-							L.rgb0 = { 1,0,0 };
-
-							L.transform_startEnd.start.position.x = x;
-							L.transform_startEnd.start.position.y = y;
-							L.transform_startEnd.start.position.z = z;
-
-							L.copy_start_to_end();
-							l.emplace_back(std::move(L));
-						}
-
-						for (int i = 0; i < 10; i++)
-						{
-							LineGeodesic L;
-							L.samples = 600;
-							L.radius.start = radius;
-
-							L.x0.start = 0.1f * i;
-							L.y0.start = 0.0f;
-
-
-							L.x1.start = 0.1f * i;
-							L.y1.start = 0.5f;
-
-							L.thickness = { thickness, thickness };
-							L.rgb0 = { 1,1,0 };
-
-							L.transform_startEnd.start.position.x = x;
-							L.transform_startEnd.start.position.y = y;
-							L.transform_startEnd.start.position.z = z;
-
-							L.copy_start_to_end();
-							l.emplace_back(std::move(L));
-						}
-
-						for (int i = 0; i < 10; i++)
-						{
-							LineGeodesic L;
-							L.samples = 600;
-							L.radius.start = radius;
-
-							L.x0.start = 0.1f * i;
-							L.y0.start = 0.5f;
-
-
-							L.x1.start = 0.1f * i;
-							L.y1.start = 1.0f;
-
-							L.thickness = { thickness, thickness };
-							L.rgb0 = { 1,0,1 };
-
-							L.transform_startEnd.start.position.x = x;
-							L.transform_startEnd.start.position.y = y;
-							L.transform_startEnd.start.position.z = z;
-
-							L.copy_start_to_end();
-							l.emplace_back(std::move(L));
-						}
-
-						for (int j = 0; j < 10; j++)
-						{
-							for (int i = 0; i < 10; i++)
-							{
-								LineGeodesic L;
-								L.samples = 600;
-								L.radius.start = radius;
-
-								L.x0.start = 0.1f * i;
-								L.y0.start = 0.1f * j;
-
-
-								L.x1.start = 0.1f * (i + 1);
-								L.y1.start = 0.1f * (j + 1);
-
-								L.thickness = { thickness, thickness };
-								L.rgb0 = { 1,1,1 };
-
-								L.transform_startEnd.start.position.x = x;
-								L.transform_startEnd.start.position.y = y;
-								L.transform_startEnd.start.position.z = z;
-
-								L.copy_start_to_end();
-								l.emplace_back(std::move(L));
-							}
-						}
-
-					};
-
-				draw_sphere(lines, 0.025, 0.5, 0.5, 0.5, 0.00025);
-
-				draw_sphere(lines, 0.1, 0.0, 0.0, 0.0, 0.001);
-				draw_sphere(lines, 0.1, 0.0, 0.0, 1.0, 0.001);
-				draw_sphere(lines, 0.1, 0.0, 1.0, 0.0, 0.001);
-				draw_sphere(lines, 0.1, 0.0, 1.0, 1.0, 0.001);
-
-				draw_sphere(lines, 0.1, 1.0, 0.0, 0.0, 0.001);
-				draw_sphere(lines, 0.1, 1.0, 0.0, 1.0, 0.001);
-				draw_sphere(lines, 0.1, 1.0, 1.0, 0.0, 0.001);
-				draw_sphere(lines, 0.1, 1.0, 1.0, 1.0, 0.001);
-
-			}
-
-			if (true)
-			{
-
-				for (int i = 0; i < 1000; i++)
-				{
-					LineGeodesic& L = add_line();
-
-					L.samples = 1000;
-
-					L.y0.start = Random::generate_random_float_0_to_1();
-					L.x0.start = Random::generate_random_float_0_to_1();
-
-					L.y1.start = L.y0.start + Random::generate_random_float_minus_one_to_plus_one() * 0.1;
-					L.x1.start = L.x0.start + Random::generate_random_float_minus_one_to_plus_one() * 0.1;
-
-					L.radius.start = 0.5f;
-
-					// subtle color variation
-					L.rgb0 = { 0.0, 1.0, 0.0 };
-
-
-					L.thickness.start = 0.0001f;
-
-
-					L.transform_startEnd.start.position.x = 0.5f;
-					L.transform_startEnd.start.position.y = 0.5f;
-					L.transform_startEnd.start.position.z = 0.5f;
-
-					// make static for now (engine can animate u* if desired)
-					L.copy_start_to_end();
-
-					L.rgb1 = { 0.2, 0.7, 4.0 };
-
-					L.radius.end = 1.0f;
-				}
-
-			}
-
-			if (false)
-			{
-				LineGeodesic L;
-
-				L.samples = 1000;
-
-				L.y0.start = 0.10f;
-				L.x0.start = 0.30f;
-
-				L.y1.start = 0.65f;
-				L.x1.start = 0.80f;
-
-				L.turns.start = 1.0f;
-
-				L.radius.start = 0.5f;
-
-				// subtle color variation
-				L.rgb0 = { 0.0, 1.0, 0.0 };
-
-				L.thickness.start = 0.0001f;
-
-				// make static for now (engine can animate u* if desired)
-				L.copy_start_to_end();
-
-
-				lines.emplace_back(std::move(L));
-			}
-
-			if (false)
-			{
-				LineGeodesic L;
-
-				L.samples = 1000;
-
-				L.y0.start = 0.10f;
-				L.x0.start = 0.30f;
-
-				L.y1.start = 0.65f;
-				L.x1.start = 0.80f;
-
-				L.turns.start = 0.0f;
-
-				L.radius.start = 0.5f;
-
-				// subtle color variation
-				L.rgb0 = { 1.0, 1.0, 0.0 };
-
-				L.thickness.start = 0.0001f;
-
-				// make static for now (engine can animate u* if desired)
-				L.copy_start_to_end();
-
-
-
-				lines.emplace_back(std::move(L));
-			}
-
-
-			if (false)
-			{
-
-				// --- Small helpers ----------------------------------------------------------
-				auto hsv2rgb = [](float h, float s, float v) {
-					h = h - std::floor(h);
-					float i = std::floor(h * 6.0f);
-					float f = h * 6.0f - i;
-					float p = v * (1.0f - s);
-					float q = v * (1.0f - f * s);
-					float t = v * (1.0f - (1.0f - f) * s);
-					int ii = int(i) % 6;
-					switch (ii) {
-					case 0: return Vec3{ v, t, p };
-					case 1: return Vec3{ q, v, p };
-					case 2: return Vec3{ p, v, t };
-					case 3: return Vec3{ p, q, v };
-					case 4: return Vec3{ t, p, v };
-					default:return Vec3{ v, p, q };
-					}
-					};
-
-				// Aim for ~N segments along an arc based on radius, turns and thickness.
-				// Keeps rings smooth without crazy instance counts.
-				auto ideal_samples_ring = [](float R, float turns, float thick, float seg_mult = 3.0f) {
-					const float PI = 3.14159265358979323846f;
-					float L = 2.0f * PI * R * std::max(std::abs(turns), 0.05f); // never below a small fraction
-					float seg = std::max(thick * seg_mult, 1e-4f);
-					return std::max(16, (int)std::ceil(L / seg));
-					};
-
-
-
-				// Common sphere radius for the showcase
-				const float R = 0.5f;
-
-				// 1) EQUATOR RING (lat=0.5). Full 360, animated turns 0.0001 -> 1.0
-				{
-					LineGeodesic L;
-					L.radius = { R, R };
-					L.x0 = { 0.5f, 0.5f };
-					L.x1 = { 0.5f, 0.5f };
-					L.y0 = { 0.00f, 0.00f };
-					L.y1 = { 0.00f, 0.00f };
-					L.turns = { 0.0001f, 1.0f };          // avoid exactly 0 so ring mode stays on
-					L.thickness = { 0.01f, 0.01f };
-					L.samples = ideal_samples_ring(R, 1.0f, L.thickness.start);
-					L.rgb0 = { 1.0f, 1.0f, 1.0f }; L.rgb1 = L.rgb0;
-					lines.emplace_back(L);
-				}
-
-				// 2) MERIDIAN RING (constant longitude). 0.0001 -> 1.5 turns (one and a half)
-				{
-					LineGeodesic L;
-					L.radius = { R, R };
-					L.y0 = { 0.25f, 0.25f };   // choose which meridian
-					L.y1 = { 0.25f, 0.25f };
-					L.x0 = { 0.25f, 0.25f };   // phase along the meridian
-					L.x1 = { 0.25f, 0.25f };
-					L.turns = { 0.0001f, 1.5f };
-					L.thickness = { 0.008f, 0.008f };
-					L.samples = ideal_samples_ring(R, 1.5f, L.thickness.start);
-					L.rgb0 = hsv2rgb(0.58f, 0.6f, 1.0f); L.rgb1 = L.rgb0;
-					lines.emplace_back(L);
-				}
-
-				// 3) DIAGONAL RING (arbitrary great circle defined by two non-colinear endpoints)
-				//    0.0001 -> 1.0 turn to show the "forced ring" using u4.
-				{
-					LineGeodesic L;
-					L.radius = { R, R };
-					L.y0 = { 0.10f, 0.10f }; L.x0 = { 0.30f, 0.30f };
-					L.y1 = { 0.65f, 0.65f }; L.x1 = { 0.80f, 0.80f };
-					L.turns = { 0.0001f, 1.0f };
-					L.thickness = { 0.006f, 0.006f };
-					L.samples = ideal_samples_ring(R, 1.0f, L.thickness.start);
-					L.rgb0 = hsv2rgb(0.10f, 0.7f, 1.0f); L.rgb1 = L.rgb0;
-					lines.emplace_back(L);
-				}
-
-				// 4) PARTIAL DIAGONAL RING (quarter loop -> three quarters), showing arc length control via u4
-				{
-					LineGeodesic L;
-					L.radius = { R, R };
-					L.y0 = { 0.70f, 0.70f }; L.x0 = { 0.20f, 0.20f };
-					L.y1 = { 0.20f, 0.20f }; L.x1 = { 0.75f, 0.75f };
-					L.turns = { 0.25f, 0.75f };      // quarter  three quarters of the great circle
-					L.thickness = { 0.006f, 0.006f };
-					L.samples = ideal_samples_ring(R, 0.75f, L.thickness.start);
-					L.rgb0 = hsv2rgb(0.85f, 0.7f, 1.0f); L.rgb1 = L.rgb0;
-					lines.emplace_back(L);
-				}
-
-				// 5) SHORTEST GEODESIC (segment) that crosses the seam: animate endpoints across lon=10
-				{
-					LineGeodesic L;
-					L.radius = { R, R };
-					// Start near seam on opposite sides; shader will choose the shortest arc
-					L.y0 = { 0.95f, 0.95f };  L.x0 = { 0.40f, 0.70f }; // animate lat to show path change
-					L.y1 = { 0.05f, 0.05f };  L.x1 = { 0.60f, 0.30f };
-					L.turns = { 0.0f, 0.0f };    // 0 => geodesic mode (no forced ring)
-					L.thickness = { 0.012f, 0.006f };   // animate thickness thinner
-					L.samples = 180; // static count is fine for single segment
-					L.rgb0 = { 1.0f, 0.2f, 0.2f }; L.rgb1 = { 0.2f, 0.6f, 1.0f };
-					lines.emplace_back(L);
-				}
-
-				// 6) LATITUDE BANDS (stack a few parallels), all spinning with turns
-				{
-					const int bands = 7;
-					for (int i = 0; i < bands; ++i) {
-						float t = (i + 0.5f) / float(bands);      // 0..1
-						float lat = 0.15f + 0.70f * t;            // avoid poles
-						LineGeodesic L;
-						L.radius = { R, R };
-						L.x0 = { lat, lat };
-						L.x1 = { lat, lat };
-						L.y0 = { 0.0f, 0.0f };
-						L.y1 = { 0.0f, 0.0f };
-						L.turns = { 0.0001f, (i % 2 == 0) ? 1.0f : -1.0f }; // alternate directions
-						L.thickness = { 0.0045f, 0.0045f };
-						L.samples = ideal_samples_ring(R, 1.0f, L.thickness.start);
-						L.rgb0 = hsv2rgb(0.08f + 0.10f * i, 0.6f, 0.95f); L.rgb1 = L.rgb0;
-						lines.emplace_back(L);
-					}
-				}
-
-				// 7) MERIDIAN FAN (several great circles rotated by longitude)
-				{
-					const int fan = 8;
-					for (int i = 0; i < fan; ++i) {
-						float lon = float(i) / float(fan);
-						LineGeodesic L;
-						L.radius = { R, R };
-						L.y0 = { lon, lon };
-						L.y1 = { lon, lon };
-						L.x0 = { 0.35f, 0.35f };
-						L.x1 = { 0.35f, 0.35f };
-						L.turns = { 0.0001f, 1.0f };
-						L.thickness = { 0.0035f, 0.0035f };
-						L.samples = ideal_samples_ring(R, 1.0f, L.thickness.start);
-						L.rgb0 = hsv2rgb(0.55f + 0.05f * i, 0.5f, 0.9f); L.rgb1 = L.rgb0;
-
-
-
-
-						lines.emplace_back(L);
-					}
-				}
-			}
-
-
-		}
+		
 
 		void draw(Scene_::Scene& scene)
 		{
@@ -1138,6 +568,578 @@ namespace Universe_
 			return lines.back();
 		}
 	};
+
+	void init_lines_geodesic(LinesGeodesic& lines_geodesic)
+	{
+
+
+
+
+		if (false)
+		{
+			LineGeodesic L;
+
+			L.samples = 100;
+
+			L.y0.start = 0.0;
+			L.x0.start = 0.5;
+
+			L.y1.start = 0.2;
+			L.x1.start = 0.5;
+
+			L.radius.start = 0.5f;
+
+			L.turns.start = 0.4f;
+
+
+			// subtle color variation
+			L.rgb0 = { 1.0, 1.0, 1.0 };
+
+			L.thickness.start = 0.001f;
+
+			// make static for now (engine can animate u* if desired)
+			L.copy_start_to_end();
+
+
+			lines_geodesic.lines.emplace_back(std::move(L));
+		}
+
+		if (false)
+		{
+
+			//for (int i = 0; i < 1; i++)
+			//{
+			//	LineGeodesic L;
+
+			//	L.samples = 1000;
+
+			//	L.lon0.start = 0.0;
+			//	L.lat0.start = 0.0;
+
+			//	L.lon1.start = 0.2;
+			//	L.lat1.start = 0.0;
+
+			//	L.radius.start = 0.5f;
+
+			//	L.turns.start = 0.01f;
+
+
+			//	// subtle color variation
+			//	L.rgb0 = { 1.0, 1.0, 1.0 };
+
+			//	L.thickness.start = 0.001f;
+
+			//	// make static for now (engine can animate u* if desired)
+			//	L.copy_start_to_end();
+
+
+			//	lines.emplace_back(std::move(L));
+			//}
+
+
+			for (int i = 0; i < 10; i++)
+			{
+				LineGeodesic L;
+				L.samples = 600;
+				L.radius.start = 0.5f;
+
+				L.x0.start = 0.0f;
+				L.y0.start = 0.1f * i;
+
+
+				L.x1.start = 1.0f;
+				L.y1.start = 0.1f * i;
+
+				L.thickness = { 0.004f, 0.004f };
+				L.rgb0 = { 1,0,0 };
+
+				L.transform_startEnd.start.position.y = 1.0f;
+
+				L.copy_start_to_end();
+				lines_geodesic.lines.emplace_back(std::move(L));
+			}
+
+			for (int i = 0; i < 10; i++)
+			{
+				LineGeodesic L;
+				L.samples = 600;
+				L.radius.start = 0.5f;
+
+				L.x0.start = 0.1f * i;
+				L.y0.start = 0.0f;
+
+
+				L.x1.start = 0.1f * i;
+				L.y1.start = 0.5f;
+
+				L.thickness = { 0.004f, 0.004f };
+				L.rgb0 = { 1,1,0 };
+
+				L.transform_startEnd.start.position.y = 1.0f;
+
+				L.copy_start_to_end();
+				lines_geodesic.lines.emplace_back(std::move(L));
+			}
+
+			for (int i = 0; i < 10; i++)
+			{
+				LineGeodesic L;
+				L.samples = 600;
+				L.radius.start = 0.5f;
+
+				L.x0.start = 0.1f * i;
+				L.y0.start = 0.5f;
+
+
+				L.x1.start = 0.1f * i;
+				L.y1.start = 1.0f;
+
+				L.thickness = { 0.004f, 0.004f };
+				L.rgb0 = { 1,0,1 };
+
+				L.transform_startEnd.start.position.y = 1.0f;
+
+				L.copy_start_to_end();
+				lines_geodesic.lines.emplace_back(std::move(L));
+			}
+
+			for (int j = 0; j < 10; j++)
+			{
+				for (int i = 0; i < 10; i++)
+				{
+					LineGeodesic L;
+					L.samples = 600;
+					L.radius.start = 0.5f;
+
+					L.x0.start = 0.1f * i;
+					L.y0.start = 0.1f * j;
+
+
+					L.x1.start = 0.1f * (i + 1);
+					L.y1.start = 0.1f * (j + 1);
+
+					L.thickness = { 0.001f, 0.001f };
+					L.rgb0 = { 1,1,1 };
+
+					L.transform_startEnd.start.position.y = 1.0f;
+
+					L.copy_start_to_end();
+					lines_geodesic.lines.emplace_back(std::move(L));
+				}
+			}
+
+
+
+
+
+
+			//LineGeodesic L;
+			//L.samples = 600;
+			//L.lon0 = { 0.25f, 0.25f }; // pick meridian
+			//L.lon1 = L.lon0;
+			//L.lat0 = { 0.25f, 0.25f };
+			//L.lat1 = L.lat0;
+			//L.turns = { 1.0f, 1.0f }; // ring mode
+			//L.radius = { 0.5f, 0.5f };
+			//L.thickness = { 0.004f, 0.004f };
+			//L.copy_start_to_end();
+			//lines.emplace_back(L);
+
+			//LineGeodesic L;
+			//L.samples = 180;
+			//L.lon0 = { 0.95f, 0.95f };
+			//L.lat0 = { 0.40f, 0.40f };
+			//L.lon1 = { 0.05f, 0.05f };  // across the wrap
+			//L.lat1 = { 0.60f, 0.60f };
+			//L.turns = { 0.0f, 0.0f };   // geodesic mode
+			//L.radius = { 0.5f, 0.5f };
+			//L.thickness = { 0.006f, 0.006f };
+			//L.rgb0 = { 1,0.3f,0.3f }; L.rgb1 = { 0.3f,0.6f,1 };
+			//L.copy_start_to_end();
+			//lines.emplace_back(L);
+
+
+			//LineGeodesic L;
+			//L.samples = 800;
+			//L.lon0 = { 0.10f, 0.10f }; L.lat0 = { 0.30f, 0.30f };
+			//L.lon1 = { 0.65f, 0.65f }; L.lat1 = { 0.80f, 0.80f };
+			//L.turns = { 1.0f, 1.0f };  // ring mode ON
+			//L.radius = { 0.5f, 0.5f };
+			//L.thickness = { 0.005f, 0.005f };
+			//L.copy_start_to_end();
+			//lines.emplace_back(L);
+
+		}
+
+
+		if (true)
+		{
+			auto draw_sphere = [](std::vector<LineGeodesic>& l, float radius, float x, float y, float z, float thickness)
+				{
+					for (int i = 0; i < 10; i++)
+					{
+						LineGeodesic L;
+						L.samples = 600;
+						L.radius.start = radius;
+
+						L.x0.start = 0.0f;
+						L.y0.start = 0.1f * i;
+
+
+						L.x1.start = 1.0f;
+						L.y1.start = 0.1f * i;
+
+						L.thickness = { thickness, thickness };
+						L.rgb0 = { 1,0,0 };
+
+						L.transform_startEnd.start.position.x = x;
+						L.transform_startEnd.start.position.y = y;
+						L.transform_startEnd.start.position.z = z;
+
+						L.copy_start_to_end();
+						l.emplace_back(std::move(L));
+					}
+
+					for (int i = 0; i < 10; i++)
+					{
+						LineGeodesic L;
+						L.samples = 600;
+						L.radius.start = radius;
+
+						L.x0.start = 0.1f * i;
+						L.y0.start = 0.0f;
+
+
+						L.x1.start = 0.1f * i;
+						L.y1.start = 0.5f;
+
+						L.thickness = { thickness, thickness };
+						L.rgb0 = { 1,1,0 };
+
+						L.transform_startEnd.start.position.x = x;
+						L.transform_startEnd.start.position.y = y;
+						L.transform_startEnd.start.position.z = z;
+
+						L.copy_start_to_end();
+						l.emplace_back(std::move(L));
+					}
+
+					for (int i = 0; i < 10; i++)
+					{
+						LineGeodesic L;
+						L.samples = 600;
+						L.radius.start = radius;
+
+						L.x0.start = 0.1f * i;
+						L.y0.start = 0.5f;
+
+
+						L.x1.start = 0.1f * i;
+						L.y1.start = 1.0f;
+
+						L.thickness = { thickness, thickness };
+						L.rgb0 = { 1,0,1 };
+
+						L.transform_startEnd.start.position.x = x;
+						L.transform_startEnd.start.position.y = y;
+						L.transform_startEnd.start.position.z = z;
+
+						L.copy_start_to_end();
+						l.emplace_back(std::move(L));
+					}
+
+					for (int j = 0; j < 10; j++)
+					{
+						for (int i = 0; i < 10; i++)
+						{
+							LineGeodesic L;
+							L.samples = 600;
+							L.radius.start = radius;
+
+							L.x0.start = 0.1f * i;
+							L.y0.start = 0.1f * j;
+
+
+							L.x1.start = 0.1f * (i + 1);
+							L.y1.start = 0.1f * (j + 1);
+
+							L.thickness = { thickness, thickness };
+							L.rgb0 = { 1,1,1 };
+
+							L.transform_startEnd.start.position.x = x;
+							L.transform_startEnd.start.position.y = y;
+							L.transform_startEnd.start.position.z = z;
+
+							L.copy_start_to_end();
+							l.emplace_back(std::move(L));
+						}
+					}
+
+				};
+
+			draw_sphere(lines_geodesic.lines, 0.025, 0.5, 0.5, 0.5, 0.00025);
+
+			draw_sphere(lines_geodesic.lines, 0.1, 0.0, 0.0, 0.0, 0.001);
+			draw_sphere(lines_geodesic.lines, 0.1, 0.0, 0.0, 1.0, 0.001);
+			draw_sphere(lines_geodesic.lines, 0.1, 0.0, 1.0, 0.0, 0.001);
+			draw_sphere(lines_geodesic.lines, 0.1, 0.0, 1.0, 1.0, 0.001);
+
+			draw_sphere(lines_geodesic.lines, 0.1, 1.0, 0.0, 0.0, 0.001);
+			draw_sphere(lines_geodesic.lines, 0.1, 1.0, 0.0, 1.0, 0.001);
+			draw_sphere(lines_geodesic.lines, 0.1, 1.0, 1.0, 0.0, 0.001);
+			draw_sphere(lines_geodesic.lines, 0.1, 1.0, 1.0, 1.0, 0.001);
+
+		}
+
+		if (true)
+		{
+
+			for (int i = 0; i < 1000; i++)
+			{
+				LineGeodesic& L = lines_geodesic.add_line();
+
+				L.samples = 1000;
+
+				L.y0.start = Random::generate_random_float_0_to_1();
+				L.x0.start = Random::generate_random_float_0_to_1();
+
+				L.y1.start = L.y0.start + Random::generate_random_float_minus_one_to_plus_one() * 0.1;
+				L.x1.start = L.x0.start + Random::generate_random_float_minus_one_to_plus_one() * 0.1;
+
+				L.radius.start = 0.5f;
+
+				// subtle color variation
+				L.rgb0 = { 0.0, 1.0, 0.0 };
+
+
+				L.thickness.start = 0.0001f;
+
+
+				L.transform_startEnd.start.position.x = 0.5f;
+				L.transform_startEnd.start.position.y = 0.5f;
+				L.transform_startEnd.start.position.z = 0.5f;
+
+				// make static for now (engine can animate u* if desired)
+				L.copy_start_to_end();
+
+				L.rgb1 = { 0.2, 0.7, 4.0 };
+
+				L.radius.end = 1.0f;
+			}
+
+		}
+
+		if (false)
+		{
+			LineGeodesic L;
+
+			L.samples = 1000;
+
+			L.y0.start = 0.10f;
+			L.x0.start = 0.30f;
+
+			L.y1.start = 0.65f;
+			L.x1.start = 0.80f;
+
+			L.turns.start = 1.0f;
+
+			L.radius.start = 0.5f;
+
+			// subtle color variation
+			L.rgb0 = { 0.0, 1.0, 0.0 };
+
+			L.thickness.start = 0.0001f;
+
+			// make static for now (engine can animate u* if desired)
+			L.copy_start_to_end();
+
+
+			lines_geodesic.lines.emplace_back(std::move(L));
+		}
+
+		if (false)
+		{
+			LineGeodesic L;
+
+			L.samples = 1000;
+
+			L.y0.start = 0.10f;
+			L.x0.start = 0.30f;
+
+			L.y1.start = 0.65f;
+			L.x1.start = 0.80f;
+
+			L.turns.start = 0.0f;
+
+			L.radius.start = 0.5f;
+
+			// subtle color variation
+			L.rgb0 = { 1.0, 1.0, 0.0 };
+
+			L.thickness.start = 0.0001f;
+
+			// make static for now (engine can animate u* if desired)
+			L.copy_start_to_end();
+
+
+
+			lines_geodesic.lines.emplace_back(std::move(L));
+		}
+
+
+		if (false)
+		{
+
+			// --- Small helpers ----------------------------------------------------------
+			auto hsv2rgb = [](float h, float s, float v) {
+				h = h - std::floor(h);
+				float i = std::floor(h * 6.0f);
+				float f = h * 6.0f - i;
+				float p = v * (1.0f - s);
+				float q = v * (1.0f - f * s);
+				float t = v * (1.0f - (1.0f - f) * s);
+				int ii = int(i) % 6;
+				switch (ii) {
+				case 0: return Vec3{ v, t, p };
+				case 1: return Vec3{ q, v, p };
+				case 2: return Vec3{ p, v, t };
+				case 3: return Vec3{ p, q, v };
+				case 4: return Vec3{ t, p, v };
+				default:return Vec3{ v, p, q };
+				}
+				};
+
+			// Aim for ~N segments along an arc based on radius, turns and thickness.
+			// Keeps rings smooth without crazy instance counts.
+			auto ideal_samples_ring = [](float R, float turns, float thick, float seg_mult = 3.0f) {
+				const float PI = 3.14159265358979323846f;
+				float L = 2.0f * PI * R * std::max(std::abs(turns), 0.05f); // never below a small fraction
+				float seg = std::max(thick * seg_mult, 1e-4f);
+				return std::max(16, (int)std::ceil(L / seg));
+				};
+
+
+
+			// Common sphere radius for the showcase
+			const float R = 0.5f;
+
+			// 1) EQUATOR RING (lat=0.5). Full 360, animated turns 0.0001 -> 1.0
+			{
+				LineGeodesic L;
+				L.radius = { R, R };
+				L.x0 = { 0.5f, 0.5f };
+				L.x1 = { 0.5f, 0.5f };
+				L.y0 = { 0.00f, 0.00f };
+				L.y1 = { 0.00f, 0.00f };
+				L.turns = { 0.0001f, 1.0f };          // avoid exactly 0 so ring mode stays on
+				L.thickness = { 0.01f, 0.01f };
+				L.samples = ideal_samples_ring(R, 1.0f, L.thickness.start);
+				L.rgb0 = { 1.0f, 1.0f, 1.0f }; L.rgb1 = L.rgb0;
+				lines_geodesic.lines.emplace_back(L);
+			}
+
+			// 2) MERIDIAN RING (constant longitude). 0.0001 -> 1.5 turns (one and a half)
+			{
+				LineGeodesic L;
+				L.radius = { R, R };
+				L.y0 = { 0.25f, 0.25f };   // choose which meridian
+				L.y1 = { 0.25f, 0.25f };
+				L.x0 = { 0.25f, 0.25f };   // phase along the meridian
+				L.x1 = { 0.25f, 0.25f };
+				L.turns = { 0.0001f, 1.5f };
+				L.thickness = { 0.008f, 0.008f };
+				L.samples = ideal_samples_ring(R, 1.5f, L.thickness.start);
+				L.rgb0 = hsv2rgb(0.58f, 0.6f, 1.0f); L.rgb1 = L.rgb0;
+				lines_geodesic.lines.emplace_back(L);
+			}
+
+			// 3) DIAGONAL RING (arbitrary great circle defined by two non-colinear endpoints)
+			//    0.0001 -> 1.0 turn to show the "forced ring" using u4.
+			{
+				LineGeodesic L;
+				L.radius = { R, R };
+				L.y0 = { 0.10f, 0.10f }; L.x0 = { 0.30f, 0.30f };
+				L.y1 = { 0.65f, 0.65f }; L.x1 = { 0.80f, 0.80f };
+				L.turns = { 0.0001f, 1.0f };
+				L.thickness = { 0.006f, 0.006f };
+				L.samples = ideal_samples_ring(R, 1.0f, L.thickness.start);
+				L.rgb0 = hsv2rgb(0.10f, 0.7f, 1.0f); L.rgb1 = L.rgb0;
+				lines_geodesic.lines.emplace_back(L);
+			}
+
+			// 4) PARTIAL DIAGONAL RING (quarter loop -> three quarters), showing arc length control via u4
+			{
+				LineGeodesic L;
+				L.radius = { R, R };
+				L.y0 = { 0.70f, 0.70f }; L.x0 = { 0.20f, 0.20f };
+				L.y1 = { 0.20f, 0.20f }; L.x1 = { 0.75f, 0.75f };
+				L.turns = { 0.25f, 0.75f };      // quarter  three quarters of the great circle
+				L.thickness = { 0.006f, 0.006f };
+				L.samples = ideal_samples_ring(R, 0.75f, L.thickness.start);
+				L.rgb0 = hsv2rgb(0.85f, 0.7f, 1.0f); L.rgb1 = L.rgb0;
+				lines_geodesic.lines.emplace_back(L);
+			}
+
+			// 5) SHORTEST GEODESIC (segment) that crosses the seam: animate endpoints across lon=10
+			{
+				LineGeodesic L;
+				L.radius = { R, R };
+				// Start near seam on opposite sides; shader will choose the shortest arc
+				L.y0 = { 0.95f, 0.95f };  L.x0 = { 0.40f, 0.70f }; // animate lat to show path change
+				L.y1 = { 0.05f, 0.05f };  L.x1 = { 0.60f, 0.30f };
+				L.turns = { 0.0f, 0.0f };    // 0 => geodesic mode (no forced ring)
+				L.thickness = { 0.012f, 0.006f };   // animate thickness thinner
+				L.samples = 180; // static count is fine for single segment
+				L.rgb0 = { 1.0f, 0.2f, 0.2f }; L.rgb1 = { 0.2f, 0.6f, 1.0f };
+				lines_geodesic.lines.emplace_back(L);
+			}
+
+			// 6) LATITUDE BANDS (stack a few parallels), all spinning with turns
+			{
+				const int bands = 7;
+				for (int i = 0; i < bands; ++i) {
+					float t = (i + 0.5f) / float(bands);      // 0..1
+					float lat = 0.15f + 0.70f * t;            // avoid poles
+					LineGeodesic L;
+					L.radius = { R, R };
+					L.x0 = { lat, lat };
+					L.x1 = { lat, lat };
+					L.y0 = { 0.0f, 0.0f };
+					L.y1 = { 0.0f, 0.0f };
+					L.turns = { 0.0001f, (i % 2 == 0) ? 1.0f : -1.0f }; // alternate directions
+					L.thickness = { 0.0045f, 0.0045f };
+					L.samples = ideal_samples_ring(R, 1.0f, L.thickness.start);
+					L.rgb0 = hsv2rgb(0.08f + 0.10f * i, 0.6f, 0.95f); L.rgb1 = L.rgb0;
+					lines_geodesic.lines.emplace_back(L);
+				}
+			}
+
+			// 7) MERIDIAN FAN (several great circles rotated by longitude)
+			{
+				const int fan = 8;
+				for (int i = 0; i < fan; ++i) {
+					float lon = float(i) / float(fan);
+					LineGeodesic L;
+					L.radius = { R, R };
+					L.y0 = { lon, lon };
+					L.y1 = { lon, lon };
+					L.x0 = { 0.35f, 0.35f };
+					L.x1 = { 0.35f, 0.35f };
+					L.turns = { 0.0001f, 1.0f };
+					L.thickness = { 0.0035f, 0.0035f };
+					L.samples = ideal_samples_ring(R, 1.0f, L.thickness.start);
+					L.rgb0 = hsv2rgb(0.55f + 0.05f * i, 0.5f, 0.9f); L.rgb1 = L.rgb0;
+
+
+
+
+					lines_geodesic.lines.emplace_back(L);
+				}
+			}
+		}
+
+
+	}
 
 	struct Clip
 	{
@@ -1215,7 +1217,7 @@ namespace Universe_
 			if (enable_shader_22_geodesic_line) // lines with t
 			{
 				LinesGeodesic lines_with_t;
-				lines_with_t.init();
+				init_lines_geodesic(lines_with_t);
 				lines_with_t.draw(scene);
 			}
 
