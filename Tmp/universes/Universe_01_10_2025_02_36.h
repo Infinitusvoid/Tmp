@@ -437,6 +437,60 @@ namespace Vibe_01_10_2025_11_21_
 			return lines.back();
 		}
 	};
+
+	struct Clip
+	{
+		using initfn = void(*)(Scene_::Scene& scene, const int clip_number, const int clip_fps, const int clip_length_seconds, const bool capture, const bool capture_png, const bool capture_bmp);
+
+
+
+		void generate(int number, initfn f_init)
+		{
+			engine_flush_frames();
+			engine_delete_flush_frames();
+
+			if (f_init == nullptr)
+			{
+				std::cout << "No init Function";
+				std::abort();
+			}
+
+			Scene_::Scene scene = Scene_::Scene();
+
+			// init(scene, number, clip_fps, clip_length_seconds, capture, capture_png, capture_bmp);
+			f_init(scene, number, clip_fps, clip_length_seconds, capture, capture_png, capture_bmp);
+
+			// run program
+			{
+				// scene.print();
+				std::string program_name = NameGenerators_::generate_prefix_timestamp_suffix_name();
+				save_program(scene, program_name);
+				run_program(program_name);
+
+				int i = clip_number;
+				std::string name = "output_" + std::to_string(i);
+				Video::generate(name, "bmp");
+
+
+			}
+
+			{
+				std::cout << "engine_flush_frames \n";
+				engine_flush_frames();
+				engine_delete_flush_frames();
+			}
+
+			clip_number += 1;
+		}
+
+		int clip_number = 0;
+		const int clip_fps = 60;
+		const int clip_length_seconds = 4;
+
+		bool capture = false;
+		bool capture_png = false;
+		bool capture_bmp = true;
+	};
 }
 
 // TODO
@@ -1228,59 +1282,7 @@ namespace Universe_
 		}
 	}
 	
-	struct Clip
-	{
-		using initfn = void(*)(Scene_::Scene& scene, const int clip_number, const int clip_fps, const int clip_length_seconds, const bool capture, const bool capture_png, const bool capture_bmp);
-
-		
-
-		void generate(int number, initfn f_init)
-		{
-			engine_flush_frames();
-			engine_delete_flush_frames();
-
-			if (f_init == nullptr)
-			{
-				std::cout << "No init Function";
-				std::abort();
-			}
-
-			Scene_::Scene scene = Scene_::Scene();
-			
-			// init(scene, number, clip_fps, clip_length_seconds, capture, capture_png, capture_bmp);
-			f_init(scene, number, clip_fps, clip_length_seconds, capture, capture_png, capture_bmp);
-
-			// run program
-			{
-				// scene.print();
-				std::string program_name = NameGenerators_::generate_prefix_timestamp_suffix_name();
-				save_program(scene, program_name);
-				run_program(program_name);
-
-				int i = clip_number;
-				std::string name = "output_" + std::to_string(i);
-				Video::generate(name, "bmp");
-
-
-			}
-
-			{
-				std::cout << "engine_flush_frames \n";
-				engine_flush_frames();
-				engine_delete_flush_frames();
-			}
-
-			clip_number += 1;
-		}
-
-		int clip_number = 0;
-		const int clip_fps = 60;
-		const int clip_length_seconds = 4;
-
-		bool capture = false;
-		bool capture_png = false;
-		bool capture_bmp = true;
-	};
+	
 
 
 	void generate()
@@ -1291,7 +1293,7 @@ namespace Universe_
 		{
 			std::cout << "clip : " << clip.clip_number << "\n";
 
-			clip.capture = true;
+			clip.capture = false;
 			clip.capture_png = false;
 			clip.capture_bmp = true;
 
