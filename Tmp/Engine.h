@@ -25,7 +25,7 @@ struct EngineFileOutputFilepats
 		Folder::create_folder_if_does_not_exist_already("F:/output/tmp/");
 
 		
-		folder_output = "F:/output/tmp/" + NameGenerators_::generate_prefix_timestamp_suffix_name("N_", std::string("_") + std::to_string(Random::random_int(0, 99999999)) + std::string("_"));
+		folder_output = "F:/output/tmp/" + NameGenerators_::generate_prefix_timestamp_suffix_name("N_", std::string("_") + std::to_string(Random::random_int(0, 99999999)) + std::string("/"));
 		folder_output_shaders = folder_output + "shaders/";
 		folder_output_frames = folder_output + "frames/";
 		folder_output_commands = folder_output + "commands/";
