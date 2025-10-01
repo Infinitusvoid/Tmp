@@ -1230,16 +1230,25 @@ namespace Universe_
 	
 	struct Clip
 	{
-		void generate(int number)
+		using initfn = void(*)(Scene_::Scene& scene, const int clip_number, const int clip_fps, const int clip_length_seconds, const bool capture, const bool capture_png, const bool capture_bmp);
+
+		
+
+		void generate(int number, initfn f_init)
 		{
 			engine_flush_frames();
 			engine_delete_flush_frames();
 
-			
+			if (f_init == nullptr)
+			{
+				std::cout << "No init Function";
+				std::abort();
+			}
 
 			Scene_::Scene scene = Scene_::Scene();
 			
-			init(scene, number, clip_fps, clip_length_seconds, capture, capture_png, capture_bmp);
+			// init(scene, number, clip_fps, clip_length_seconds, capture, capture_png, capture_bmp);
+			f_init(scene, number, clip_fps, clip_length_seconds, capture, capture_png, capture_bmp);
 
 			// run program
 			{
@@ -1286,7 +1295,7 @@ namespace Universe_
 			clip.capture_png = false;
 			clip.capture_bmp = true;
 
-			clip.generate(0);
+			clip.generate(0, init);
 
 			// for (int i = 1; i < 57; i++)
 			// {
