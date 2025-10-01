@@ -482,7 +482,6 @@ namespace Universe_
 
 	void spheres_init_1(Spheres& spheres, int number)
 	{
-
 		for (int i = 0; i < number; i++)
 		{
 			Spheres::Sphere sphere;
@@ -518,7 +517,6 @@ namespace Universe_
 
 			spheres.spheres.push_back(std::move(sphere));
 		}
-
 	}
 
 	void lines_init(Lines_shader_21& lines)
@@ -564,16 +562,10 @@ namespace Universe_
 
 
 		}
-
-
 	}
 
 	void init_lines_geodesic(LinesGeodesic_shader_22& lines_geodesic)
 	{
-
-
-
-
 		if (false)
 		{
 			LinesGeodesic_shader_22::LineGeodesic L;
@@ -769,7 +761,6 @@ namespace Universe_
 			//lines.emplace_back(L);
 
 		}
-
 
 		if (true)
 		{
@@ -985,7 +976,6 @@ namespace Universe_
 			lines_geodesic.lines.emplace_back(std::move(L));
 		}
 
-
 		if (false)
 		{
 
@@ -1136,28 +1126,30 @@ namespace Universe_
 				}
 			}
 		}
-
-
 	}
 
-	struct Clip
+	
+	
+	void init(Scene_::Scene& scene, const int clip_number, const int clip_fps, const int clip_length_seconds, const bool capture, const bool capture_png, const bool capture_bmp)
 	{
+		const bool enable_shader_10_unit_cube = true;
+		const bool enable_shader_20_sphere = true; // sphere
+		const bool enable_shader_21_line = false; // line
+		const bool enable_shader_22_geodesic_line = true; // line with t
 
 
-		void generate(int number)
+
+
 		{
-			engine_flush_frames();
-			engine_delete_flush_frames();
-
 			Program program;
 			program.le.halfLife = 0.02f * 4.0f * 0.0001f;
 			program.le.brightness = 0.0f;
 			program.le.exposure = 1.0;
 			program.le.msaaSamples = 10;
 
-			program.capture.capture = false;
-			program.capture.capture_png = false;
-			program.capture.capture_bmp = true;
+			program.capture.capture = capture;
+			program.capture.capture_png = capture_png;
+			program.capture.capture_bmp = capture_bmp;
 
 			program.render_display.render_fps = clip_fps;
 			program.render_display.number_of_frames = program.render_display.render_fps * clip_length_seconds;
@@ -1183,6 +1175,7 @@ namespace Universe_
 			program.camera_end.yaw = -2.879919;
 			program.camera_end.pitch = -11.280016;
 			program.camera_end.fov = 45.000000;
+			program.configure(scene);
 
 			// program.camera_end.x = program.camera_start.x;
 			// program.camera_end.y = program.camera_start.y;
@@ -1191,41 +1184,62 @@ namespace Universe_
 			// program.camera_end.yaw = program.camera_start.yaw;
 			// program.camera_end.pitch = program.camera_start.pitch;
 			// program.camera_end.fov = program.camera_start.fov;
+		}
+
+		
 
 
 
+		if (enable_shader_20_sphere) // sphered
+		{
+			Spheres sphere;
+			// spheres_init_1(sphere, 10);
 
+			using initfn = void(*)(Vibe_01_10_2025_11_21_::Spheres&, int);
+
+			initfn infn = *spheres_init_1;
+
+			infn(sphere, 10);
+
+			sphere.draw(scene, 1000);
+
+
+		}
+
+		if (enable_shader_21_line) // lines
+		{
+			Lines_shader_21 lines;
+			lines_init(lines);
+			lines.draw(scene);
+		}
+
+		if (enable_shader_22_geodesic_line) // lines with t
+		{
+			LinesGeodesic_shader_22 lines_with_t;
+			init_lines_geodesic(lines_with_t);
+			lines_with_t.draw(scene);
+		}
+
+		if (enable_shader_10_unit_cube)
+		{
+			UnitCube unit_cube;
+			unit_cube.init();
+			unit_cube.draw(scene);
+		}
+	}
+	
+	struct Clip
+	{
+		void generate(int number)
+		{
+			engine_flush_frames();
+			engine_delete_flush_frames();
+
+			
 
 			Scene_::Scene scene = Scene_::Scene();
-			program.configure(scene);
-
-			if (enable_shader_20_sphere) // sphered
-			{
-				Spheres sphere;
-				spheres_init_1(sphere, 10);
-				sphere.draw(scene, 1000);
-			}
-
-			if (enable_shader_21_line) // lines
-			{
-				Lines_shader_21 lines;
-				lines_init(lines);
-				lines.draw(scene);
-			}
-
-			if (enable_shader_22_geodesic_line) // lines with t
-			{
-				LinesGeodesic_shader_22 lines_with_t;
-				init_lines_geodesic(lines_with_t);
-				lines_with_t.draw(scene);
-			}
-
-			if (enable_shader_10_unit_cube)
-			{
-				UnitCube unit_cube;
-				unit_cube.init();
-				unit_cube.draw(scene);
-			}
+			
+			init(scene, number, clip_fps, clip_length_seconds, capture, capture_png, capture_bmp);
 
 			// run program
 			{
@@ -1250,18 +1264,13 @@ namespace Universe_
 			clip_number += 1;
 		}
 
-
 		int clip_number = 0;
-
-
 		const int clip_fps = 60;
 		const int clip_length_seconds = 4;
 
-		const bool enable_shader_10_unit_cube = true;
-		const bool enable_shader_20_sphere = false; // sphere
-		const bool enable_shader_21_line = false; // line
-		const bool enable_shader_22_geodesic_line = true; // line with t
-
+		bool capture = false;
+		bool capture_png = false;
+		bool capture_bmp = true;
 	};
 
 
@@ -1272,6 +1281,10 @@ namespace Universe_
 		// for(int i = 0; i < 30; i++)
 		{
 			std::cout << "clip : " << clip.clip_number << "\n";
+
+			clip.capture = true;
+			clip.capture_png = false;
+			clip.capture_bmp = true;
 
 			clip.generate(0);
 
