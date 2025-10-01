@@ -79,8 +79,8 @@ namespace Universe_
 	{
 		const bool enable_shader_10_unit_cube = true;
 		const bool enable_shader_20_sphere = true; // sphere
-		const bool enable_shader_21_line = false; // line
-		const bool enable_shader_22_geodesic_line = false; // line with t
+		const bool enable_shader_21_line = true; // line
+		const bool enable_shader_22_geodesic_line = true; // line with t
 
 
 		{
@@ -137,7 +137,7 @@ namespace Universe_
 		if (enable_shader_20_sphere) // sphered
 		{
 
-			auto spheres_connected_with_lines_init = [](Spheres_shader_20& spheres, Lines_shader_21& lines, int number)
+			auto spheres_on_lines_init = [](Spheres_shader_20& spheres, Lines_shader_21& lines, int number)
 				{
 
 					for (int i = 0; i < number; i++)
@@ -147,60 +147,65 @@ namespace Universe_
 
 						float factor_i = (1.0f / float(number)) * i;
 
+						float radius_start =  Random::generate_random_float_0_to_1() * 0.2;
+						float radius_end = radius_start + Random::generate_random_float_0_to_1() * 0.2;
+
 						{
 							Lines_shader_21::Line& line = lines.add_line();
 
-							line.x0.start = 0.5;
-							line.y0.start = 0.5;
-							line.z0.start = 0.5;
+							line.x0.start = Random::generate_random_float_0_to_1();
+							line.y0.start = 0.0;
+							line.z0.start = Random::generate_random_float_0_to_1();
 
-							line.x1.start = 0.5;
+							line.x1.start = line.x0.start;
 							line.y1.start = 1.0;
-							line.z1.start = 0.5;
+							line.z1.start = line.z0.start;
 
 							line.thickness.start = 0.01f;
 
-							line.rgb_t0.x = 1.0;
-							line.rgb_t0.y = 1.0;
-							line.rgb_t0.z = 1.0;
+							line.rgb_t0.x = Random::generate_random_float_0_to_1();
+							line.rgb_t0.y = Random::generate_random_float_0_to_1();
+							line.rgb_t0.z = Random::generate_random_float_0_to_1();
 
-							bug_fix_line_position(line.x0.start, line.y0.start, line.z0.start);
-							bug_fix_line_position(line.x1.start, line.y1.start, line.z1.start);
-
-							line.copy_start_to_end();
+							
 
 							line.number_of_cubes = 1000;
-						}
+
+							{
+								Vec3 position_start = { line.x0.start, line.y0.start, line.z0.start };
+								Vec3 position_end = { line.x1.start, line.y1.start, line.z1.start };
+
+								bug_fix_line_position(line.x0.start, line.y0.start, line.z0.start);
+								bug_fix_line_position(line.x1.start, line.y1.start, line.z1.start);
+
+								line.copy_start_to_end();
+
+								line.rgb_t1.x = Random::generate_random_float_0_to_1();
+								line.rgb_t1.y = Random::generate_random_float_0_to_1();
+								line.rgb_t1.z = Random::generate_random_float_0_to_1();
 
 
-						Vec3 position_start = { 0.5, 1.0, 0.5 };
+								Vec3 color_start = { Random::generate_random_float_0_to_1(),  Random::generate_random_float_0_to_1(),  Random::generate_random_float_0_to_1() };
+								Vec3 color_end = { Random::generate_random_float_0_to_1(),  Random::generate_random_float_0_to_1(),  Random::generate_random_float_0_to_1() };
 
-						Vec3 position_end = { 0.5, 0.5, 0.5 };
+								float cube_size_start = 0.001;
+								float cube_size_end = 0.002;
 
-						float radius_start = 0.1;
-						float radius_end = 0.4;
+								Float_start_end x_rnd_min{ 0.0, 0.0 };
+								Float_start_end x_rnd_max{ 1.0, 1.0 };
+								Float_start_end y_rnd_min{ 0.0, 0.0 };
+								Float_start_end y_rnd_max{ 1.0, 1.0 };
+								Float_start_end thickness{ 0.1, 0.1 };
+								Float_start_end jitter{ 1.0, 1.0 };
 
-						Vec3 color_start = { 1.0, 1.0, 1.0 };
-						Vec3 color_end = { 1.0, 1.0, 1.0 };
-					
-						float cube_size_start = 0.01;
-						float cube_size_end = 0.01;
 
-						Float_start_end x_rnd_min{ 0.0, 0.0 };
-						Float_start_end x_rnd_max{ 1.0, 1.0 };
-						Float_start_end y_rnd_min{ 0.0, 0.0 };
-						Float_start_end y_rnd_max{ 1.0, 1.0 };
-						Float_start_end thickness{ 0.1, 0.1 };
-						Float_start_end jitter{ 1.0, 1.0 };
-						
-
-						add_sphere
-						(
-							spheres,
-							{ 
-								position_start,
-								position_end
-							},
+								add_sphere
+								(
+									spheres,
+									{
+										position_start,
+										position_end
+									},
 							{
 								radius_start,
 								radius_end
@@ -209,14 +214,20 @@ namespace Universe_
 								color_start,
 								color_end
 							},
-							{ cube_size_start, cube_size_end },
-							x_rnd_min,
-							x_rnd_max,
-							y_rnd_min,
-							y_rnd_max,
-							thickness,
-							jitter
-						);
+									{ cube_size_start, cube_size_end },
+									x_rnd_min,
+									x_rnd_max,
+									y_rnd_min,
+									y_rnd_max,
+									thickness,
+									jitter
+								);
+							}
+						}
+
+
+						
+						
 					}
 				};
 
@@ -224,7 +235,7 @@ namespace Universe_
 			// spheres_init_1(sphere, 10);
 			Lines_shader_21 lines;
 
-			spheres_connected_with_lines_init(spheres, lines, 1);
+			spheres_on_lines_init(spheres, lines, 10);
 
 			spheres.draw(scene, 1000);
 			lines.draw(scene);
@@ -466,7 +477,7 @@ namespace Universe_
 		{
 			std::cout << "clip : " << clip.clip_number << "\n";
 
-			clip.capture = false;
+			clip.capture = true;
 			clip.capture_png = true;
 			clip.capture_bmp = false;
 
