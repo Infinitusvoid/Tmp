@@ -25,17 +25,8 @@ namespace Vibe_01_10_2025_11_21_
 {
 	// Write the document explaing the concept of vibes 
 	// Write about how  the code is about expression and understanding not just utility or a way to build tools but itself a peace of art well yea 
-}
 
-// TODO
-// enigine set use F drive
-// write the motion extraction kind of thing 
-// some format like ply write and read, texture write and read ( you will generate model that you will upload to sketfab, usual polygon based with textures that go along and pointclouds)
-// audio reading, writing we need first steps into generating visuals that are aligned with audio explore procedural audio generation 
-
-namespace Universe_
-{
-	// using namespace Vibe_01_10_2025_11_21_;
+	// -- Vec2
 
 	struct Vec2
 	{
@@ -43,14 +34,13 @@ namespace Universe_
 		float y;
 	};
 
+	// --- Vec3 
 	struct Vec3
 	{
 		float x = 0;
 		float y = 0;
 		float z = 0;
 	};
-
-	// (Add these functions before your 'struct Lines')
 
 	namespace Vec3_
 	{
@@ -81,101 +71,34 @@ namespace Universe_
 		float end = 0;
 	};
 
-	struct Sphere
+	struct Transform
 	{
-		Vec3 start_position = { 0.0, 0.0, 0.0 };
-		Vec3 end_position = { 0.0, 0.0, 0.0 };
-
-		Vec3 start_color = { 0.0, 0.0, 0.0 };
-		Vec3 end_color = { 0.0, 0.0, 0.0 };
-
-		Float_start_end cube_size = { 0.0001f, 0.0001f };
-		Float_start_end radius = { 0.0, 0.0 };
-		Float_start_end x_rnd_min = { 0.0, 0.0 };
-		Float_start_end x_rnd_max = { 0.0, 0.0 };
-		Float_start_end y_rnd_min = { 0.0, 0.0 };
-		Float_start_end y_rnd_max = { 0.0, 0.0 };
-		Float_start_end thickness = { 0.0, 0.0 };
-		Float_start_end jitter = { 0.0, 0.0 };
-
-
+		Vec3 position{ 0.0f, 0.0f, 0.0f };
+		Vec3 euler{ 0.0f, 0.0f, 0.0f };
+		Vec3 scale{ 1.0f, 1.0f, 1.0f };
 	};
 
 	struct Spheres
 	{
+		struct Sphere
+		{
+			Vec3 start_position = { 0.0, 0.0, 0.0 };
+			Vec3 end_position = { 0.0, 0.0, 0.0 };
+
+			Vec3 start_color = { 0.0, 0.0, 0.0 };
+			Vec3 end_color = { 0.0, 0.0, 0.0 };
+
+			Float_start_end cube_size = { 0.0001f, 0.0001f };
+			Float_start_end radius = { 0.0, 0.0 };
+			Float_start_end x_rnd_min = { 0.0, 0.0 };
+			Float_start_end x_rnd_max = { 0.0, 0.0 };
+			Float_start_end y_rnd_min = { 0.0, 0.0 };
+			Float_start_end y_rnd_max = { 0.0, 0.0 };
+			Float_start_end thickness = { 0.0, 0.0 };
+			Float_start_end jitter = { 0.0, 0.0 };
+		};
+
 		std::vector<Sphere> spheres;
-
-		void init_0(int number)
-		{
-			for (int i = 0; i < number; i++)
-			{
-				Sphere sphere;
-
-				sphere.start_position = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
-				sphere.end_position = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
-
-				sphere.start_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
-				sphere.end_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
-
-				sphere.radius = { 0.02f + Random::generate_random_float_0_to_1() * 0.02f, 0.02f + Random::generate_random_float_0_to_1() * 0.02f };
-
-				sphere.cube_size = { 0.001, 0.001 };
-
-				sphere.x_rnd_min = { 0.0, 0.0 };
-				sphere.x_rnd_max = { 1.0, 1.0 };
-
-				sphere.y_rnd_min = { 0.0, 0.0 };
-				sphere.y_rnd_max = { 1.0, 1.0 };
-
-				sphere.thickness = { 0.0, 0.0 };
-
-				sphere.jitter.start = 1.0f;
-				sphere.jitter.end = 1.0f;
-
-				spheres.push_back(std::move(sphere));
-			}
-		}
-
-		void init_1(int number)
-		{
-			for (int i = 0; i < number; i++)
-			{
-				Sphere sphere;
-
-
-				float factor_i = (1.0f / float(number)) * i;
-
-
-				sphere.start_position = { factor_i * 10.0f, 0.0f, Random::generate_random_float_minus_one_to_plus_one() * 2.0f };
-				sphere.end_position =
-				{
-					sphere.start_position.x,
-					sphere.start_position.y + 2.0f,
-					sphere.start_position.z
-				};
-
-				sphere.start_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
-				sphere.end_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
-
-				sphere.radius = { 0.02f + Random::generate_random_float_0_to_1() * 0.02f, 0.02f + Random::generate_random_float_0_to_1() * 0.02f };
-
-				sphere.cube_size = { 0.01, 0.01 };
-
-				sphere.x_rnd_min = { 0.0, 0.0 };
-				sphere.x_rnd_max = { 1.0, 1.0 };
-
-				sphere.y_rnd_min = { 0.0, 0.0 };
-				sphere.y_rnd_max = { 1.0, 1.0 };
-
-				sphere.thickness = { 0.1, 0.1 };
-
-				sphere.jitter.start = 1.0f;
-				sphere.jitter.end = 1.0f;
-
-				spheres.push_back(std::move(sphere));
-			}
-		}
-
 		void draw(Scene_::Scene& scene, int number_of_cube_per_sphere)
 		{
 			const int sqrt_number_of_cube_per_sphere = int(sqrtf(float(number_of_cube_per_sphere)));
@@ -216,6 +139,90 @@ namespace Universe_
 				});
 		}
 	};
+
+}
+
+// TODO
+// enigine set use F drive ( well in that mode create new folder for each run so that you can run generate many concurently nicely )
+// write the motion extraction kind of thing 
+// some format like ply write and read, texture write and read ( you will generate model that you will upload to sketfab, usual polygon based with textures that go along and pointclouds)
+// audio reading, writing we need first steps into generating visuals that are aligned with audio explore procedural audio generation 
+
+namespace Universe_
+{
+	using namespace Vibe_01_10_2025_11_21_;
+
+	void spheres_init_0(Spheres& spheres, int number)
+	{
+		for (int i = 0; i < number; i++)
+		{
+			Spheres::Sphere sphere;
+
+			sphere.start_position = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
+			sphere.end_position = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
+
+			sphere.start_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
+			sphere.end_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
+
+			sphere.radius = { 0.02f + Random::generate_random_float_0_to_1() * 0.02f, 0.02f + Random::generate_random_float_0_to_1() * 0.02f };
+
+			sphere.cube_size = { 0.001, 0.001 };
+
+			sphere.x_rnd_min = { 0.0, 0.0 };
+			sphere.x_rnd_max = { 1.0, 1.0 };
+
+			sphere.y_rnd_min = { 0.0, 0.0 };
+			sphere.y_rnd_max = { 1.0, 1.0 };
+
+			sphere.thickness = { 0.0, 0.0 };
+
+			sphere.jitter.start = 1.0f;
+			sphere.jitter.end = 1.0f;
+
+			spheres.spheres.push_back(std::move(sphere));
+		}
+	}
+
+	void spheres_init_1(Spheres& spheres, int number)
+	{
+
+		for (int i = 0; i < number; i++)
+		{
+			Spheres::Sphere sphere;
+
+			float factor_i = (1.0f / float(number)) * i;
+
+
+			sphere.start_position = { factor_i * 10.0f, 0.0f, Random::generate_random_float_minus_one_to_plus_one() * 2.0f };
+			sphere.end_position =
+			{
+				sphere.start_position.x,
+				sphere.start_position.y + 2.0f,
+				sphere.start_position.z
+			};
+
+			sphere.start_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
+			sphere.end_color = { Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1(), Random::generate_random_float_0_to_1() };
+
+			sphere.radius = { 0.02f + Random::generate_random_float_0_to_1() * 0.02f, 0.02f + Random::generate_random_float_0_to_1() * 0.02f };
+
+			sphere.cube_size = { 0.01, 0.01 };
+
+			sphere.x_rnd_min = { 0.0, 0.0 };
+			sphere.x_rnd_max = { 1.0, 1.0 };
+
+			sphere.y_rnd_min = { 0.0, 0.0 };
+			sphere.y_rnd_max = { 1.0, 1.0 };
+
+			sphere.thickness = { 0.1, 0.1 };
+
+			sphere.jitter.start = 1.0f;
+			sphere.jitter.end = 1.0f;
+
+			spheres.spheres.push_back(std::move(sphere));
+		}
+
+	}
 
 	struct Line
 	{
@@ -270,12 +277,7 @@ namespace Universe_
 		}
 	};
 
-	struct Transform
-	{
-		Vec3 position{ 0.0f, 0.0f, 0.0f };
-		Vec3 euler{ 0.0f, 0.0f, 0.0f };
-		Vec3 scale{ 1.0f, 1.0f, 1.0f };
-	};
+	
 
 	struct Transform_StartEnd
 	{
@@ -493,7 +495,7 @@ namespace Universe_
 			radius.end = radius.start;
 			rgb1 = rgb0;
 			thickness.end = thickness.start;
-			
+
 			transform_startEnd.copy_start_to_end();
 		}
 
@@ -539,9 +541,9 @@ namespace Universe_
 		{
 
 
-			
 
-			if(false)
+
+			if (false)
 			{
 				LineGeodesic L;
 
@@ -556,7 +558,7 @@ namespace Universe_
 				L.radius.start = 0.5f;
 
 				L.turns.start = 0.4f;
-				
+
 
 				// subtle color variation
 				L.rgb0 = { 1.0, 1.0, 1.0 };
@@ -570,7 +572,7 @@ namespace Universe_
 				lines.emplace_back(std::move(L));
 			}
 
-			if(false)
+			if (false)
 			{
 
 				//for (int i = 0; i < 1; i++)
@@ -693,11 +695,11 @@ namespace Universe_
 						lines.emplace_back(std::move(L));
 					}
 				}
-				
 
-				
 
-				
+
+
+
 
 				//LineGeodesic L;
 				//L.samples = 600;
@@ -734,9 +736,9 @@ namespace Universe_
 				//L.thickness = { 0.005f, 0.005f };
 				//L.copy_start_to_end();
 				//lines.emplace_back(L);
-				
+
 			}
-			
+
 
 			if (true)
 			{
@@ -842,19 +844,19 @@ namespace Universe_
 						}
 
 					};
-				
+
 				draw_sphere(lines, 0.025, 0.5, 0.5, 0.5, 0.00025);
 
 				draw_sphere(lines, 0.1, 0.0, 0.0, 0.0, 0.001);
 				draw_sphere(lines, 0.1, 0.0, 0.0, 1.0, 0.001);
 				draw_sphere(lines, 0.1, 0.0, 1.0, 0.0, 0.001);
 				draw_sphere(lines, 0.1, 0.0, 1.0, 1.0, 0.001);
-				
+
 				draw_sphere(lines, 0.1, 1.0, 0.0, 0.0, 0.001);
 				draw_sphere(lines, 0.1, 1.0, 0.0, 1.0, 0.001);
 				draw_sphere(lines, 0.1, 1.0, 1.0, 0.0, 0.001);
 				draw_sphere(lines, 0.1, 1.0, 1.0, 1.0, 0.001);
-				
+
 			}
 
 			if (true)
@@ -873,10 +875,10 @@ namespace Universe_
 					L.x1.start = L.x0.start + Random::generate_random_float_minus_one_to_plus_one() * 0.1;
 
 					L.radius.start = 0.5f;
-					
+
 					// subtle color variation
 					L.rgb0 = { 0.0, 1.0, 0.0 };
-					
+
 
 					L.thickness.start = 0.0001f;
 
@@ -895,7 +897,7 @@ namespace Universe_
 
 			}
 
-			if(false)
+			if (false)
 			{
 				LineGeodesic L;
 
@@ -923,7 +925,7 @@ namespace Universe_
 				lines.emplace_back(std::move(L));
 			}
 
-			if(false)
+			if (false)
 			{
 				LineGeodesic L;
 
@@ -953,7 +955,7 @@ namespace Universe_
 			}
 
 
-			if(false)
+			if (false)
 			{
 
 				// --- Small helpers ----------------------------------------------------------
@@ -1097,7 +1099,7 @@ namespace Universe_
 						L.rgb0 = hsv2rgb(0.55f + 0.05f * i, 0.5f, 0.9f); L.rgb1 = L.rgb0;
 
 
-						
+
 
 						lines.emplace_back(L);
 					}
@@ -1199,7 +1201,7 @@ namespace Universe_
 			if (enable_shader_20_sphere) // sphered
 			{
 				Spheres sphere;
-				sphere.init_1(10);
+				spheres_init_1(sphere, 10);
 				sphere.draw(scene, 1000);
 			}
 
