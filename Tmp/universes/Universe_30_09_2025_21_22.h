@@ -861,7 +861,7 @@ namespace Universe_
 					L.x1.start = L.x0.start + Random::generate_random_float_minus_one_to_plus_one() * 0.1;
 
 					L.radius.start = 0.5f;
-
+					
 					// subtle color variation
 					L.rgb0 = { 0.0, 1.0, 0.0 };
 					
@@ -1140,7 +1140,7 @@ namespace Universe_
 			program.le.exposure = 1.0;
 			program.le.msaaSamples = 10;
 
-			program.capture.capture = false;
+			program.capture.capture = true;
 			program.capture.capture_png = false;
 			program.capture.capture_bmp = true;
 
@@ -1159,13 +1159,27 @@ namespace Universe_
 			program.camera_start.fov = 45.0;
 
 
-			program.camera_end.x = program.camera_start.x;
-			program.camera_end.y = program.camera_start.y;
-			program.camera_end.z = program.camera_start.z;
+			// CAPTURED: { pos: [0.721016, 1.160607, 3.534045] , yaw : -2.879919, pitch : -11.280016, fov : 45.000000 }
 
-			program.camera_end.yaw = program.camera_start.yaw;
-			program.camera_end.pitch = program.camera_start.pitch;
-			program.camera_end.fov = program.camera_start.fov;
+			program.camera_end.x = 0.721016;
+			program.camera_end.y = 1.160607;
+			program.camera_end.z = 3.534045;
+
+			program.camera_end.yaw = -2.879919;
+			program.camera_end.pitch = -11.280016;
+			program.camera_end.fov = 45.000000;
+
+			// program.camera_end.x = program.camera_start.x;
+			// program.camera_end.y = program.camera_start.y;
+			// program.camera_end.z = program.camera_start.z;
+
+			// program.camera_end.yaw = program.camera_start.yaw;
+			// program.camera_end.pitch = program.camera_start.pitch;
+			// program.camera_end.fov = program.camera_start.fov;
+
+
+
+
 
 			Scene_::Scene scene = Scene_::Scene();
 			program.configure(scene);
