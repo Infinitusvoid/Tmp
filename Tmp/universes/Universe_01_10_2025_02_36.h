@@ -78,6 +78,29 @@ namespace Vibe_01_10_2025_11_21_
 		Vec3 scale{ 1.0f, 1.0f, 1.0f };
 	};
 
+	struct Transform_StartEnd
+	{
+		Transform start;
+		Transform end;
+
+		void copy_start_to_end()
+		{
+			end.position = start.position;
+			end.euler = start.euler;
+			end.scale = start.scale;
+		}
+
+		void send(Program::Shader::Instance& I)
+		{
+			I.set_position_start(start.position.x, start.position.y, start.position.z)
+				.set_position_end(end.position.x, end.position.y, end.position.z)
+				.set_euler_start(start.euler.x, start.euler.y, start.euler.z)
+				.set_euler_end(end.euler.x, end.euler.y, end.euler.z)
+				.set_scale_start(start.scale.x, start.scale.y, start.scale.z)
+				.set_scale_end(end.scale.x, end.scale.y, end.scale.z);
+		}
+	};
+
 	struct Spheres
 	{
 		struct Sphere
@@ -140,6 +163,102 @@ namespace Vibe_01_10_2025_11_21_
 		}
 	};
 
+
+	struct Line
+	{
+		Float_start_end x0 = { 0.0f, 0.0f }; // u0
+		Float_start_end y0 = { 0.0f, 0.0f }; // u1
+		Float_start_end z0 = { 0.0f, 0.0f }; // u2
+
+		Float_start_end x1 = { 0.0f, 0.0f }; // u3
+		Float_start_end y1 = { 0.0f, 0.0f }; // u4
+		Float_start_end z1 = { 0.0f, 0.0f }; // u5
+
+		Vec3 rgb_t0 = { 0.0f, 0.0f, 0.0f }; // u6, u7, u8 
+		Vec3 rgb_t1 = { 0.0f, 0.0f, 0.0f };
+
+		Float_start_end thickness = { 0.0f, 0.0f }; // u9
+
+		int number_of_cubes = 100;
+
+		void send(Program::Shader::Instance& I)
+		{
+			I.set_u_start_end(0, x0.start, x0.end); // u0
+			I.set_u_start_end(1, y0.start, y0.end); // u1
+			I.set_u_start_end(2, z0.start, z0.end); // u2
+
+			I.set_u_start_end(3, x1.start, x1.end); // u3
+			I.set_u_start_end(4, y1.start, y1.end); // u4
+			I.set_u_start_end(5, z1.start, z1.end); // u5
+
+			I.set_u_start_end(6, rgb_t0.x, rgb_t1.x); // u6
+			I.set_u_start_end(7, rgb_t0.y, rgb_t1.y); // u7
+			I.set_u_start_end(8, rgb_t0.z, rgb_t1.z); // u8
+
+			I.set_u_start_end(9, thickness.start, thickness.end); // u9
+
+		}
+
+		void copy_start_to_end()
+		{
+			x0.end = x0.start;
+			y0.end = y0.start;
+			z0.end = z0.start;
+
+			x1.end = x1.start;
+			y1.end = y1.start;
+			z1.end = z1.start;
+
+			rgb_t1.x = rgb_t0.x;
+			rgb_t1.y = rgb_t0.y;
+			rgb_t1.z = rgb_t0.z;
+
+			thickness.end = thickness.start;
+		}
+	};
+
+	struct Lines_shader_21
+	{
+		std::vector<Line> lines;
+
+		void draw(Scene_::Scene& scene)
+		{
+			add_shader(scene, 21, [&](Program::Shader& sh) {
+
+
+				for (int i = 0; i < lines.size(); i++)
+				{
+					auto id = sh.create_instance();
+					auto I = sh.instance(id);
+
+					int grup_size_x = lines.at(i).number_of_cubes;
+					int grup_size_y = 1;
+					int grop_size_z = 1;
+					int drawcalls = 1;
+
+					assert(drawcalls == 1); // This shader works only if per each line we only use 1 drawcall
+
+					I.set_group_size(grup_size_x, grup_size_y, grop_size_z)
+						.set_drawcalls(drawcalls)
+						.set_position_start(0.0f, 0.0f, 0.0f)
+						.set_position_end(0.0f, 0.0f, 0.0f)
+						.set_euler_start(0.0f, 0.0f, 0.0f)
+						.set_euler_end(0.0f, 0.0f, 0.0f)
+						.set_scale_start(1.0f, 1.0f, 1.0f)
+						.set_scale_end(1.0f, 1.0f, 1.0f);
+
+					lines.at(i).send(I);
+				}
+
+				});
+		}
+
+		Line& add_line()
+		{
+			lines.emplace_back(Line());
+			return lines.back();
+		}
+	};
 }
 
 // TODO
@@ -224,173 +343,54 @@ namespace Universe_
 
 	}
 
-	struct Line
-	{
-		Float_start_end x0 = { 0.0f, 0.0f }; // u0
-		Float_start_end y0 = { 0.0f, 0.0f }; // u1
-		Float_start_end z0 = { 0.0f, 0.0f }; // u2
-
-		Float_start_end x1 = { 0.0f, 0.0f }; // u3
-		Float_start_end y1 = { 0.0f, 0.0f }; // u4
-		Float_start_end z1 = { 0.0f, 0.0f }; // u5
-
-		Vec3 rgb_t0 = { 0.0f, 0.0f, 0.0f }; // u6, u7, u8 
-		Vec3 rgb_t1 = { 0.0f, 0.0f, 0.0f };
-
-		Float_start_end thickness = { 0.0f, 0.0f }; // u9
-
-		int number_of_cubes = 100;
-
-		void send(Program::Shader::Instance& I)
-		{
-			I.set_u_start_end(0, x0.start, x0.end); // u0
-			I.set_u_start_end(1, y0.start, y0.end); // u1
-			I.set_u_start_end(2, z0.start, z0.end); // u2
-
-			I.set_u_start_end(3, x1.start, x1.end); // u3
-			I.set_u_start_end(4, y1.start, y1.end); // u4
-			I.set_u_start_end(5, z1.start, z1.end); // u5
-
-			I.set_u_start_end(6, rgb_t0.x, rgb_t1.x); // u6
-			I.set_u_start_end(7, rgb_t0.y, rgb_t1.y); // u7
-			I.set_u_start_end(8, rgb_t0.z, rgb_t1.z); // u8
-
-			I.set_u_start_end(9, thickness.start, thickness.end); // u9
-
-		}
-
-		void copy_start_to_end()
-		{
-			x0.end = x0.start;
-			y0.end = y0.start;
-			z0.end = z0.start;
-
-			x1.end = x1.start;
-			y1.end = y1.start;
-			z1.end = z1.start;
-
-			rgb_t1.x = rgb_t0.x;
-			rgb_t1.y = rgb_t0.y;
-			rgb_t1.z = rgb_t0.z;
-
-			thickness.end = thickness.start;
-		}
-	};
-
 	
-
-	struct Transform_StartEnd
+	void lines_init(Lines_shader_21& lines)
 	{
-		Transform start;
-		Transform end;
-
-		void copy_start_to_end()
 		{
-			end.position = start.position;
-			end.euler = start.euler;
-			end.scale = start.scale;
-		}
+			int number_of_lines = 100;
+			const float TAU = 6.2831853071795864769252867665590;
+			float step_size = (1.0 / float(number_of_lines)) * TAU;
 
-		void send(Program::Shader::Instance& I)
-		{
-			I.set_position_start(start.position.x, start.position.y, start.position.z)
-				.set_position_end(end.position.x, end.position.y, end.position.z)
-				.set_euler_start(start.euler.x, start.euler.y, start.euler.z)
-				.set_euler_end(end.euler.x, end.euler.y, end.euler.z)
-				.set_scale_start(start.scale.x, start.scale.y, start.scale.z)
-				.set_scale_end(end.scale.x, end.scale.y, end.scale.z);
-		}
-	};
-
-	struct Lines
-	{
-		std::vector<Line> lines;
-
-		void init()
-		{
+			for (int i = 0; i < number_of_lines; i++)
 			{
-				int number_of_lines = 100;
-				const float TAU = 6.2831853071795864769252867665590;
-				float step_size = (1.0 / float(number_of_lines)) * TAU;
-
-				for (int i = 0; i < number_of_lines; i++)
-				{
-					Line& line = add_line();
+				Line& line = lines.add_line();
 
 
-					line.x0.start = 0.0f;
-					line.y0.start = 0.0f;
-					line.z0.start = 0.0f;
+				line.x0.start = 0.0f;
+				line.y0.start = 0.0f;
+				line.z0.start = 0.0f;
 
-					line.x1.start = 0.5f * sin(i * step_size);
-					line.y1.start = 0.0f;
-					line.z1.start = 0.5f * cos(i * step_size);
+				line.x1.start = 0.5f * sin(i * step_size);
+				line.y1.start = 0.0f;
+				line.z1.start = 0.5f * cos(i * step_size);
 
-					line.rgb_t0.x = 0.2 * Random::generate_random_float_0_to_1();
-					line.rgb_t0.y = 0.2 * Random::generate_random_float_0_to_1();
-					line.rgb_t0.z = 0.2 * Random::generate_random_float_0_to_1();
+				line.rgb_t0.x = 0.2 * Random::generate_random_float_0_to_1();
+				line.rgb_t0.y = 0.2 * Random::generate_random_float_0_to_1();
+				line.rgb_t0.z = 0.2 * Random::generate_random_float_0_to_1();
 
-					line.thickness.start = 0.01 * 0.2;
-					line.number_of_cubes = 100;
+				line.thickness.start = 0.01 * 0.2;
+				line.number_of_cubes = 100;
 
-					line.copy_start_to_end();
+				line.copy_start_to_end();
 
 
 
-					line.x1.end = 0.5f * sin(i * step_size);
-					line.y1.end = 0.0f;
-					line.z1.end = 0.5f * cos(i * step_size);
+				line.x1.end = 0.5f * sin(i * step_size);
+				line.y1.end = 0.0f;
+				line.z1.end = 0.5f * cos(i * step_size);
 
-					// line.y1.end = 1.0;
-					// line.z1.end = 1.0;
-				}
-
-
-
-
+				// line.y1.end = 1.0;
+				// line.z1.end = 1.0;
 			}
 
 
+
+
 		}
 
-		void draw(Scene_::Scene& scene)
-		{
-			add_shader(scene, 21, [&](Program::Shader& sh) {
 
+	}
 
-				for (int i = 0; i < lines.size(); i++)
-				{
-					auto id = sh.create_instance();
-					auto I = sh.instance(id);
-
-					int grup_size_x = lines.at(i).number_of_cubes;
-					int grup_size_y = 1;
-					int grop_size_z = 1;
-					int drawcalls = 1;
-
-					assert(drawcalls == 1); // This shader works only if per each line we only use 1 drawcall
-
-					I.set_group_size(grup_size_x, grup_size_y, grop_size_z)
-						.set_drawcalls(drawcalls)
-						.set_position_start(0.0f, 0.0f, 0.0f)
-						.set_position_end(0.0f, 0.0f, 0.0f)
-						.set_euler_start(0.0f, 0.0f, 0.0f)
-						.set_euler_end(0.0f, 0.0f, 0.0f)
-						.set_scale_start(1.0f, 1.0f, 1.0f)
-						.set_scale_end(1.0f, 1.0f, 1.0f);
-
-					lines.at(i).send(I);
-				}
-
-				});
-		}
-
-		Line& add_line()
-		{
-			lines.emplace_back(Line());
-			return lines.back();
-		}
-	};
 
 	struct UnitCube
 	{
@@ -1207,8 +1207,8 @@ namespace Universe_
 
 			if (enable_shader_21_line) // lines
 			{
-				Lines lines;
-				lines.init();
+				Lines_shader_21 lines;
+				lines_init(lines);
 				lines.draw(scene);
 			}
 
