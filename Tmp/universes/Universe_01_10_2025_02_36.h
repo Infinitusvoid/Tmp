@@ -399,6 +399,43 @@ namespace Vibe_01_10_2025_11_21_
 			radius.start = radius.end = R;
 		}
 	};
+
+	struct LinesGeodesic
+	{
+		std::vector<LineGeodesic> lines;
+
+		// Example init: 100 short arcs along the equator (clean visual baseline)
+
+
+		void draw(Scene_::Scene& scene)
+		{
+			const int shader_number = 22;  // your geodesic-line shader
+
+			add_shader(scene, shader_number, [&](Program::Shader& sh)
+				{
+					for (size_t i = 0; i < lines.size(); ++i)
+					{
+						auto id = sh.create_instance();
+						auto I = sh.instance(id);
+
+
+
+						// one drawcall per arc
+						I.set_group_size(lines[i].samples, 1, 1)
+							.set_drawcalls(1);
+
+						lines[i].send(I);
+					}
+				});
+		}
+
+		// Utility to append and get a reference
+		LineGeodesic& add_line()
+		{
+			lines.emplace_back(LineGeodesic{});
+			return lines.back();
+		}
+	};
 }
 
 // TODO
@@ -529,45 +566,6 @@ namespace Universe_
 
 
 	}
-
-
-
-	struct LinesGeodesic
-	{
-		std::vector<LineGeodesic> lines;
-
-		// Example init: 100 short arcs along the equator (clean visual baseline)
-		
-
-		void draw(Scene_::Scene& scene)
-		{
-			const int shader_number = 22;  // your geodesic-line shader
-
-			add_shader(scene, shader_number, [&](Program::Shader& sh)
-				{
-					for (size_t i = 0; i < lines.size(); ++i)
-					{
-						auto id = sh.create_instance();
-						auto I = sh.instance(id);
-
-
-
-						// one drawcall per arc
-						I.set_group_size(lines[i].samples, 1, 1)
-							.set_drawcalls(1);
-
-						lines[i].send(I);
-					}
-				});
-		}
-
-		// Utility to append and get a reference
-		LineGeodesic& add_line()
-		{
-			lines.emplace_back(LineGeodesic{});
-			return lines.back();
-		}
-	};
 
 	void init_lines_geodesic(LinesGeodesic& lines_geodesic)
 	{
