@@ -3,6 +3,10 @@
 
 #include <unordered_map>
 #include <limits>
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <cstdint>
 
 namespace Universe_
 {
@@ -63,379 +67,413 @@ namespace Universe_
 	}
 	
 	
-	struct ASCI_Letters
-	{
-		struct Line2d
-		{
-			Vec2 start;
-			Vec2 end;
-		};
 
 
-		std::unordered_map<int, std::vector<Line2d>> letters;
-	};
+
+
+
+
+
+// This header builds a compact, grid-based, line-segment vector font.
+// Goals:
+//  - Every glyph fits in the [0,1]x[0,1] box (post-normalization).
+//  - Full ASCII coverage (letters, digits, common punctuation).
+//  - Extensible builder: compose new letters from reusable components (e.g., caron, ring, acute).
+//  - Keep compatibility with your existing ASCI_Letters::Line2d and map<int, std::vector<Line2d>> style.
+//
+// Usage:
+//   auto font = ASCI_Letters_::make_full_ascii_stick_font();
+//   // render each glyph's segments in [0,1]x[0,1]
+//
+// To extend (e.g., add , , ): see the examples near the end of make_full_ascii_stick_font().
+// The builder composes base Latin letters with accent components, then normalizes.
 
 	namespace ASCI_Letters_
 	{
-		
-
-		
-
-		// Build a simple stick font (A–Z). Coordinates are on a 5×7 grid (0..4, 0..6).
-		ASCI_Letters make_ascii_letters()
+		// ---- Assume these exist in your project ----
+		struct Vec2 { float x, y; };
+		struct ASCI_Letters
 		{
+			struct Line2d { Vec2 start, end; };
+			// Map from Unicode code point to stroke list. For ASCII you can use 'A'..'Z' etc.
+			// For non-ASCII, use the Unicode code point (e.g., 0x010C for ).
+			std::unordered_map<uint32_t, std::vector<Line2d>> letters;
+		};
 
-			// Helper: push a grid-aligned segment (x,y are integers on a 0..4 by 0..6 grid).
-			auto push_grid_seg = [](
-				std::vector<ASCI_Letters::Line2d>& out,
-				int x1, int y1, int x2, int y2
-				)
+		// ---- Metrics & helpers ----
+		struct Bounds
+		{
+			float minX = +std::numeric_limits<float>::infinity();
+			float minY = +std::numeric_limits<float>::infinity();
+			float maxX = -std::numeric_limits<float>::infinity();
+			float maxY = -std::numeric_limits<float>::infinity();
+		};
+
+		inline Bounds compute_bounds(const std::vector<ASCI_Letters::Line2d>& segs)
+		{
+			Bounds b;
+			if (segs.empty()) { b.minX = b.minY = 0.0f; b.maxX = b.maxY = 0.0f; return b; }
+			for (const auto& s : segs)
+			{
+				b.minX = std::min({ b.minX, s.start.x, s.end.x });
+				b.minY = std::min({ b.minY, s.start.y, s.end.y });
+				b.maxX = std::max({ b.maxX, s.start.x, s.end.x });
+				b.maxY = std::max({ b.maxY, s.start.y, s.end.y });
+			}
+			return b;
+		}
+
+		inline void translate(std::vector<ASCI_Letters::Line2d>& segs, float dx, float dy)
+		{
+			for (auto& s : segs) { s.start.x += dx; s.end.x += dx; s.start.y += dy; s.end.y += dy; }
+		}
+
+		inline void scale(std::vector<ASCI_Letters::Line2d>& segs, float sx, float sy)
+		{
+			for (auto& s : segs) { s.start.x *= sx; s.end.x *= sx; s.start.y *= sy; s.end.y *= sy; }
+		}
+
+		inline void append(std::vector<ASCI_Letters::Line2d>& dst,
+			const std::vector<ASCI_Letters::Line2d>& src)
+		{
+			dst.insert(dst.end(), src.begin(), src.end());
+		}
+
+		inline float saturate(float v) { return v < 0.f ? 0.f : (v > 1.f ? 1.f : v); }
+
+		// Normalize each glyph into [0,1]^2, uniformly scaled + centered, then padded slightly.
+		inline void normalize_letters(ASCI_Letters& letters, float pad = 0.02f)
+		{
+			constexpr float EPS = 1e-9f;
+			for (auto& kv : letters.letters)
+			{
+				auto& segs = kv.second;
+				if (segs.empty()) continue;
+				auto b = compute_bounds(segs);
+				float w = std::max(b.maxX - b.minX, EPS);
+				float h = std::max(b.maxY - b.minY, EPS);
+				// translate to origin
+				translate(segs, -b.minX, -b.minY);
+				// uniform scale to fit (1 - 2*pad)
+				float box = 1.f - 2.f * pad;
+				float s = box / std::max(w, h);
+				scale(segs, s, s);
+				// recalc bounds, then center inside [pad,1-pad]
+				auto nb = compute_bounds(segs);
+				float offX = pad + 0.5f * (box - (nb.maxX - nb.minX));
+				float offY = pad + 0.5f * (box - (nb.maxY - nb.minY));
+				translate(segs, offX - nb.minX, offY - nb.minY);
+				// clamp to obliterate tiny FP overshoot
+				for (auto& sgm : segs)
 				{
-					constexpr float sx = 1.0f / 4.0f; // grid width 4
-					constexpr float sy = 1.0f / 6.0f; // grid height 6
-					out.push_back(ASCI_Letters::Line2d{
-						Vec2{ x1 * sx, y1 * sy },
-						Vec2{ x2 * sx, y2 * sy }
-						});
-				};
+					sgm.start.x = saturate(sgm.start.x); sgm.start.y = saturate(sgm.start.y);
+					sgm.end.x = saturate(sgm.end.x); sgm.end.y = saturate(sgm.end.y);
+				}
+			}
+		}
 
-			auto normalize_letters = [](ASCI_Letters& letters)
+		// ---- Grid builder ----
+		struct Grid {
+			int W = 5; // columns -> x in [0..W-1]
+			int H = 7; // rows    -> y in [0..H-1]
+			// Convert integer grid to pre-normalized 0..1 space (we still normalize later for uniformity/padding)
+			inline float nx(int x) const { return (W <= 1) ? 0.f : float(x) / float(W - 1); }
+			inline float ny(int y) const { return (H <= 1) ? 0.f : float(y) / float(H - 1); }
+			void seg(std::vector<ASCI_Letters::Line2d>& out, int x1, int y1, int x2, int y2) const
+			{
+				out.push_back({ Vec2{nx(x1), ny(y1)}, Vec2{nx(x2), ny(y2)} });
+			}
+		};
+
+		// ---- Accent components (reusable) in grid space ----
+		struct Components {
+			std::unordered_map<std::string, std::vector<ASCI_Letters::Line2d>> comp;
+
+			void build(const Grid& g)
+			{
+				using L = ASCI_Letters::Line2d;
+				// caron (hek) as small V shape
 				{
-					constexpr float BOX_MIN = 0.0f;
-					constexpr float BOX_MAX = 1.0f;
-					constexpr float EPS = 1e-9f;
+					std::vector<L> c; g.seg(c, 1, 6, 2, 7); g.seg(c, 2, 7, 3, 6); comp["caron"] = c; // assumes H>=8
+				}
+				// acute accent
+				{
+					std::vector<L> c; g.seg(c, 2, 6, 3, 7); comp["acute"] = c;
+				}
+				// grave
+				{ std::vector<L> c; g.seg(c, 2, 7, 3, 6); comp["grave"] = c; }
+				// circumflex (small ^)
+				{ std::vector<L> c; g.seg(c, 1, 6, 2, 7); g.seg(c, 2, 7, 3, 6); comp["circ"] = c; }
+				// dieresis (two short ticks)
+				{ std::vector<L> c; g.seg(c, 1, 7, 1, 7); g.seg(c, 3, 7, 3, 7); comp["dieresis"] = c; }
+				// ring above (small diamond approximating a circle)
+				{ std::vector<L> c; g.seg(c, 2, 7, 1, 6); g.seg(c, 1, 6, 2, 5); g.seg(c, 2, 5, 3, 6); g.seg(c, 3, 6, 2, 7); comp["ring"] = c; }
+				// ogonek (tail below)
+				{ std::vector<L> c; g.seg(c, 2, 0, 1, -1); g.seg(c, 1, -1, 2, -2); comp["ogonek"] = c; }
+				// slash (for )
+				{ std::vector<L> c; g.seg(c, 0, 1, 4, 5); comp["slash_diag"] = c; }
+			}
+		};
 
-					auto saturate = [](float v) -> float {
-						if (v < 0.0f) return 0.0f;
-						if (v > 1.0f) return 1.0f;
-						return v;
-						};
+		// Place a component relative to base glyph bounds.
+		enum class AttachWhere { TopCenter, BottomCenter, Center, ThroughDiag };
 
-					for (auto& kv : letters.letters)
-					{
-						auto& segs = kv.second;
-						if (segs.empty()) continue; // e.g., space
+		inline std::vector<ASCI_Letters::Line2d>
+			place_component(const std::vector<ASCI_Letters::Line2d>& base,
+				const std::vector<ASCI_Letters::Line2d>& comp,
+				AttachWhere where,
+				float scale_rel = 1.0f,   // scale relative to base height
+				float y_gap = 0.02f)      // extra gap for accents
+		{
+			if (comp.empty()) return {};
+			auto bb = compute_bounds(base);
+			auto cb = compute_bounds(comp);
+			float bw = std::max(1e-6f, bb.maxX - bb.minX);
+			float bh = std::max(1e-6f, bb.maxY - bb.minY);
+			float cw = std::max(1e-6f, cb.maxX - cb.minX);
+			float ch = std::max(1e-6f, cb.maxY - cb.minY);
 
-						// 1) Find glyph bounds
-						float minX = std::numeric_limits<float>::infinity();
-						float minY = std::numeric_limits<float>::infinity();
-						float maxX = -std::numeric_limits<float>::infinity();
-						float maxY = -std::numeric_limits<float>::infinity();
+			// scale comp to a fraction of base height
+			float s = scale_rel * (bh / ch);
+			std::vector<ASCI_Letters::Line2d> out = comp;
+			// move comp to origin
+			translate(out, -cb.minX, -cb.minY);
+			scale(out, s, s);
+			auto cnb = compute_bounds(out);
 
-						for (const auto& s : segs)
-						{
-							minX = std::min(minX, std::min(s.start.x, s.end.x));
-							minY = std::min(minY, std::min(s.start.y, s.end.y));
-							maxX = std::max(maxX, std::max(s.start.x, s.end.x));
-							maxY = std::max(maxY, std::max(s.start.y, s.end.y));
-						}
+			float tx = 0.f, ty = 0.f;
+			switch (where)
+			{
+			case AttachWhere::TopCenter:
+				tx = bb.minX + 0.5f * bw - 0.5f * (cnb.maxX - cnb.minX);
+				ty = bb.maxY + y_gap;
+				break;
+			case AttachWhere::BottomCenter:
+				tx = bb.minX + 0.5f * bw - 0.5f * (cnb.maxX - cnb.minX);
+				ty = bb.minY - (cnb.maxY - cnb.minY) - y_gap;
+				break;
+			case AttachWhere::Center:
+				tx = bb.minX + 0.5f * bw - 0.5f * (cnb.maxX - cnb.minX);
+				ty = bb.minY + 0.5f * bh - 0.5f * (cnb.maxY - cnb.minY);
+				break;
+			case AttachWhere::ThroughDiag:
+				// For : roughly align so slash spans the bowl
+				tx = 0.f; ty = 0.f; // comp already designed to span
+				break;
+			}
+			translate(out, tx, ty);
+			return out;
+		}
 
-						float w = std::max(maxX - minX, EPS);
-						float h = std::max(maxY - minY, EPS);
+		// ---- Builders for base glyphs ----
+		inline void build_letters_A_to_Z(std::unordered_map<uint32_t, std::vector<ASCI_Letters::Line2d>>& M, const Grid& g)
+		{
+			using L = ASCI_Letters::Line2d;
 
-						// 2) Uniformly scale to fit INSIDE 1x1 (preserve aspect)
-						const float boxSize = BOX_MAX - BOX_MIN; // = 1
-						const float s = boxSize / std::max(w, h); // <= 1/w or 1/h
-
-						// Scaled size (<= 1)
-						const float newW = w * s;
-						const float newH = h * s;
-
-						// 3) Center inside the box
-						const float offX = BOX_MIN + 0.5f * (boxSize - newW);
-						const float offY = BOX_MIN + 0.5f * (boxSize - newH);
-
-						// 4) Apply: translate to origin, scale, then offset to center
-						for (auto& sgm : segs)
-						{
-							float x0 = (sgm.start.x - minX) * s + offX;
-							float y0 = (sgm.start.y - minY) * s + offY;
-							float x1 = (sgm.end.x - minX) * s + offX;
-							float y1 = (sgm.end.y - minY) * s + offY;
-
-							// 5) Clamp to obliterate tiny FP overshoots
-							sgm.start.x = saturate(x0);
-							sgm.start.y = saturate(y0);
-							sgm.end.x = saturate(x1);
-							sgm.end.y = saturate(y1);
-						}
-					}
-				};
-
-
-			ASCI_Letters font;
-
-			// SPACE
-			font.letters[' '] = {}; // no strokes; just advance when you render
+			// SPACE (U+0020)
+			M[' '] = {};
 
 			// A
-			{
-				auto& g = font.letters['A'];
-				push_grid_seg(g, 0, 0, 2, 6); // left leg
-				push_grid_seg(g, 4, 0, 2, 6); // right leg
-				push_grid_seg(g, 1, 3, 3, 3); // crossbar
-			}
-
+			{ auto& v = M['A']; g.seg(v, 0, 0, 2, 6); g.seg(v, 4, 0, 2, 6); g.seg(v, 1, 3, 3, 3); }
 			// B
-			{
-				auto& g = font.letters['B'];
-				push_grid_seg(g, 0, 0, 0, 6); // spine
-				// upper bowl
-				push_grid_seg(g, 0, 6, 3, 6);
-				push_grid_seg(g, 3, 6, 4, 5);
-				push_grid_seg(g, 4, 5, 3, 4);
-				push_grid_seg(g, 3, 4, 0, 4);
-				// lower bowl
-				push_grid_seg(g, 0, 4, 3, 4);
-				push_grid_seg(g, 3, 4, 4, 3);
-				push_grid_seg(g, 4, 3, 3, 2);
-				push_grid_seg(g, 3, 2, 0, 2);
-				push_grid_seg(g, 0, 2, 0, 0);
-			}
-
+			{ auto& v = M['B']; g.seg(v, 0, 0, 0, 6); g.seg(v, 0, 6, 3, 6); g.seg(v, 3, 6, 4, 5); g.seg(v, 4, 5, 3, 4); g.seg(v, 3, 4, 0, 4); g.seg(v, 0, 4, 0, 0); g.seg(v, 0, 0, 3, 0); g.seg(v, 3, 0, 4, 1); g.seg(v, 4, 1, 3, 2); g.seg(v, 3, 2, 0, 2); }
 			// C
-			{
-				auto& g = font.letters['C'];
-				push_grid_seg(g, 4, 5, 3, 6);
-				push_grid_seg(g, 3, 6, 1, 6);
-				push_grid_seg(g, 1, 6, 0, 5);
-				push_grid_seg(g, 0, 5, 0, 1);
-				push_grid_seg(g, 0, 1, 1, 0);
-				push_grid_seg(g, 1, 0, 3, 0);
-				push_grid_seg(g, 3, 0, 4, 1);
-			}
-
+			{ auto& v = M['C']; g.seg(v, 4, 5, 3, 6); g.seg(v, 3, 6, 1, 6); g.seg(v, 1, 6, 0, 5); g.seg(v, 0, 5, 0, 1); g.seg(v, 0, 1, 1, 0); g.seg(v, 1, 0, 3, 0); g.seg(v, 3, 0, 4, 1); }
 			// D
-			{
-				auto& g = font.letters['D'];
-				push_grid_seg(g, 0, 0, 0, 6);
-				push_grid_seg(g, 0, 6, 2, 6);
-				push_grid_seg(g, 2, 6, 4, 4);
-				push_grid_seg(g, 4, 4, 4, 2);
-				push_grid_seg(g, 4, 2, 2, 0);
-				push_grid_seg(g, 2, 0, 0, 0);
-			}
-
+			{ auto& v = M['D']; g.seg(v, 0, 0, 0, 6); g.seg(v, 0, 6, 2, 6); g.seg(v, 2, 6, 4, 4); g.seg(v, 4, 4, 4, 2); g.seg(v, 4, 2, 2, 0); g.seg(v, 2, 0, 0, 0); }
 			// E
-			{
-				auto& g = font.letters['E'];
-				push_grid_seg(g, 0, 0, 0, 6);
-				push_grid_seg(g, 0, 6, 4, 6);
-				push_grid_seg(g, 0, 3, 3, 3);
-				push_grid_seg(g, 0, 0, 4, 0);
-			}
-
+			{ auto& v = M['E']; g.seg(v, 0, 0, 0, 6); g.seg(v, 0, 6, 4, 6); g.seg(v, 0, 3, 3, 3); g.seg(v, 0, 0, 4, 0); }
 			// F
-			{
-				auto& g = font.letters['F'];
-				push_grid_seg(g, 0, 0, 0, 6);
-				push_grid_seg(g, 0, 6, 4, 6);
-				push_grid_seg(g, 0, 3, 3, 3);
-			}
-
+			{ auto& v = M['F']; g.seg(v, 0, 0, 0, 6); g.seg(v, 0, 6, 4, 6); g.seg(v, 0, 3, 3, 3); }
 			// G
-			{
-				auto& g = font.letters['G'];
-				// C-like outer
-				push_grid_seg(g, 4, 5, 3, 6);
-				push_grid_seg(g, 3, 6, 1, 6);
-				push_grid_seg(g, 1, 6, 0, 5);
-				push_grid_seg(g, 0, 5, 0, 1);
-				push_grid_seg(g, 0, 1, 1, 0);
-				push_grid_seg(g, 1, 0, 3, 0);
-				push_grid_seg(g, 3, 0, 4, 1);
-				// inner bar
-				push_grid_seg(g, 2, 3, 4, 3);
-				push_grid_seg(g, 4, 3, 4, 2);
-			}
-
+			{ auto& v = M['G']; g.seg(v, 4, 5, 3, 6); g.seg(v, 3, 6, 1, 6); g.seg(v, 1, 6, 0, 5); g.seg(v, 0, 5, 0, 1); g.seg(v, 0, 1, 1, 0); g.seg(v, 1, 0, 3, 0); g.seg(v, 3, 0, 4, 1); g.seg(v, 2, 3, 4, 3); g.seg(v, 4, 3, 4, 2); }
 			// H
-			{
-				auto& g = font.letters['H'];
-				push_grid_seg(g, 0, 0, 0, 6);
-				push_grid_seg(g, 4, 0, 4, 6);
-				push_grid_seg(g, 0, 3, 4, 3);
-			}
-
+			{ auto& v = M['H']; g.seg(v, 0, 0, 0, 6); g.seg(v, 4, 0, 4, 6); g.seg(v, 0, 3, 4, 3); }
 			// I
-			{
-				auto& g = font.letters['I'];
-				push_grid_seg(g, 1, 6, 3, 6);
-				push_grid_seg(g, 2, 6, 2, 0);
-				push_grid_seg(g, 1, 0, 3, 0);
-			}
-
+			{ auto& v = M['I']; g.seg(v, 1, 6, 3, 6); g.seg(v, 2, 6, 2, 0); g.seg(v, 1, 0, 3, 0); }
 			// J
-			{
-				auto& g = font.letters['J'];
-				push_grid_seg(g, 1, 6, 3, 6);
-				push_grid_seg(g, 2, 6, 2, 1);
-				push_grid_seg(g, 2, 1, 1, 0);
-				push_grid_seg(g, 1, 0, 0, 1);
-			}
-
+			{ auto& v = M['J']; g.seg(v, 1, 6, 3, 6); g.seg(v, 2, 6, 2, 1); g.seg(v, 2, 1, 1, 0); g.seg(v, 1, 0, 0, 1); }
 			// K
-			{
-				auto& g = font.letters['K'];
-				push_grid_seg(g, 0, 0, 0, 6);
-				push_grid_seg(g, 0, 3, 4, 6);
-				push_grid_seg(g, 0, 3, 4, 0);
-			}
-
+			{ auto& v = M['K']; g.seg(v, 0, 0, 0, 6); g.seg(v, 0, 3, 4, 6); g.seg(v, 0, 3, 4, 0); }
 			// L
-			{
-				auto& g = font.letters['L'];
-				push_grid_seg(g, 0, 6, 0, 0);
-				push_grid_seg(g, 0, 0, 4, 0);
-			}
-
+			{ auto& v = M['L']; g.seg(v, 0, 6, 0, 0); g.seg(v, 0, 0, 4, 0); }
 			// M
-			{
-				auto& g = font.letters['M'];
-				push_grid_seg(g, 0, 0, 0, 6);
-				push_grid_seg(g, 4, 0, 4, 6);
-				push_grid_seg(g, 0, 6, 2, 3);
-				push_grid_seg(g, 2, 3, 4, 6);
-			}
-
+			{ auto& v = M['M']; g.seg(v, 0, 0, 0, 6); g.seg(v, 4, 0, 4, 6); g.seg(v, 0, 6, 2, 3); g.seg(v, 2, 3, 4, 6); }
 			// N
-			{
-				auto& g = font.letters['N'];
-				push_grid_seg(g, 0, 0, 0, 6);
-				push_grid_seg(g, 4, 0, 4, 6);
-				push_grid_seg(g, 0, 6, 4, 0);
-			}
-
+			{ auto& v = M['N']; g.seg(v, 0, 0, 0, 6); g.seg(v, 4, 0, 4, 6); g.seg(v, 0, 6, 4, 0); }
 			// O
-			{
-				auto& g = font.letters['O'];
-				push_grid_seg(g, 1, 0, 3, 0);
-				push_grid_seg(g, 3, 0, 4, 1);
-				push_grid_seg(g, 4, 1, 4, 5);
-				push_grid_seg(g, 4, 5, 3, 6);
-				push_grid_seg(g, 3, 6, 1, 6);
-				push_grid_seg(g, 1, 6, 0, 5);
-				push_grid_seg(g, 0, 5, 0, 1);
-				push_grid_seg(g, 0, 1, 1, 0);
-			}
-
+			{ auto& v = M['O']; g.seg(v, 1, 0, 3, 0); g.seg(v, 3, 0, 4, 1); g.seg(v, 4, 1, 4, 5); g.seg(v, 4, 5, 3, 6); g.seg(v, 3, 6, 1, 6); g.seg(v, 1, 6, 0, 5); g.seg(v, 0, 5, 0, 1); g.seg(v, 0, 1, 1, 0); }
 			// P
-			{
-				auto& g = font.letters['P'];
-				push_grid_seg(g, 0, 0, 0, 6);
-				push_grid_seg(g, 0, 6, 3, 6);
-				push_grid_seg(g, 3, 6, 4, 5);
-				push_grid_seg(g, 4, 5, 3, 4);
-				push_grid_seg(g, 3, 4, 0, 4);
-			}
-
+			{ auto& v = M['P']; g.seg(v, 0, 0, 0, 6); g.seg(v, 0, 6, 3, 6); g.seg(v, 3, 6, 4, 5); g.seg(v, 4, 5, 3, 4); g.seg(v, 3, 4, 0, 4); }
 			// Q
-			{
-				auto& g = font.letters['Q'];
-				// O
-				push_grid_seg(g, 1, 0, 3, 0);
-				push_grid_seg(g, 3, 0, 4, 1);
-				push_grid_seg(g, 4, 1, 4, 5);
-				push_grid_seg(g, 4, 5, 3, 6);
-				push_grid_seg(g, 3, 6, 1, 6);
-				push_grid_seg(g, 1, 6, 0, 5);
-				push_grid_seg(g, 0, 5, 0, 1);
-				push_grid_seg(g, 0, 1, 1, 0);
-				// tail
-				push_grid_seg(g, 2, 2, 4, 0);
-			}
-
+			{ auto& v = M['Q']; g.seg(v, 1, 0, 3, 0); g.seg(v, 3, 0, 4, 1); g.seg(v, 4, 1, 4, 5); g.seg(v, 4, 5, 3, 6); g.seg(v, 3, 6, 1, 6); g.seg(v, 1, 6, 0, 5); g.seg(v, 0, 5, 0, 1); g.seg(v, 0, 1, 1, 0); g.seg(v, 2, 2, 4, 0); }
 			// R
-			{
-				auto& g = font.letters['R'];
-				push_grid_seg(g, 0, 0, 0, 6);
-				push_grid_seg(g, 0, 6, 3, 6);
-				push_grid_seg(g, 3, 6, 4, 5);
-				push_grid_seg(g, 4, 5, 3, 4);
-				push_grid_seg(g, 3, 4, 0, 4);
-				push_grid_seg(g, 0, 4, 4, 0); // leg
-			}
-
+			{ auto& v = M['R']; g.seg(v, 0, 0, 0, 6); g.seg(v, 0, 6, 3, 6); g.seg(v, 3, 6, 4, 5); g.seg(v, 4, 5, 3, 4); g.seg(v, 3, 4, 0, 4); g.seg(v, 0, 4, 4, 0); }
 			// S
-			{
-				auto& g = font.letters['S'];
-				push_grid_seg(g, 4, 5, 3, 6);
-				push_grid_seg(g, 3, 6, 1, 6);
-				push_grid_seg(g, 1, 6, 0, 5);
-				push_grid_seg(g, 0, 5, 1, 4);
-				push_grid_seg(g, 1, 4, 3, 2);
-				push_grid_seg(g, 3, 2, 4, 1);
-				push_grid_seg(g, 4, 1, 3, 0);
-				push_grid_seg(g, 3, 0, 1, 0);
-				push_grid_seg(g, 1, 0, 0, 1);
-			}
-
+			{ auto& v = M['S']; g.seg(v, 4, 5, 3, 6); g.seg(v, 3, 6, 1, 6); g.seg(v, 1, 6, 0, 5); g.seg(v, 0, 5, 1, 4); g.seg(v, 1, 4, 3, 2); g.seg(v, 3, 2, 4, 1); g.seg(v, 4, 1, 3, 0); g.seg(v, 3, 0, 1, 0); g.seg(v, 1, 0, 0, 1); }
 			// T
-			{
-				auto& g = font.letters['T'];
-				push_grid_seg(g, 0, 6, 4, 6);
-				push_grid_seg(g, 2, 6, 2, 0);
-			}
-
+			{ auto& v = M['T']; g.seg(v, 0, 6, 4, 6); g.seg(v, 2, 6, 2, 0); }
 			// U
-			{
-				auto& g = font.letters['U'];
-				push_grid_seg(g, 0, 6, 0, 1);
-				push_grid_seg(g, 0, 1, 1, 0);
-				push_grid_seg(g, 1, 0, 3, 0);
-				push_grid_seg(g, 3, 0, 4, 1);
-				push_grid_seg(g, 4, 1, 4, 6);
-			}
-
+			{ auto& v = M['U']; g.seg(v, 0, 6, 0, 1); g.seg(v, 0, 1, 1, 0); g.seg(v, 1, 0, 3, 0); g.seg(v, 3, 0, 4, 1); g.seg(v, 4, 1, 4, 6); }
 			// V
-			{
-				auto& g = font.letters['V'];
-				push_grid_seg(g, 0, 6, 2, 0);
-				push_grid_seg(g, 4, 6, 2, 0);
-			}
-
+			{ auto& v = M['V']; g.seg(v, 0, 6, 2, 0); g.seg(v, 4, 6, 2, 0); }
 			// W
-			{
-				auto& g = font.letters['W'];
-				push_grid_seg(g, 0, 6, 1, 0);
-				push_grid_seg(g, 1, 0, 2, 3);
-				push_grid_seg(g, 2, 3, 3, 0);
-				push_grid_seg(g, 3, 0, 4, 6);
-			}
-
+			{ auto& v = M['W']; g.seg(v, 0, 6, 1, 0); g.seg(v, 1, 0, 2, 3); g.seg(v, 2, 3, 3, 0); g.seg(v, 3, 0, 4, 6); }
 			// X
-			{
-				auto& g = font.letters['X'];
-				push_grid_seg(g, 0, 6, 4, 0);
-				push_grid_seg(g, 0, 0, 4, 6);
-			}
-
+			{ auto& v = M['X']; g.seg(v, 0, 6, 4, 0); g.seg(v, 0, 0, 4, 6); }
 			// Y
-			{
-				auto& g = font.letters['Y'];
-				push_grid_seg(g, 0, 6, 2, 3);
-				push_grid_seg(g, 4, 6, 2, 3);
-				push_grid_seg(g, 2, 3, 2, 0);
-			}
-
+			{ auto& v = M['Y']; g.seg(v, 0, 6, 2, 3); g.seg(v, 4, 6, 2, 3); g.seg(v, 2, 3, 2, 0); }
 			// Z
+			{ auto& v = M['Z']; g.seg(v, 0, 6, 4, 6); g.seg(v, 4, 6, 0, 0); g.seg(v, 0, 0, 4, 0); }
+
+			// a..z reuse A..Z strokes by default (stick font is case-agnostic visually)
+			for (char c = 'A'; c <= 'Z'; ++c)
+				M[uint32_t(c - 'A' + 'a')] = M[uint32_t(c)];
+		}
+
+		inline void build_digits_0_to_9(std::unordered_map<uint32_t, std::vector<ASCI_Letters::Line2d>>& M, const Grid& g)
+		{
+			using L = ASCI_Letters::Line2d;
+			// 0
+			{ auto& v = M['0']; g.seg(v, 1, 0, 3, 0); g.seg(v, 3, 0, 4, 1); g.seg(v, 4, 1, 4, 5); g.seg(v, 4, 5, 3, 6); g.seg(v, 3, 6, 1, 6); g.seg(v, 1, 6, 0, 5); g.seg(v, 0, 5, 0, 1); g.seg(v, 0, 1, 1, 0); }
+			// 1
+			{ auto& v = M['1']; g.seg(v, 2, 6, 2, 0); g.seg(v, 1, 1, 2, 0); g.seg(v, 2, 0, 3, 1); }
+			// 2
+			{ auto& v = M['2']; g.seg(v, 0, 5, 1, 6); g.seg(v, 1, 6, 3, 6); g.seg(v, 3, 6, 4, 5); g.seg(v, 4, 5, 0, 0); g.seg(v, 0, 0, 4, 0); }
+			// 3
+			{ auto& v = M['3']; g.seg(v, 0, 5, 1, 6); g.seg(v, 1, 6, 3, 6); g.seg(v, 3, 6, 4, 5); g.seg(v, 4, 5, 3, 4); g.seg(v, 3, 4, 1, 4); g.seg(v, 1, 4, 3, 4); g.seg(v, 3, 4, 4, 3); g.seg(v, 4, 3, 3, 2); g.seg(v, 3, 2, 1, 2); g.seg(v, 1, 2, 0, 1); }
+			// 4
+			{ auto& v = M['4']; g.seg(v, 3, 6, 3, 0); g.seg(v, 0, 3, 4, 3); g.seg(v, 0, 3, 3, 6); }
+			// 5
+			{ auto& v = M['5']; g.seg(v, 4, 6, 0, 6); g.seg(v, 0, 6, 0, 4); g.seg(v, 0, 4, 3, 4); g.seg(v, 3, 4, 4, 3); g.seg(v, 4, 3, 4, 1); g.seg(v, 4, 1, 3, 0); g.seg(v, 3, 0, 1, 0); }
+			// 6
+			{ auto& v = M['6']; g.seg(v, 3, 6, 1, 6); g.seg(v, 1, 6, 0, 5); g.seg(v, 0, 5, 0, 1); g.seg(v, 0, 1, 1, 0); g.seg(v, 1, 0, 3, 0); g.seg(v, 3, 0, 4, 1); g.seg(v, 4, 1, 3, 2); g.seg(v, 3, 2, 0, 2); }
+			// 7
+			{ auto& v = M['7']; g.seg(v, 0, 6, 4, 6); g.seg(v, 4, 6, 1, 0); }
+			// 8
+			{ auto& v = M['8']; g.seg(v, 1, 0, 3, 0); g.seg(v, 3, 0, 4, 1); g.seg(v, 4, 1, 3, 2); g.seg(v, 3, 2, 1, 2); g.seg(v, 1, 2, 0, 1); g.seg(v, 0, 1, 1, 0); g.seg(v, 1, 2, 3, 2); g.seg(v, 3, 2, 4, 3); g.seg(v, 4, 3, 3, 4); g.seg(v, 3, 4, 1, 4); g.seg(v, 1, 4, 0, 3); g.seg(v, 0, 3, 1, 2); g.seg(v, 1, 4, 0, 5); g.seg(v, 0, 5, 1, 6); g.seg(v, 1, 6, 3, 6); g.seg(v, 3, 6, 4, 5); g.seg(v, 4, 5, 3, 4); }
+			// 9
+			{ auto& v = M['9']; g.seg(v, 1, 0, 3, 0); g.seg(v, 3, 0, 4, 1); g.seg(v, 4, 1, 4, 5); g.seg(v, 4, 5, 3, 6); g.seg(v, 3, 6, 1, 6); g.seg(v, 1, 6, 0, 5); g.seg(v, 0, 5, 1, 4); g.seg(v, 1, 4, 4, 4); }
+		}
+
+		inline void build_common_punct(std::unordered_map<uint32_t, std::vector<ASCI_Letters::Line2d>>& M, const Grid& g)
+		{
+			using L = ASCI_Letters::Line2d;
+			// Basic punctuation
+			{ auto& v = M['-']; g.seg(v, 1, 3, 3, 3); }
+			{ auto& v = M['_']; g.seg(v, 0, 0, 4, 0); }
+			{ auto& v = M['=']; g.seg(v, 1, 4, 3, 4); g.seg(v, 1, 2, 3, 2); }
+			{ auto& v = M['+']; g.seg(v, 2, 5, 2, 1); g.seg(v, 1, 3, 3, 3); }
+			{ auto& v = M['/']; g.seg(v, 0, 0, 4, 6); }
+			{ auto& v = M['\\']; g.seg(v, 0, 6, 4, 0); }
+			{ auto& v = M['|']; g.seg(v, 2, 6, 2, 0); }
+			{ auto& v = M['*']; g.seg(v, 2, 5, 2, 1); g.seg(v, 1, 4, 3, 2); g.seg(v, 3, 4, 1, 2); }
+			{ auto& v = M['!']; g.seg(v, 2, 6, 2, 2); g.seg(v, 2, 0, 2, 0); }
+			{ auto& v = M['?']; g.seg(v, 0, 5, 1, 6); g.seg(v, 1, 6, 3, 6); g.seg(v, 3, 6, 4, 5); g.seg(v, 4, 5, 3, 4); g.seg(v, 3, 4, 2, 3); g.seg(v, 2, 3, 2, 2); g.seg(v, 2, 0, 2, 0); }
+			{ auto& v = M['.']; g.seg(v, 2, 0, 2, 0); }
+			{ auto& v = M[',']; g.seg(v, 2, 0, 2, 0); g.seg(v, 2, 0, 1, -1); }
+			{ auto& v = M[':']; g.seg(v, 2, 5, 2, 5); g.seg(v, 2, 1, 2, 1); }
+			{ auto& v = M[';']; g.seg(v, 2, 5, 2, 5); g.seg(v, 2, 1, 2, 1); g.seg(v, 2, 1, 1, 0); }
+			{ auto& v = M['"']; g.seg(v, 1, 6, 1, 5); g.seg(v, 3, 6, 3, 5); }
+			{ auto& v = M['\'']; g.seg(v, 2, 6, 2, 5); }
+			{ auto& v = M['(']; g.seg(v, 3, 6, 2, 5); g.seg(v, 2, 5, 1, 3); g.seg(v, 1, 3, 2, 1); g.seg(v, 2, 1, 3, 0); }
+			{ auto& v = M[')']; g.seg(v, 1, 6, 2, 5); g.seg(v, 2, 5, 3, 3); g.seg(v, 3, 3, 2, 1); g.seg(v, 2, 1, 1, 0); }
+			{ auto& v = M['[']; g.seg(v, 3, 6, 1, 6); g.seg(v, 1, 6, 1, 0); g.seg(v, 1, 0, 3, 0); }
+			{ auto& v = M[']']; g.seg(v, 1, 6, 3, 6); g.seg(v, 3, 6, 3, 0); g.seg(v, 3, 0, 1, 0); }
+			{ auto& v = M['{']; g.seg(v, 3, 6, 2, 6); g.seg(v, 2, 6, 1, 5); g.seg(v, 1, 5, 2, 4); g.seg(v, 2, 4, 1, 3); g.seg(v, 1, 3, 2, 2); g.seg(v, 2, 2, 1, 1); g.seg(v, 1, 1, 2, 0); g.seg(v, 2, 0, 3, 0); }
+			{ auto& v = M['}']; g.seg(v, 1, 6, 2, 6); g.seg(v, 2, 6, 3, 5); g.seg(v, 3, 5, 2, 4); g.seg(v, 2, 4, 3, 3); g.seg(v, 3, 3, 2, 2); g.seg(v, 2, 2, 3, 1); g.seg(v, 3, 1, 2, 0); g.seg(v, 2, 0, 1, 0); }
+			{ auto& v = M['<']; g.seg(v, 3, 6, 1, 3); g.seg(v, 1, 3, 3, 0); }
+			{ auto& v = M['>']; g.seg(v, 1, 6, 3, 3); g.seg(v, 3, 3, 1, 0); }
+			{ auto& v = M['@']; g.seg(v, 1, 0, 3, 0); g.seg(v, 3, 0, 4, 1); g.seg(v, 4, 1, 4, 5); g.seg(v, 4, 5, 3, 6); g.seg(v, 3, 6, 1, 6); g.seg(v, 1, 6, 0, 5); g.seg(v, 0, 5, 0, 1); g.seg(v, 0, 1, 1, 0); g.seg(v, 1, 3, 3, 3); g.seg(v, 3, 3, 3, 1); }
+			{ auto& v = M['#']; g.seg(v, 1, 0, 1, 6); g.seg(v, 3, 0, 3, 6); g.seg(v, 0, 4, 4, 4); g.seg(v, 0, 2, 4, 2); }
+			{ auto& v = M['$']; g.seg(v, 2, 6, 2, 0); g.seg(v, 4, 5, 3, 6); g.seg(v, 3, 6, 1, 6); g.seg(v, 1, 6, 0, 5); g.seg(v, 0, 5, 1, 4); g.seg(v, 1, 4, 3, 2); g.seg(v, 3, 2, 4, 1); g.seg(v, 4, 1, 3, 0); g.seg(v, 3, 0, 1, 0); g.seg(v, 1, 0, 0, 1); }
+			{ auto& v = M['%']; g.seg(v, 0, 0, 4, 6); g.seg(v, 0, 5, 1, 6); g.seg(v, 1, 6, 2, 5); g.seg(v, 2, 5, 1, 4); g.seg(v, 3, 1, 4, 0); g.seg(v, 4, 0, 3, -1); g.seg(v, 3, -1, 2, 0); }
+			{ auto& v = M['^']; g.seg(v, 1, 4, 2, 5); g.seg(v, 2, 5, 3, 4); }
+			{ auto& v = M['`']; g.seg(v, 2, 5, 3, 4); }
+			{ auto& v = M['~']; g.seg(v, 0, 4, 1, 5); g.seg(v, 1, 5, 2, 4); g.seg(v, 2, 4, 3, 5); g.seg(v, 3, 5, 4, 4); }
+			{ auto& v = M['&']; g.seg(v, 3, 0, 1, 2); g.seg(v, 1, 2, 3, 4); g.seg(v, 3, 4, 4, 3); g.seg(v, 4, 3, 2, 1); g.seg(v, 2, 1, 1, 0); }
+			{ auto& v = M['~']; g.seg(v, 0, 4, 1, 5); g.seg(v, 1, 5, 2, 4); g.seg(v, 2, 4, 3, 5); g.seg(v, 3, 5, 4, 4); }
+		}
+
+		// ---- Composition helpers for extended letters ----
+		inline void add_with_top_component(ASCI_Letters& F, uint32_t base_cp, uint32_t out_cp,
+			const std::vector<ASCI_Letters::Line2d>& component,
+			float scale_rel = 0.18f, float gap = 0.02f)
+		{
+			auto it = F.letters.find(base_cp);
+			if (it == F.letters.end()) return;
+			auto base = it->second; // copy
+			auto placed = place_component(base, component, AttachWhere::TopCenter, scale_rel, gap);
+			append(base, placed);
+			F.letters[out_cp] = std::move(base);
+		}
+
+		inline void add_with_bottom_component(ASCI_Letters& F, uint32_t base_cp, uint32_t out_cp,
+			const std::vector<ASCI_Letters::Line2d>& component,
+			float scale_rel = 0.18f, float gap = 0.02f)
+		{
+			auto it = F.letters.find(base_cp);
+			if (it == F.letters.end()) return;
+			auto base = it->second; // copy
+			auto placed = place_component(base, component, AttachWhere::BottomCenter, scale_rel, gap);
+			append(base, placed);
+			F.letters[out_cp] = std::move(base);
+		}
+
+		// ---- Public: build full ASCII + a few extended examples ----
+		inline ASCI_Letters make_full_ascii_stick_font()
+		{
+			ASCI_Letters font;
+			Grid g; g.W = 5; g.H = 8; // 5x7 base with one extra row for accents
+
+			Components C; C.build(g);
+
+			// Base Latin uppercase + lowercase (reused)
+			build_letters_A_to_Z(font.letters, g);
+			// Digits & punctuation
+			build_digits_0_to_9(font.letters, g);
+			build_common_punct(font.letters, g);
+
+			// --- Examples of extended letters built by composition ---
+			// Caron (hek) variants frequently used in Slovene:      
+			if (C.comp.count("caron"))
 			{
-				auto& g = font.letters['Z'];
-				push_grid_seg(g, 0, 6, 4, 6);
-				push_grid_seg(g, 4, 6, 0, 0);
-				push_grid_seg(g, 0, 0, 4, 0);
+				const auto& caron = C.comp["caron"];
+				add_with_top_component(font, 'C', 0x010C /**/, caron); // 
+				add_with_top_component(font, 'c', 0x010D /**/, caron);
+				add_with_top_component(font, 'Z', 0x017D /**/, caron);
+				add_with_top_component(font, 'z', 0x017E /**/, caron);
+				add_with_top_component(font, 'S', 0x0160 /**/, caron);
+				add_with_top_component(font, 's', 0x0161 /**/, caron);
+			}
+			// , , ,  as examples
+			if (C.comp.count("ring")) { add_with_top_component(font, 'A', 0x00C5/**/, C.comp["ring"], 0.2f); add_with_top_component(font, 'a', 0x00E5/**/, C.comp["ring"], 0.2f); }
+			if (C.comp.count("dieresis")) { add_with_top_component(font, 'A', 0x00C4/**/, C.comp["dieresis"], 0.18f); add_with_top_component(font, 'O', 0x00D6/**/, C.comp["dieresis"], 0.18f); add_with_top_component(font, 'U', 0x00DC/**/, C.comp["dieresis"], 0.18f); }
+			if (C.comp.count("acute")) { add_with_top_component(font, 'E', 0x00C9/**/, C.comp["acute"], 0.2f); add_with_top_component(font, 'e', 0x00E9/**/, C.comp["acute"], 0.2f); }
+			if (C.comp.count("grave")) { add_with_top_component(font, 'E', 0x00C8/**/, C.comp["grave"], 0.2f); add_with_top_component(font, 'e', 0x00E8/**/, C.comp["grave"], 0.2f); }
+
+			//  = O with a slash through it
+			if (C.comp.count("slash_diag"))
+			{
+				auto slashO = font.letters['O'];
+				auto placed = place_component(slashO, C.comp["slash_diag"], AttachWhere::ThroughDiag, 1.0f, 0.0f);
+				append(slashO, placed);
+				font.letters[0x00D8/**/] = std::move(slashO);
 			}
 
-			// Lowercase = reuse uppercase strokes
-			for (char c = 'A'; c <= 'Z'; ++c)
-				font.letters[static_cast<int>(c - 'A' + 'a')] = font.letters[c];
+			// Greek sigma ()  simplified stick form example (lowercase sigma)
+			{
+				auto& v = font.letters[0x03C3/**/];
+				g.seg(v, 1, 2, 1, 1); g.seg(v, 1, 1, 2, 0); g.seg(v, 2, 0, 3, 0); g.seg(v, 3, 0, 4, 1);
+				g.seg(v, 4, 1, 4, 2); g.seg(v, 4, 2, 3, 3); g.seg(v, 3, 3, 2, 3); g.seg(v, 2, 3, 1, 2);
+			}
 
-
-			normalize_letters(font);
-
+			// Finish: normalize every glyph to [0,1]^2 with a small padding.
+			normalize_letters(font, 0.04f);
 			return font;
 		}
 	}
+
 	
 	
 
@@ -449,7 +487,7 @@ namespace Universe_
 	}
 	
 	
-
+	
 	void init(Scene_::Scene& scene, const int clip_number, const int clip_fps, const int clip_length_seconds, const bool capture, const bool capture_png, const bool capture_bmp)
 	{
 		const bool enable_shader_10_unit_cube = true;
@@ -512,13 +550,14 @@ namespace Universe_
 		{
 			std::cout << "enable_ASCII_letters : " << enable_ASCII_letters << "\n";
 
-			ASCI_Letters letters =  ASCI_Letters_::make_ascii_letters();
+			ASCI_Letters_::ASCI_Letters letters = ASCI_Letters_::make_full_ascii_stick_font();
+			
 			
 
 			Lines_shader_21 lines;
 
 			{
-				auto draw_line_2d = [&lines](float x0, float y0, float x1, float y1)
+				auto draw_line_2d = [&lines](float x0, float y0, float x1, float y1, Vec3 offset_end)
 					{
 						Lines_shader_21::Line& line = lines.add_line();
 
@@ -530,7 +569,7 @@ namespace Universe_
 						line.y1.start = y1;
 						line.z1.start = 0.5;
 
-						line.thickness.start = 0.01f;
+						line.thickness.start = 0.001f;
 
 						line.rgb_t0.x = Random::generate_random_float_0_to_1();
 						line.rgb_t0.y = Random::generate_random_float_0_to_1();
@@ -540,14 +579,29 @@ namespace Universe_
 						line.rgb_t1.y = Random::generate_random_float_0_to_1();
 						line.rgb_t1.z = Random::generate_random_float_0_to_1();
 
-						line.number_of_cubes = 1000;
+						line.number_of_cubes = 100;
 
-						line.thickness.end = 0.01f;
+						line.thickness.end = 0.001f;
+
+						line.copy_start_to_end();
+
+						line.x0.end += offset_end.x;
+						line.y0.end += offset_end.y;
+						line.z0.end += offset_end.z;
+
+						line.x1.end += offset_end.x;
+						line.y1.end += offset_end.y;
+						line.z1.end += offset_end.z;
 
 						bug_fix_line_position(line.x0.start, line.y0.start, line.z0.start);
 						bug_fix_line_position(line.x1.start, line.y1.start, line.z1.start);
 
-						line.copy_start_to_end();
+						bug_fix_line_position(line.x0.end, line.y0.end, line.z0.end);
+						bug_fix_line_position(line.x1.end, line.y1.end, line.z1.end);
+
+						
+
+						
 
 					};
 
@@ -579,12 +633,51 @@ namespace Universe_
 				// Z ok
 				// Q ok
 
+
+				std::vector<uint32_t> letters_to_write = {
+					'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+					'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
+					'K', 'L', 'M', 'N', 'O', 'P', 'R', 'S', ' ', 'T',
+					'N', 'I', 'C', 'E', ' ', ' ', '2', '0', '2', '5',
+					'E', 'X', 'P', 'L', 'O', 'R', 'E', ' ', ' ', ' ',
+					'-', '+', '*', '/', '?', '!', '#', '$', '%', '=',
+					'G', 'B', 'Q', 'Q', 'Z', 'U', '<', '>', 'Y', 'W'
+				};
 				
+			
 				
-				for (auto& l : letters.letters.at('1'))
+				for (int i = 0; i < letters_to_write.size(); i++)
 				{
-					draw_line_2d(l.start.x, l.start.y, l.end.x, l.end.y);
+					int letter_position_x = i % 10;
+					int letter_position_y = 9 - (i / 10);
+
+
+					float letter_size = 0.1;
+
+					for (auto& l : letters.letters.at(letters_to_write[i]))
+					{
+						
+						Vec3 offset = Vec3(0.0, 0.0, 0.5);
+
+						draw_line_2d
+						(
+							letter_size * l.start.x + letter_size * float(letter_position_x),
+							letter_size * l.start.y  + letter_size * float(letter_position_y),
+							letter_size * l.end.x + letter_size * float(letter_position_x) ,
+							letter_size * l.end.y + letter_size * float(letter_position_y),
+							offset
+						);
+					}
 				}
+
+				
+
+				/*for (auto& l : letters.letters.at('2'))
+				{
+					draw_line_2d(l.start.x + 1.0, l.start.y, l.end.x + 1.0, l.end.y);
+				}*/
+
+				
 				
 
 
