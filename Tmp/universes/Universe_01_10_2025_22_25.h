@@ -1082,7 +1082,7 @@ namespace Universe_
 		{
 			std::cout << "clip : " << clip.clip_number << "\n";
 
-			clip.capture = false;
+			clip.capture = true;
 			clip.capture_png = true;
 			clip.capture_bmp = false;
 
