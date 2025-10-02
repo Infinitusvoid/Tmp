@@ -88,6 +88,28 @@ namespace Universe_
 // To extend (e.g., add , , ): see the examples near the end of make_full_ascii_stick_font().
 // The builder composes base Latin letters with accent components, then normalizes.
 
+#pragma once
+#include <unordered_map>
+#include <vector>
+#include <string>
+#include <limits>
+#include <algorithm>
+#include <cstdint>
+
+// This header builds a compact, grid-based, line-segment vector font.
+// Goals:
+//  - Every glyph fits in the [0,1]x[0,1] box (post-normalization).
+//  - Full ASCII coverage (letters, digits, common punctuation).
+//  - Extensible builder: compose new letters from reusable components (e.g., caron, ring, acute).
+//  - Keep compatibility with your existing ASCI_Letters::Line2d and map<int, std::vector<Line2d>> style.
+//
+// Usage:
+//   auto font = ASCI_Letters_::make_full_ascii_stick_font();
+//   // render each glyph's segments in [0,1]x[0,1]
+//
+// To extend (e.g., add , , ): see the examples near the end of make_full_ascii_stick_font().
+// The builder composes base Latin letters with accent components, then normalizes.
+
 	namespace ASCI_Letters_
 	{
 		// ---- Assume these exist in your project ----
@@ -276,7 +298,15 @@ namespace Universe_
 			// A
 			{ auto& v = M['A']; g.seg(v, 0, 0, 2, 6); g.seg(v, 4, 0, 2, 6); g.seg(v, 1, 3, 3, 3); }
 			// B
-			{ auto& v = M['B']; g.seg(v, 0, 0, 0, 6); g.seg(v, 0, 6, 3, 6); g.seg(v, 3, 6, 4, 5); g.seg(v, 4, 5, 3, 4); g.seg(v, 3, 4, 0, 4); g.seg(v, 0, 4, 0, 0); g.seg(v, 0, 0, 3, 0); g.seg(v, 3, 0, 4, 1); g.seg(v, 4, 1, 3, 2); g.seg(v, 3, 2, 0, 2); }
+			{
+				auto& v = M['B'];
+				// spine
+				g.seg(v, 0, 0, 0, 6);
+				// upper bowl  fuller, less boxy
+				g.seg(v, 0, 6, 3, 6); g.seg(v, 3, 6, 4, 5); g.seg(v, 4, 5, 4, 4); g.seg(v, 4, 4, 3, 3); g.seg(v, 3, 3, 0, 3);
+				// lower bowl  mirrors upper, balanced
+				g.seg(v, 0, 3, 3, 3); g.seg(v, 3, 3, 4, 2); g.seg(v, 4, 2, 4, 1); g.seg(v, 4, 1, 3, 0); g.seg(v, 3, 0, 0, 0);
+			}
 			// C
 			{ auto& v = M['C']; g.seg(v, 4, 5, 3, 6); g.seg(v, 3, 6, 1, 6); g.seg(v, 1, 6, 0, 5); g.seg(v, 0, 5, 0, 1); g.seg(v, 0, 1, 1, 0); g.seg(v, 1, 0, 3, 0); g.seg(v, 3, 0, 4, 1); }
 			// D
@@ -341,7 +371,15 @@ namespace Universe_
 			// 2
 			{ auto& v = M['2']; g.seg(v, 0, 5, 1, 6); g.seg(v, 1, 6, 3, 6); g.seg(v, 3, 6, 4, 5); g.seg(v, 4, 5, 0, 0); g.seg(v, 0, 0, 4, 0); }
 			// 3
-			{ auto& v = M['3']; g.seg(v, 0, 5, 1, 6); g.seg(v, 1, 6, 3, 6); g.seg(v, 3, 6, 4, 5); g.seg(v, 4, 5, 3, 4); g.seg(v, 3, 4, 1, 4); g.seg(v, 1, 4, 3, 4); g.seg(v, 3, 4, 4, 3); g.seg(v, 4, 3, 3, 2); g.seg(v, 3, 2, 1, 2); g.seg(v, 1, 2, 0, 1); }
+			{
+				auto& v = M['3'];
+				// top arc
+				g.seg(v, 0, 5, 1, 6); g.seg(v, 1, 6, 3, 6); g.seg(v, 3, 6, 4, 5);
+				// middle bridge with gentle S-kink
+				g.seg(v, 4, 5, 3, 4); g.seg(v, 3, 4, 2, 3); g.seg(v, 2, 3, 3, 2); g.seg(v, 3, 2, 4, 1);
+				// bottom arc
+				g.seg(v, 4, 1, 3, 0); g.seg(v, 3, 0, 1, 0); g.seg(v, 1, 0, 0, 1);
+			}
 			// 4
 			{ auto& v = M['4']; g.seg(v, 3, 6, 3, 0); g.seg(v, 0, 3, 4, 3); g.seg(v, 0, 3, 3, 6); }
 			// 5
@@ -351,7 +389,15 @@ namespace Universe_
 			// 7
 			{ auto& v = M['7']; g.seg(v, 0, 6, 4, 6); g.seg(v, 4, 6, 1, 0); }
 			// 8
-			{ auto& v = M['8']; g.seg(v, 1, 0, 3, 0); g.seg(v, 3, 0, 4, 1); g.seg(v, 4, 1, 3, 2); g.seg(v, 3, 2, 1, 2); g.seg(v, 1, 2, 0, 1); g.seg(v, 0, 1, 1, 0); g.seg(v, 1, 2, 3, 2); g.seg(v, 3, 2, 4, 3); g.seg(v, 4, 3, 3, 4); g.seg(v, 3, 4, 1, 4); g.seg(v, 1, 4, 0, 3); g.seg(v, 0, 3, 1, 2); g.seg(v, 1, 4, 0, 5); g.seg(v, 0, 5, 1, 6); g.seg(v, 1, 6, 3, 6); g.seg(v, 3, 6, 4, 5); g.seg(v, 4, 5, 3, 4); }
+			{
+				auto& v = M['8'];
+				// upper loop
+				g.seg(v, 1, 4, 3, 4); g.seg(v, 3, 4, 4, 5); g.seg(v, 4, 5, 3, 6); g.seg(v, 3, 6, 1, 6); g.seg(v, 1, 6, 0, 5); g.seg(v, 0, 5, 1, 4);
+				// waist (subtle crossbar helps readability at small sizes)
+				g.seg(v, 1, 3, 3, 3);
+				// lower loop
+				g.seg(v, 1, 2, 3, 2); g.seg(v, 3, 2, 4, 1); g.seg(v, 4, 1, 3, 0); g.seg(v, 3, 0, 1, 0); g.seg(v, 1, 0, 0, 1); g.seg(v, 0, 1, 1, 2);
+			}
 			// 9
 			{ auto& v = M['9']; g.seg(v, 1, 0, 3, 0); g.seg(v, 3, 0, 4, 1); g.seg(v, 4, 1, 4, 5); g.seg(v, 4, 5, 3, 6); g.seg(v, 3, 6, 1, 6); g.seg(v, 1, 6, 0, 5); g.seg(v, 0, 5, 1, 4); g.seg(v, 1, 4, 4, 4); }
 		}
@@ -439,12 +485,13 @@ namespace Universe_
 			if (C.comp.count("caron"))
 			{
 				const auto& caron = C.comp["caron"];
-				add_with_top_component(font, 'C', 0x010C /**/, caron); // 
-				add_with_top_component(font, 'c', 0x010D /**/, caron);
-				add_with_top_component(font, 'Z', 0x017D /**/, caron);
-				add_with_top_component(font, 'z', 0x017E /**/, caron);
-				add_with_top_component(font, 'S', 0x0160 /**/, caron);
-				add_with_top_component(font, 's', 0x0161 /**/, caron);
+				// Nicely centered caron with a touch more scale and a small gap
+				add_with_top_component(font, 'C', 0x010C /**/, caron, 0.22f, 0.03f);
+				add_with_top_component(font, 'c', 0x010D /**/, caron, 0.22f, 0.03f);
+				add_with_top_component(font, 'S', 0x0160 /**/, caron, 0.22f, 0.03f);
+				add_with_top_component(font, 's', 0x0161 /**/, caron, 0.22f, 0.03f);
+				add_with_top_component(font, 'Z', 0x017D /**/, caron, 0.22f, 0.03f);
+				add_with_top_component(font, 'z', 0x017E /**/, caron, 0.22f, 0.03f);
 			}
 			// , , ,  as examples
 			if (C.comp.count("ring")) { add_with_top_component(font, 'A', 0x00C5/**/, C.comp["ring"], 0.2f); add_with_top_component(font, 'a', 0x00E5/**/, C.comp["ring"], 0.2f); }
@@ -473,6 +520,7 @@ namespace Universe_
 			return font;
 		}
 	}
+
 
 	
 	
