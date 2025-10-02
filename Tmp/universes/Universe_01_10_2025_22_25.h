@@ -1,6 +1,9 @@
 
 #include "../vibes/Vibe_01_10_2025_11_21.h"
 
+#include <unordered_map>
+#include <limits>
+
 namespace Universe_
 {
 	using namespace Vibe_01_10_2025_11_21_;
@@ -60,7 +63,379 @@ namespace Universe_
 	}
 	
 	
-	
+	struct ASCI_Letters
+	{
+		struct Line2d
+		{
+			Vec2 start;
+			Vec2 end;
+		};
+
+
+		std::unordered_map<int, std::vector<Line2d>> letters;
+	};
+
+	namespace ASCI_Letters_
+	{
+		
+
+		
+
+		// Build a simple stick font (A–Z). Coordinates are on a 5×7 grid (0..4, 0..6).
+		ASCI_Letters make_ascii_letters()
+		{
+
+			// Helper: push a grid-aligned segment (x,y are integers on a 0..4 by 0..6 grid).
+			auto push_grid_seg = [](
+				std::vector<ASCI_Letters::Line2d>& out,
+				int x1, int y1, int x2, int y2
+				)
+				{
+					constexpr float sx = 1.0f / 4.0f; // grid width 4
+					constexpr float sy = 1.0f / 6.0f; // grid height 6
+					out.push_back(ASCI_Letters::Line2d{
+						Vec2{ x1 * sx, y1 * sy },
+						Vec2{ x2 * sx, y2 * sy }
+						});
+				};
+
+			auto normalize_letters = [](ASCI_Letters& letters)
+				{
+					constexpr float BOX_MIN = 0.0f;
+					constexpr float BOX_MAX = 1.0f;
+					constexpr float EPS = 1e-9f;
+
+					auto saturate = [](float v) -> float {
+						if (v < 0.0f) return 0.0f;
+						if (v > 1.0f) return 1.0f;
+						return v;
+						};
+
+					for (auto& kv : letters.letters)
+					{
+						auto& segs = kv.second;
+						if (segs.empty()) continue; // e.g., space
+
+						// 1) Find glyph bounds
+						float minX = std::numeric_limits<float>::infinity();
+						float minY = std::numeric_limits<float>::infinity();
+						float maxX = -std::numeric_limits<float>::infinity();
+						float maxY = -std::numeric_limits<float>::infinity();
+
+						for (const auto& s : segs)
+						{
+							minX = std::min(minX, std::min(s.start.x, s.end.x));
+							minY = std::min(minY, std::min(s.start.y, s.end.y));
+							maxX = std::max(maxX, std::max(s.start.x, s.end.x));
+							maxY = std::max(maxY, std::max(s.start.y, s.end.y));
+						}
+
+						float w = std::max(maxX - minX, EPS);
+						float h = std::max(maxY - minY, EPS);
+
+						// 2) Uniformly scale to fit INSIDE 1x1 (preserve aspect)
+						const float boxSize = BOX_MAX - BOX_MIN; // = 1
+						const float s = boxSize / std::max(w, h); // <= 1/w or 1/h
+
+						// Scaled size (<= 1)
+						const float newW = w * s;
+						const float newH = h * s;
+
+						// 3) Center inside the box
+						const float offX = BOX_MIN + 0.5f * (boxSize - newW);
+						const float offY = BOX_MIN + 0.5f * (boxSize - newH);
+
+						// 4) Apply: translate to origin, scale, then offset to center
+						for (auto& sgm : segs)
+						{
+							float x0 = (sgm.start.x - minX) * s + offX;
+							float y0 = (sgm.start.y - minY) * s + offY;
+							float x1 = (sgm.end.x - minX) * s + offX;
+							float y1 = (sgm.end.y - minY) * s + offY;
+
+							// 5) Clamp to obliterate tiny FP overshoots
+							sgm.start.x = saturate(x0);
+							sgm.start.y = saturate(y0);
+							sgm.end.x = saturate(x1);
+							sgm.end.y = saturate(y1);
+						}
+					}
+				};
+
+
+			ASCI_Letters font;
+
+			// SPACE
+			font.letters[' '] = {}; // no strokes; just advance when you render
+
+			// A
+			{
+				auto& g = font.letters['A'];
+				push_grid_seg(g, 0, 0, 2, 6); // left leg
+				push_grid_seg(g, 4, 0, 2, 6); // right leg
+				push_grid_seg(g, 1, 3, 3, 3); // crossbar
+			}
+
+			// B
+			{
+				auto& g = font.letters['B'];
+				push_grid_seg(g, 0, 0, 0, 6); // spine
+				// upper bowl
+				push_grid_seg(g, 0, 6, 3, 6);
+				push_grid_seg(g, 3, 6, 4, 5);
+				push_grid_seg(g, 4, 5, 3, 4);
+				push_grid_seg(g, 3, 4, 0, 4);
+				// lower bowl
+				push_grid_seg(g, 0, 4, 3, 4);
+				push_grid_seg(g, 3, 4, 4, 3);
+				push_grid_seg(g, 4, 3, 3, 2);
+				push_grid_seg(g, 3, 2, 0, 2);
+				push_grid_seg(g, 0, 2, 0, 0);
+			}
+
+			// C
+			{
+				auto& g = font.letters['C'];
+				push_grid_seg(g, 4, 5, 3, 6);
+				push_grid_seg(g, 3, 6, 1, 6);
+				push_grid_seg(g, 1, 6, 0, 5);
+				push_grid_seg(g, 0, 5, 0, 1);
+				push_grid_seg(g, 0, 1, 1, 0);
+				push_grid_seg(g, 1, 0, 3, 0);
+				push_grid_seg(g, 3, 0, 4, 1);
+			}
+
+			// D
+			{
+				auto& g = font.letters['D'];
+				push_grid_seg(g, 0, 0, 0, 6);
+				push_grid_seg(g, 0, 6, 2, 6);
+				push_grid_seg(g, 2, 6, 4, 4);
+				push_grid_seg(g, 4, 4, 4, 2);
+				push_grid_seg(g, 4, 2, 2, 0);
+				push_grid_seg(g, 2, 0, 0, 0);
+			}
+
+			// E
+			{
+				auto& g = font.letters['E'];
+				push_grid_seg(g, 0, 0, 0, 6);
+				push_grid_seg(g, 0, 6, 4, 6);
+				push_grid_seg(g, 0, 3, 3, 3);
+				push_grid_seg(g, 0, 0, 4, 0);
+			}
+
+			// F
+			{
+				auto& g = font.letters['F'];
+				push_grid_seg(g, 0, 0, 0, 6);
+				push_grid_seg(g, 0, 6, 4, 6);
+				push_grid_seg(g, 0, 3, 3, 3);
+			}
+
+			// G
+			{
+				auto& g = font.letters['G'];
+				// C-like outer
+				push_grid_seg(g, 4, 5, 3, 6);
+				push_grid_seg(g, 3, 6, 1, 6);
+				push_grid_seg(g, 1, 6, 0, 5);
+				push_grid_seg(g, 0, 5, 0, 1);
+				push_grid_seg(g, 0, 1, 1, 0);
+				push_grid_seg(g, 1, 0, 3, 0);
+				push_grid_seg(g, 3, 0, 4, 1);
+				// inner bar
+				push_grid_seg(g, 2, 3, 4, 3);
+				push_grid_seg(g, 4, 3, 4, 2);
+			}
+
+			// H
+			{
+				auto& g = font.letters['H'];
+				push_grid_seg(g, 0, 0, 0, 6);
+				push_grid_seg(g, 4, 0, 4, 6);
+				push_grid_seg(g, 0, 3, 4, 3);
+			}
+
+			// I
+			{
+				auto& g = font.letters['I'];
+				push_grid_seg(g, 1, 6, 3, 6);
+				push_grid_seg(g, 2, 6, 2, 0);
+				push_grid_seg(g, 1, 0, 3, 0);
+			}
+
+			// J
+			{
+				auto& g = font.letters['J'];
+				push_grid_seg(g, 1, 6, 3, 6);
+				push_grid_seg(g, 2, 6, 2, 1);
+				push_grid_seg(g, 2, 1, 1, 0);
+				push_grid_seg(g, 1, 0, 0, 1);
+			}
+
+			// K
+			{
+				auto& g = font.letters['K'];
+				push_grid_seg(g, 0, 0, 0, 6);
+				push_grid_seg(g, 0, 3, 4, 6);
+				push_grid_seg(g, 0, 3, 4, 0);
+			}
+
+			// L
+			{
+				auto& g = font.letters['L'];
+				push_grid_seg(g, 0, 6, 0, 0);
+				push_grid_seg(g, 0, 0, 4, 0);
+			}
+
+			// M
+			{
+				auto& g = font.letters['M'];
+				push_grid_seg(g, 0, 0, 0, 6);
+				push_grid_seg(g, 4, 0, 4, 6);
+				push_grid_seg(g, 0, 6, 2, 3);
+				push_grid_seg(g, 2, 3, 4, 6);
+			}
+
+			// N
+			{
+				auto& g = font.letters['N'];
+				push_grid_seg(g, 0, 0, 0, 6);
+				push_grid_seg(g, 4, 0, 4, 6);
+				push_grid_seg(g, 0, 6, 4, 0);
+			}
+
+			// O
+			{
+				auto& g = font.letters['O'];
+				push_grid_seg(g, 1, 0, 3, 0);
+				push_grid_seg(g, 3, 0, 4, 1);
+				push_grid_seg(g, 4, 1, 4, 5);
+				push_grid_seg(g, 4, 5, 3, 6);
+				push_grid_seg(g, 3, 6, 1, 6);
+				push_grid_seg(g, 1, 6, 0, 5);
+				push_grid_seg(g, 0, 5, 0, 1);
+				push_grid_seg(g, 0, 1, 1, 0);
+			}
+
+			// P
+			{
+				auto& g = font.letters['P'];
+				push_grid_seg(g, 0, 0, 0, 6);
+				push_grid_seg(g, 0, 6, 3, 6);
+				push_grid_seg(g, 3, 6, 4, 5);
+				push_grid_seg(g, 4, 5, 3, 4);
+				push_grid_seg(g, 3, 4, 0, 4);
+			}
+
+			// Q
+			{
+				auto& g = font.letters['Q'];
+				// O
+				push_grid_seg(g, 1, 0, 3, 0);
+				push_grid_seg(g, 3, 0, 4, 1);
+				push_grid_seg(g, 4, 1, 4, 5);
+				push_grid_seg(g, 4, 5, 3, 6);
+				push_grid_seg(g, 3, 6, 1, 6);
+				push_grid_seg(g, 1, 6, 0, 5);
+				push_grid_seg(g, 0, 5, 0, 1);
+				push_grid_seg(g, 0, 1, 1, 0);
+				// tail
+				push_grid_seg(g, 2, 2, 4, 0);
+			}
+
+			// R
+			{
+				auto& g = font.letters['R'];
+				push_grid_seg(g, 0, 0, 0, 6);
+				push_grid_seg(g, 0, 6, 3, 6);
+				push_grid_seg(g, 3, 6, 4, 5);
+				push_grid_seg(g, 4, 5, 3, 4);
+				push_grid_seg(g, 3, 4, 0, 4);
+				push_grid_seg(g, 0, 4, 4, 0); // leg
+			}
+
+			// S
+			{
+				auto& g = font.letters['S'];
+				push_grid_seg(g, 4, 5, 3, 6);
+				push_grid_seg(g, 3, 6, 1, 6);
+				push_grid_seg(g, 1, 6, 0, 5);
+				push_grid_seg(g, 0, 5, 1, 4);
+				push_grid_seg(g, 1, 4, 3, 2);
+				push_grid_seg(g, 3, 2, 4, 1);
+				push_grid_seg(g, 4, 1, 3, 0);
+				push_grid_seg(g, 3, 0, 1, 0);
+				push_grid_seg(g, 1, 0, 0, 1);
+			}
+
+			// T
+			{
+				auto& g = font.letters['T'];
+				push_grid_seg(g, 0, 6, 4, 6);
+				push_grid_seg(g, 2, 6, 2, 0);
+			}
+
+			// U
+			{
+				auto& g = font.letters['U'];
+				push_grid_seg(g, 0, 6, 0, 1);
+				push_grid_seg(g, 0, 1, 1, 0);
+				push_grid_seg(g, 1, 0, 3, 0);
+				push_grid_seg(g, 3, 0, 4, 1);
+				push_grid_seg(g, 4, 1, 4, 6);
+			}
+
+			// V
+			{
+				auto& g = font.letters['V'];
+				push_grid_seg(g, 0, 6, 2, 0);
+				push_grid_seg(g, 4, 6, 2, 0);
+			}
+
+			// W
+			{
+				auto& g = font.letters['W'];
+				push_grid_seg(g, 0, 6, 1, 0);
+				push_grid_seg(g, 1, 0, 2, 3);
+				push_grid_seg(g, 2, 3, 3, 0);
+				push_grid_seg(g, 3, 0, 4, 6);
+			}
+
+			// X
+			{
+				auto& g = font.letters['X'];
+				push_grid_seg(g, 0, 6, 4, 0);
+				push_grid_seg(g, 0, 0, 4, 6);
+			}
+
+			// Y
+			{
+				auto& g = font.letters['Y'];
+				push_grid_seg(g, 0, 6, 2, 3);
+				push_grid_seg(g, 4, 6, 2, 3);
+				push_grid_seg(g, 2, 3, 2, 0);
+			}
+
+			// Z
+			{
+				auto& g = font.letters['Z'];
+				push_grid_seg(g, 0, 6, 4, 6);
+				push_grid_seg(g, 4, 6, 0, 0);
+				push_grid_seg(g, 0, 0, 4, 0);
+			}
+
+			// Lowercase = reuse uppercase strokes
+			for (char c = 'A'; c <= 'Z'; ++c)
+				font.letters[static_cast<int>(c - 'A' + 'a')] = font.letters[c];
+
+
+			normalize_letters(font);
+
+			return font;
+		}
+	}
 	
 	
 
@@ -78,10 +453,11 @@ namespace Universe_
 	void init(Scene_::Scene& scene, const int clip_number, const int clip_fps, const int clip_length_seconds, const bool capture, const bool capture_png, const bool capture_bmp)
 	{
 		const bool enable_shader_10_unit_cube = true;
-		const bool enable_shader_20_sphere = true; // sphere
-		const bool enable_shader_21_line = true; // line
-		const bool enable_shader_22_geodesic_line = true; // line with t
-
+		const bool enable_shader_20_sphere = false; // sphere
+		const bool enable_shader_21_line = false; // line
+		const bool enable_shader_22_geodesic_line = false; // line with t
+		
+		const bool enable_ASCII_letters = true;
 
 		{
 			Program program;
@@ -132,7 +508,94 @@ namespace Universe_
 
 
 
+		if (enable_ASCII_letters)
+		{
+			std::cout << "enable_ASCII_letters : " << enable_ASCII_letters << "\n";
 
+			ASCI_Letters letters =  ASCI_Letters_::make_ascii_letters();
+			
+
+			Lines_shader_21 lines;
+
+			{
+				auto draw_line_2d = [&lines](float x0, float y0, float x1, float y1)
+					{
+						Lines_shader_21::Line& line = lines.add_line();
+
+						line.x0.start = x0;
+						line.y0.start = y0;
+						line.z0.start = 0.5;
+
+						line.x1.start = x1;
+						line.y1.start = y1;
+						line.z1.start = 0.5;
+
+						line.thickness.start = 0.01f;
+
+						line.rgb_t0.x = Random::generate_random_float_0_to_1();
+						line.rgb_t0.y = Random::generate_random_float_0_to_1();
+						line.rgb_t0.z = Random::generate_random_float_0_to_1();
+
+						line.rgb_t1.x = Random::generate_random_float_0_to_1();
+						line.rgb_t1.y = Random::generate_random_float_0_to_1();
+						line.rgb_t1.z = Random::generate_random_float_0_to_1();
+
+						line.number_of_cubes = 1000;
+
+						line.thickness.end = 0.01f;
+
+						bug_fix_line_position(line.x0.start, line.y0.start, line.z0.start);
+						bug_fix_line_position(line.x1.start, line.y1.start, line.z1.start);
+
+						line.copy_start_to_end();
+
+					};
+
+				// A ok
+				// B fail
+				// C ok
+				// D ok
+				// F ok
+				// G fail
+				// H ok
+				// F ok
+				// I ok
+				// J ok
+				// K ok
+				// L ok
+				// M ok
+				// N ok
+				// O ok
+				// P ok
+				// R ok
+				// S ok 
+				// T ok
+				// U ok
+				// V ok
+				// Z ok
+				// W ok
+				// X ok
+				// Y ok
+				// Z ok
+				// Q ok
+
+				
+				
+				for (auto& l : letters.letters.at('1'))
+				{
+					draw_line_2d(l.start.x, l.start.y, l.end.x, l.end.y);
+				}
+				
+
+
+				lines.draw(scene);
+			}
+			
+
+
+
+			
+		}
 
 		if (enable_shader_20_sphere) // sphered
 		{
@@ -490,6 +953,8 @@ namespace Universe_
 
 		}
 
+		// TODO
+		// create letters
 
 
 		// TODO
